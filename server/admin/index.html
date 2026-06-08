@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Chrono Observatory</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-chat-box: #0f172a;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --cal-personal: #3f75ff;
+            --cal-personal-soft: #edf2ff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg-app);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .header {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 24px;
+        }
+
+        .logoRow {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logoIcon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--cal-personal);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+            font-family: 'Outfit', sans-serif;
+            box-shadow: 0 4px 10px rgba(63, 117, 255, 0.3);
+        }
+
+        .title {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.015em;
+        }
+
+        .subtitle {
+            margin: 0;
+            font-size: 13.5px;
+            color: var(--text-muted);
+        }
+
+        /* Stats Grid */
+        .statsGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .statCard {
+            background: var(--bg-panel);
+            border: 1.5px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .statLabel {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+        }
+
+        .statValue {
+            font-family: 'Outfit', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .statHighlight {
+            color: var(--cal-personal);
+        }
+
+        /* Layout Columns */
+        .layoutSplit {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .layoutSplit {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panelCard {
+            background: var(--bg-panel);
+            border: 1.5px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panelCard h3 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .metaSection {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .metaItem {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .metaLabel {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .metaVal {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Trace logs */
+        .traceList {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .traceItem {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            background: var(--bg-app);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .traceMeta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .traceUser {
+            font-weight: 700;
+            color: var(--cal-personal);
+        }
+
+        .traceLatency {
+            font-family: monospace;
+            background: rgba(255,255,255,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .traceText {
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .tracePrompt {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .traceReply {
+            color: var(--text-muted);
+            border-left: 2px solid var(--border-color);
+            padding-left: 10px;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .emptyState {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logoRow">
+                <div class="logoIcon">C</div>
+                <h1 class="title">Chrono Observatory</h1>
+            </div>
+            <p class="subtitle">Real-time system traces, AI latencies, cost estimates, and cognitive diagnostics.</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="statsGrid">
+            <div class="statCard">
+                <span class="statLabel">Registered Users</span>
+                <span class="statValue" id="metricUsers">0</span>
+            </div>
+            <div class="statCard">
+                <span class="statLabel">Calendar Events</span>
+                <span class="statValue" id="metricEvents">0</span>
+            </div>
+            <div class="statCard">
+                <span class="statLabel">Memory Blocks</span>
+                <span class="statValue" id="metricMemories">0</span>
+            </div>
+            <div class="statCard">
+                <span class="statLabel">Total Chats</span>
+                <span class="statValue statHighlight" id="metricChats">0</span>
+            </div>
+            <div class="statCard">
+                <span class="statLabel">Average Latency</span>
+                <span class="statValue" id="metricLatency">0 ms</span>
+            </div>
+            <div class="statCard">
+                <span class="statLabel">Total AI Cost</span>
+                <span class="statValue" id="metricCost">$0.00</span>
+            </div>
+        </div>
+
+        <!-- Split Layout -->
+        <div class="layoutSplit">
+            <!-- Left Panel: General Diagnostics -->
+            <div class="panelCard">
+                <h3>Diagnostics summary</h3>
+                <div class="metaSection">
+                    <div class="metaItem">
+                        <span class="metaLabel">Cognitive Engine Status</span>
+                        <span class="metaVal" style="color: #10b981;">● Active (Listening)</span>
+                    </div>
+                    <div class="metaItem">
+                        <span class="metaLabel">Top Intent</span>
+                        <span class="metaVal" id="metricTopIntent">N/A</span>
+                    </div>
+                    <div class="metaItem">
+                        <span class="metaLabel">Top Parsing Failure</span>
+                        <span class="metaVal" id="metricTopFailure">N/A</span>
+                    </div>
+                    <div class="metaItem">
+                        <span class="metaLabel">Server Mode</span>
+                        <span class="metaVal" id="metricDbMode">SQLite Adapter</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Trace Logging -->
+            <div class="panelCard">
+                <h3>Orchestrator Request Traces</h3>
+                <div class="traceList" id="traceContainer">
+                    <div class="emptyState">No requests recorded yet. Talk to the chat interface in the app.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchObservabilityData() {
+            try {
+                // 1. Fetch Summary Metrics
+                const metricsRes = await fetch('/api/admin/metrics');
+                if (metricsRes.ok) {
+                    const data = await metricsRes.json();
+                    document.getElementById('metricUsers').innerText = data.users;
+                    document.getElementById('metricEvents').innerText = data.events;
+                    document.getElementById('metricMemories').innerText = data.memories;
+                    document.getElementById('metricChats').innerText = data.totalChats;
+                    document.getElementById('metricLatency').innerText = `${data.avgLatencyMs} ms`;
+                    document.getElementById('metricCost').innerText = data.estimatedCost;
+                    document.getElementById('metricTopIntent').innerText = data.topIntent;
+                    document.getElementById('metricTopFailure').innerText = data.topFailure;
+                }
+
+                // 2. Fetch Trace Streams
+                const tracesRes = await fetch('/api/admin/traces');
+                if (tracesRes.ok) {
+                    const traces = await tracesRes.json();
+                    const container = document.getElementById('traceContainer');
+                    container.innerHTML = '';
+
+                    if (traces && traces.length > 0) {
+                        traces.forEach(trace => {
+                            const item = document.createElement('div');
+                            item.className = 'traceItem';
+                            
+                            const dateStr = new Date(trace.created_at || Date.now()).toLocaleTimeString();
+
+                            item.innerHTML = `
+                                <div class="traceMeta">
+                                    <span>ID: <strong style="color: var(--text-main); font-family: monospace;">${trace.id}</strong></span>
+                                    <span>Time: ${dateStr}</span>
+                                </div>
+                                <div class="traceText">
+                                    <div class="tracePrompt"><strong>User (${trace.display_name || 'User'}):</strong> "${trace.user_input}"</div>
+                                    <div class="traceReply"><strong>Chrono AI:</strong> "${trace.ai_response}"</div>
+                                </div>
+                                <div class="traceMeta" style="border-top: 1px dashed var(--border-color); padding-top: 6px; margin-top: 4px;">
+                                    <span>Model: <span style="font-weight:600;">${trace.model_used}</span></span>
+                                    <span class="traceLatency">Latency: ${trace.latency_ms}ms</span>
+                                </div>
+                            `;
+                            container.appendChild(item);
+                        });
+                    } else {
+                        container.innerHTML = `<div class="emptyState">No requests recorded yet. Talk to the chat interface in the app.</div>`;
+                    }
+                }
+            } catch (e) {
+                console.error("Observability poll failed:", e);
+            }
+        }
+
+        // Poll metrics and traces every 3 seconds
+        fetchObservabilityData();
+        setInterval(fetchObservabilityData, 3000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+supabase login
+supabase init
+supabase link --project-ref kimzqukobytxhzltytvx
+
+
+
+
+
+https://kimzqukobytxhzltytvx.supabase.co
+
+
+
+sb_publishable_Maxtwx2sM7XfpQKkx_uO3w_x8l5b6us
+
+
+
+postgresql://postgres:[YOUR-PASSWORD]@db.kimzqukobytxhzltytvx.supabase.co:5432/postgres

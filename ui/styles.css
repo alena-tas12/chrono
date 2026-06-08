@@ -1,0 +1,2707 @@
+:root {
+    --font-primary: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+    --font-title: 'Outfit', sans-serif;
+
+    /* Custom Color Palette (HSL Tailored) */
+    --bg-app: #f4f6fa;
+    --bg-panel: #ffffff;
+    --bg-chat-box: #f8fafc;
+    --border-color: #e2e8f0;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+
+    /* Calendar Layer Colors */
+    --cal-personal: #3f75ff;
+    --cal-personal-soft: #edf2ff;
+    --cal-study: #10b981;
+    --cal-study-soft: #ecfdf5;
+    --cal-family: #ef4444;
+    --cal-family-soft: #fef2f2;
+    --cal-routine: #64748b;
+    --cal-routine-soft: #f1f5f9;
+    --cal-focus: #8b5cf6;
+    --cal-focus-soft: #f5f3ff;
+
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02);
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: var(--font-primary);
+    background: var(--bg-app);
+    color: var(--text-main);
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* APP SHELL */
+.appShell {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* LEFT NARROW RAIL */
+.sideBar {
+    width: 56px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    gap: 20px;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.iconButton {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-main);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.iconButton:hover {
+    background: var(--bg-chat-box);
+    border-color: var(--border-color);
+    transform: scale(1.05);
+}
+
+.brandIcon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--cal-personal);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 20px;
+    font-family: var(--font-title);
+    box-shadow: 0 4px 10px rgba(63, 117, 255, 0.3);
+}
+
+/* MAIN SHELL */
+.mainShell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* CALENDAR WORKSPACE */
+.calendarWorkspace {
+    flex: 0 0 70%;
+    min-height: 50%;
+    display: flex;
+    background: var(--bg-panel);
+    overflow: hidden;
+    position: relative;
+    transition: flex-basis 0.1s var(--ease-smooth);
+}
+
+/* 3-COLUMN WORKSPACE DETAILS */
+
+/* 1. Left Collapsible Sidebar Panel */
+.calendarLeftPanel {
+    width: 260px;
+    border-right: 1px solid var(--border-color);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    overflow-y: auto;
+    transition: all 0.3s var(--ease-smooth);
+    opacity: 1;
+}
+
+.calendarLeftPanel.collapsed {
+    width: 0;
+    padding: 24px 0;
+    opacity: 0;
+    overflow: hidden;
+    border-right-width: 0;
+}
+
+.panelTitle {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--font-title);
+    color: var(--text-main);
+}
+
+.sideNav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sideNavItem {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.sideNavItem:hover {
+    background: var(--bg-chat-box);
+    color: var(--text-main);
+}
+
+.sideNavItem.active {
+    background: var(--cal-personal-soft);
+    color: var(--cal-personal);
+    font-weight: 600;
+}
+
+.sectionLabel {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.datePickerWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.datePickerInput {
+    width: 100%;
+    padding: 10px 36px 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-chat-box);
+    font-size: 14px;
+    color: var(--text-main);
+    outline: none;
+}
+
+.calendarIcon {
+    position: absolute;
+    right: 12px;
+    font-size: 14px;
+    pointer-events: none;
+    color: var(--text-muted);
+}
+
+/* MINI CALENDAR */
+.miniCalendar {
+    margin-top: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px;
+    background: var(--bg-panel);
+}
+
+.miniCalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.miniCalHeader span {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.miniCalNav {
+    display: flex;
+    gap: 4px;
+}
+
+.miniCalBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.miniCalBtn:hover {
+    background: var(--bg-chat-box);
+    color: var(--text-main);
+}
+
+.miniCalDays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.miniCalGrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    text-align: center;
+}
+
+.miniCalCell {
+    font-size: 11px;
+    padding: 4px 0;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s;
+    color: var(--text-main);
+}
+
+.miniCalCell:hover {
+    background: var(--bg-chat-box);
+}
+
+.miniCalCell.empty {
+    color: #cbd5e1;
+    pointer-events: none;
+}
+
+.miniCalCell.active {
+    background: var(--cal-personal);
+    color: white;
+    font-weight: 700;
+}
+
+/* Category select in quick add */
+.categorySelect {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-main);
+    margin-bottom: 10px;
+    outline: none;
+}
+
+.leftQuickAdd input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-main);
+    font-size: 14px;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+}
+
+.leftQuickAdd .primary {
+    width: 100%;
+}
+
+
+/* 2. Central Main Area */
+.calendarMainArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 20px;
+    overflow: hidden;
+}
+
+.calendarHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.calendarNav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.navButton {
+    background: var(--bg-chat-box);
+    border: 1px solid var(--border-color);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+    transition: all 0.2s;
+}
+
+.navButton:hover {
+    background: var(--border-color);
+}
+
+.currentDate {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--font-title);
+    color: var(--text-main);
+}
+
+.calendarHeaderActions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.viewTabs {
+    display: flex;
+    background: var(--bg-chat-box);
+    padding: 4px;
+    border-radius: 12px;
+}
+
+.viewButton {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.viewButton:hover {
+    color: var(--text-main);
+}
+
+.viewButton.active {
+    background: var(--bg-panel);
+    color: var(--cal-personal);
+    box-shadow: var(--shadow-sm);
+}
+
+.headerButtons {
+    display: flex;
+    gap: 6px;
+}
+
+.headerButton {
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.headerButton:hover {
+    background: var(--bg-chat-box);
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+
+/* CALENDAR CONTROLS & LAYERS */
+.calendarControls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.layerBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.layerLabel {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-right: 8px;
+}
+
+.layerPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.layerPill input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Layer Specific Colors */
+.layerPill.calendar-personal {
+    background: var(--cal-personal-soft);
+    border-color: #cbd8ff;
+    color: #1e3a8a;
+}
+.layerPill.calendar-personal input { accent-color: var(--cal-personal); }
+
+.layerPill.calendar-study {
+    background: var(--cal-study-soft);
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+.layerPill.calendar-study input { accent-color: var(--cal-study); }
+
+.layerPill.calendar-family {
+    background: var(--cal-family-soft);
+    border-color: #fecaca;
+    color: #991b1b;
+}
+.layerPill.calendar-family input { accent-color: var(--cal-family); }
+
+.layerPill.calendar-routine {
+    background: var(--cal-routine-soft);
+    border-color: #cbd5e1;
+    color: #334155;
+}
+.layerPill.calendar-routine input { accent-color: var(--cal-routine); }
+
+.layerPill.calendar-focus {
+    background: var(--cal-focus-soft);
+    border-color: #ddd6fe;
+    color: #5b21b6;
+}
+.layerPill.calendar-focus input { accent-color: var(--cal-focus); }
+
+/* Quick Add Bar */
+.quickAddBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    margin-left: 24px;
+    min-width: 320px;
+}
+
+.quickAddBar input[type="text"] {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    flex: 3;
+    min-width: 150px;
+}
+
+.quickAddBar select {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    flex: 2;
+    min-width: 100px;
+}
+
+.eventSummaryText {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 6px;
+}
+
+
+/* 3. Right Collapsible Details Panel */
+.calendarRightPanel {
+    width: 240px;
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    overflow: hidden;
+    transition: all 0.3s var(--ease-smooth);
+    opacity: 1;
+}
+
+.calendarRightPanel.collapsed {
+    width: 0;
+    opacity: 0;
+    border-left-width: 0;
+}
+
+.rightPanelTabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background: #f8fafc;
+}
+
+.rightPanelTab {
+    flex: 1;
+    padding: 12px 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.rightPanelTab:hover {
+    color: var(--text-main);
+    background: var(--bg-chat-box);
+}
+
+.rightPanelTab.active {
+    color: var(--cal-personal);
+    border-bottom: 2px solid var(--cal-personal);
+    background: var(--bg-panel);
+}
+
+.rightPanelContent {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.tabPane {
+    display: none;
+}
+
+.tabPane.active {
+    display: block;
+}
+
+.rightPanelSubtitle {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: var(--font-title);
+    color: var(--text-main);
+}
+
+.rightPanelDescription {
+    margin: 0 0 16px 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.todayEventList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.todayEventItem {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.todayEventIndicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+
+/* CALENDAR MAIN CONTENT & GRID */
+.calendarContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.calendarGridHeader {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.calendarGrid {
+    flex: 1;
+    display: grid;
+    gap: 12px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* Grid Views */
+.monthGrid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: minmax(100px, 1fr);
+}
+
+.weekGrid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: minmax(280px, 1fr);
+}
+
+.dayGrid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(180px, auto);
+}
+
+.agendaList,
+.focusList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Day Cells */
+.dayCell {
+    border-radius: 14px;
+    background: var(--bg-chat-box);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s var(--ease-smooth);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.dayCell:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-color);
+    background: var(--bg-panel);
+    box-shadow: var(--shadow-md);
+}
+
+.dayCell.empty {
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    pointer-events: none;
+}
+
+.dayCell.selected {
+    border-color: var(--cal-personal);
+    box-shadow: var(--shadow-lg);
+    background: var(--bg-panel);
+}
+
+.dayCell.selected::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--cal-personal);
+}
+
+.dayHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.dayNumber {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.dayWeek {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.dayEvents {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Event Chips */
+.eventChip {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-left: 3px solid transparent;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.1s;
+}
+
+.eventChip:hover {
+    transform: scale(1.02);
+}
+
+.eventChip.personal {
+    background: var(--cal-personal-soft);
+    border-left-color: var(--cal-personal);
+    color: #1e3a8a;
+}
+
+.eventChip.study {
+    background: var(--cal-study-soft);
+    border-left-color: var(--cal-study);
+    color: #065f46;
+}
+
+.eventChip.family {
+    background: var(--cal-family-soft);
+    border-left-color: var(--cal-family);
+    color: #991b1b;
+}
+
+.eventChip.routine {
+    background: var(--cal-routine-soft);
+    border-left-color: var(--cal-routine);
+    color: #334155;
+}
+
+.eventChip.focus {
+    background: var(--cal-focus-soft);
+    border-left-color: var(--cal-focus);
+    color: #5b21b6;
+}
+
+.eventChip .eventLabel {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+
+.noEventsMsg {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 12px 0;
+}
+
+
+/* VERTICAL RESIZE SPLITTER */
+.splitter {
+    height: 10px;
+    background: var(--bg-app);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: row-resize;
+    z-index: 5;
+    transition: background-color 0.2s;
+}
+
+.splitter:hover {
+    background: #e2e8f0;
+}
+
+.splitterHandle {
+    width: 60px;
+    height: 4px;
+    border-radius: 2px;
+    background: #cbd5e1;
+}
+
+/* DOCKING AND RESIZING RULES */
+.mainShell.dock-right {
+    flex-direction: row;
+}
+
+.mainShell.dock-right .splitter {
+    width: 10px;
+    height: 100%;
+    cursor: col-resize;
+    border-top: none;
+    border-bottom: none;
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.mainShell.dock-right .splitterHandle {
+    width: 4px;
+    height: 60px;
+}
+
+.mainShell.dock-right .calendarWorkspace {
+    height: 100%;
+    min-width: 40%;
+}
+
+.mainShell.dock-right .chatWorkspace {
+    height: 100%;
+    min-width: 25%;
+}
+
+.smallBtn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.smallBtn:hover {
+    background: var(--bg-chat-box);
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+
+
+/* CHRONO CHAT WORKSPACE */
+.chatWorkspace {
+    flex: 1;
+    min-height: 20%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 24px;
+    background: var(--bg-panel);
+    overflow: hidden;
+}
+
+.chatHeader {
+    display: flex;
+    align-items: center;
+}
+
+.chatTitle {
+    font-size: 16px;
+    font-weight: 800;
+    font-family: var(--font-title);
+    color: var(--text-main);
+    letter-spacing: 0.02em;
+}
+
+.chatBox {
+    flex: 1;
+    min-height: 0;
+    padding: 16px;
+    border-radius: 16px;
+    background: var(--bg-chat-box);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+.chatMessage {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    animation: messageIn 0.25s var(--ease-smooth) both;
+}
+
+@keyframes messageIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.chatMessage.user {
+    align-self: flex-end;
+    background: var(--cal-personal);
+    color: white;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 8px rgba(63, 117, 255, 0.25);
+}
+
+.chatMessage.ai {
+    align-self: flex-start;
+    background: var(--bg-panel);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: 4px;
+    box-shadow: var(--shadow-sm);
+}
+
+.chatSuggestions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.suggestionButton {
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.suggestionButton:hover {
+    border-color: var(--cal-personal);
+    color: var(--cal-personal);
+    background: var(--cal-personal-soft);
+}
+
+.chatInputRow {
+    display: flex;
+    gap: 8px;
+}
+
+.chatInputRow input {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-chat-box);
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.chatInputRow input:focus {
+    border-color: var(--cal-personal);
+    background: var(--bg-panel);
+}
+
+/* Primary Button Styling */
+button.primary {
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: var(--cal-personal);
+    border: none;
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(63, 117, 255, 0.2);
+}
+
+button.primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(63, 117, 255, 0.3);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* RESPONSIVE STYLES */
+@media (max-width: 1000px) {
+    .calendarWorkspace {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .calendarLeftPanel, .calendarRightPanel {
+        width: 100% !important;
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .calendarLeftPanel.collapsed, .calendarRightPanel.collapsed {
+        height: 0;
+        padding: 0;
+        border: none;
+    }
+}
+
+/* COGNITIVE DIAGNOSTICS FLOATING PANEL */
+.debugPanel {
+    position: fixed;
+    right: 24px;
+    top: 80px;
+    width: 340px;
+    max-height: 80vh;
+    background: var(--bg-panel);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    border-radius: 16px;
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: var(--font-primary);
+}
+
+.debugPanel.visible {
+    display: flex;
+}
+
+.debugHeader {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-chat-box);
+}
+
+.debugHeader h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.debugCloseBtn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.debugCloseBtn:hover {
+    color: var(--text-main);
+}
+
+.debugContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.debugSection {
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 12px;
+}
+
+.debugSection:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.debugSection h3 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.debugSection div {
+    font-size: 12px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+/* Info, warning, success colors inside debug */
+.debugSection .info {
+    color: #0369a1;
+}
+
+.debugSection .warning {
+    color: #b45309;
+}
+
+.debugSection .success {
+    color: #15803d;
+}
+
+/* WORKSPACE SETTINGS STYLES */
+.settingsContent,
+.cloudContent {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    padding: 8px 4px;
+    animation: fadeIn 0.3s var(--ease-smooth);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.settingsHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settingsTitle {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    font-family: var(--font-title);
+    color: var(--text-main);
+    letter-spacing: -0.01em;
+}
+
+.settingsSub {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.settingsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 24px;
+    align-items: start;
+}
+
+.settingsCard {
+    background: var(--bg-panel);
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s var(--ease-smooth);
+}
+
+.settingsCard:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-color);
+}
+
+.settingsCard h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 800;
+    font-family: var(--font-title);
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.settingsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settingLabel {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.settingHelp {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Themes Options Grid */
+.themeGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.themeOption {
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: var(--t-panel, #ffffff);
+    color: var(--t-text, #1e293b);
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.themeOption span {
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.themePreview {
+    width: 100%;
+    height: 36px;
+    border-radius: 8px;
+    position: relative;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.themePreview .pBg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 40%;
+    background: var(--t-bg);
+}
+
+.themePreview .pPanel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 60%;
+    background: var(--t-panel);
+    border-left: 1px solid var(--border-color);
+}
+
+.themeOption:hover {
+    transform: translateY(-2px);
+    border-color: var(--text-muted);
+}
+
+.themeOption.active {
+    border-color: var(--cal-personal);
+    background: var(--t-panel);
+    box-shadow: 0 0 0 1px var(--cal-personal);
+}
+
+/* Accents Options Palette */
+.accentGrid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.accentOption {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3.5px solid var(--bg-panel);
+    cursor: pointer;
+    transition: all 0.2s var(--ease-smooth);
+    box-shadow: 0 0 0 1.5px var(--border-color);
+}
+
+.accentOption:hover {
+    transform: scale(1.12);
+}
+
+.accentOption.active {
+    box-shadow: 0 0 0 2px var(--text-main);
+    transform: scale(1.12);
+}
+
+/* Branding Settings Input */
+.settingInputWrapper {
+    display: flex;
+}
+
+.settingInputWrapper input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-chat-box);
+    color: var(--text-main);
+    font-size: 13.5px;
+    outline: none;
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.settingInputWrapper input:focus {
+    border-color: var(--cal-personal);
+    background: var(--bg-panel);
+    box-shadow: 0 0 0 1px var(--cal-personal);
+}
+
+/* Cognitive AI Profiles List */
+.profileList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.profileOption {
+    border: 1.5px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--bg-chat-box);
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.profileOption:hover {
+    background: var(--bg-panel);
+    border-color: var(--text-muted);
+}
+
+.profileOption.active {
+    border-color: var(--cal-personal);
+    background: var(--bg-panel);
+    box-shadow: 0 0 0 1px var(--cal-personal);
+}
+
+.profileHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.profileTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.profilePill {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--border-color);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.profileOption.active .profilePill {
+    background: var(--cal-personal-soft);
+    color: var(--cal-personal);
+}
+
+.profileDesc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.45;
+}
+
+.userGreeting {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-top: -18px;
+    margin-bottom: 4px;
+    padding-left: 14px;
+}
+
+/* ONBOARDING OVERLAY STYLES */
+.onboardingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: overlayIn 0.4s var(--ease-smooth) both;
+}
+
+.onboardingOverlay.fadeOut {
+    animation: overlayOut 0.4s var(--ease-smooth) both;
+}
+
+@keyframes overlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes overlayOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.onboardingCard {
+    background: var(--bg-panel);
+    border: 1.5px solid var(--border-color);
+    border-radius: 24px;
+    padding: 36px;
+    width: 480px;
+    max-width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    box-shadow: var(--shadow-lg);
+    color: var(--text-main);
+    animation: cardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.onboardingHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+}
+
+.onboardingLogo {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: var(--cal-personal);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 26px;
+    font-family: var(--font-title);
+    box-shadow: 0 4px 12px rgba(63, 117, 255, 0.35);
+    transition: background 0.3s;
+}
+
+.onboardingHeader h2 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.onboardingHeader p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.onboardingForm {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.onboardingSection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.onboardingSection .inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.onboardingSection .inputGroup label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.onboardingSection .inputGroup input {
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-chat-box);
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.onboardingSection .inputGroup input:focus {
+    border-color: var(--cal-personal);
+    background: var(--bg-panel);
+    box-shadow: 0 0 0 1px var(--cal-personal);
+}
+
+/* Onboarding themes grid */
+.obThemeGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.obThemeOption {
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--bg-panel);
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.obThemeOption span {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.obThemeOption:hover {
+    transform: translateY(-1px);
+    border-color: var(--text-muted);
+}
+
+.obThemeOption.active {
+    border-color: var(--cal-personal);
+    box-shadow: 0 0 0 1px var(--cal-personal);
+}
+
+/* Onboarding accents options */
+.obAccentGrid {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.obAccentOption {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3.5px solid var(--bg-panel);
+    cursor: pointer;
+    transition: all 0.2s var(--ease-smooth);
+    box-shadow: 0 0 0 1.5px var(--border-color);
+}
+
+.obAccentOption:hover {
+    transform: scale(1.1);
+}
+
+.obAccentOption.active {
+    box-shadow: 0 0 0 2px var(--text-main);
+    transform: scale(1.1);
+}
+
+/* Onboarding profiles grid */
+.obProfileGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.obProfileOption {
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px 10px;
+    text-align: center;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--bg-chat-box);
+    transition: all 0.2s var(--ease-smooth);
+}
+
+.obProfileOption:hover {
+    background: var(--bg-panel);
+    border-color: var(--text-muted);
+}
+
+.obProfileOption.active {
+    border-color: var(--cal-personal);
+    background: var(--bg-panel);
+    box-shadow: 0 0 0 1px var(--cal-personal);
+}
+
+.obProfileTitle {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.obProfileDesc {
+    font-size: 9.5px;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.onboardingSubmitBtn {
+    margin-top: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* CHRONO OBSERVATORY STYLING */
+.observatoryGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 15px;
+    padding-bottom: 20px;
+}
+
+.obsSection {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+body.dark-theme .obsSection {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.obsSection h4 {
+    margin: 0 0 10px 0;
+    color: var(--cal-personal);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--font-title);
+    font-weight: 800;
+}
+
+.obsRow {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.obsRow:last-child {
+    margin-bottom: 0;
+}
+
+.obsRow span {
+    color: var(--text-muted);
+}
+
+.obsRow strong {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+/* ========================================
+   🧠 COGNITIVE ACTION LAYER & REFLECTIONS
+   ======================================== */
+
+.reflectionContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 10px;
+    padding-bottom: 30px;
+}
+
+.narrativeBox {
+    background: var(--cal-personal-soft);
+    color: var(--text-main);
+    border-left: 4px solid var(--cal-personal);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+body.dark-theme .narrativeBox {
+    background: rgba(63, 117, 255, 0.08);
+}
+
+.reflectionMetrics {
+    display: flex;
+    gap: 12px;
+}
+
+.refMetric {
+    flex: 1;
+    background: var(--bg-chat-box);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+}
+
+.refMetric span {
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 2px;
+}
+
+.refMetric strong {
+    font-size: 14px;
+    color: var(--text-main);
+    text-transform: capitalize;
+}
+
+.timelineList {
+    position: relative;
+    padding-left: 16px;
+    border-left: 2px solid var(--border-color);
+    margin-left: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.timelineNode {
+    position: relative;
+}
+
+.timelineNode::before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-color);
+    border: 2px solid var(--bg-panel);
+}
+
+.timelineNode.task_completed::before {
+    background: var(--cal-study);
+}
+
+.timelineNode.task_pending::before {
+    background: var(--cal-family);
+}
+
+.timelineNode.chat::before {
+    background: var(--cal-personal);
+}
+
+.timelineTime {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.timelineContent {
+    background: var(--bg-chat-box);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+.timelineText {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.timelineSub {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.journalTextarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-panel);
+    color: var(--text-main);
+    font-family: var(--font-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    outline: none;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.journalTextarea:focus {
+    border-color: var(--cal-personal);
+}
+
+/* 📅 INTENT PROPOSAL CARDS IN CHAT */
+
+.proposalCard {
+    background: var(--bg-panel);
+    border: 1.5px solid var(--cal-personal);
+    border-radius: 14px;
+    padding: 16px;
+    margin: 12px 0;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.3s var(--ease-smooth);
+}
+
+.proposalCardTitle {
+    font-family: var(--font-title);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cal-personal);
+    margin-bottom: 8px;
+}
+
+.proposalActionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.proposalActionItem {
+    font-size: 12.5px;
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.proposalButtons {
+    display: flex;
+    gap: 10px;
+}
+
+.proposalButtons button {
+    flex: 1;
+    font-size: 12px;
+}
+
+.proposalButtons .smallBtn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   🎯 GOALS & STUDY MASTERY STYLING
+   ======================================== */
+
+.goalItemCard {
+    background: var(--bg-chat-box);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.goalItemCard:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.goalItemHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.goalTitle {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.goalMeta {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.goalDeleteBtn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.goalDeleteBtn:hover {
+    opacity: 1;
+}
+
+.goalProjectsList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+    padding-left: 8px;
+    border-left: 2.5px solid var(--border-color);
+}
+
+.projectItem {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.projectHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.projectTitle {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.projectSubjectsList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding-left: 10px;
+}
+
+.subjectItem {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.subjectHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+}
+
+.subjectName {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.subjectMasteryText {
+    font-weight: 700;
+    color: var(--cal-personal);
+}
+
+.masteryBar {
+    width: 100%;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.masteryFill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cal-personal) 0%, #10b981 100%);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+.tinyLink {
+    background: none;
+    border: none;
+    color: var(--cal-personal);
+    cursor: pointer;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 0;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.8;
+}
+
+.tinyLink:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+/* Reasoning Bullets style inside cards */
+.proposalReasoningList {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 8px;
+}
+
+.reasoningBullet {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.4;
+}
+
+.reasoningBullet::before {
+    content: '✓';
+    color: #10b981;
+    font-weight: bold;
+    font-size: 10px;
+    margin-top: 1px;
+}
+
+/* ========================================
+   🧠 CHRONO OS PHASE 5B - 9 ADVANCED STYLES
+   ======================================== */
+
+.noteItemCard {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    transition: all 0.25s var(--ease-smooth);
+}
+
+.noteItemCard:hover {
+    transform: translateY(-2px);
+    border-color: var(--cal-personal);
+    background: rgba(63, 117, 255, 0.02) !important;
+    box-shadow: var(--shadow-sm);
+}
+
+.memoryCardItem {
+    background: linear-gradient(135deg, rgba(63, 117, 255, 0.02) 0%, rgba(16, 185, 129, 0.02) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+    transition: all 0.25s var(--ease-smooth);
+}
+
+.memoryCardItem:hover {
+    transform: translateY(-2px);
+    border-color: #10b981;
+    box-shadow: var(--shadow-sm);
+}
+
+.peopleCard {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.25s var(--ease-smooth);
+}
+
+.peopleCard:hover {
+    transform: translateY(-2px);
+    border-color: var(--cal-personal);
+    background: rgba(63, 117, 255, 0.02) !important;
+    box-shadow: var(--shadow-sm);
+}
+
+.subTabBtn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.subTabBtn.active {
+    background: rgba(63, 117, 255, 0.08) !important;
+    color: var(--cal-personal) !important;
+    font-weight: 700 !important;
+}
+
+.subTabBtn:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.offlineBadge {
+    animation: pulseOffline 2s infinite ease-in-out;
+}
+
+@keyframes pulseOffline {
+    0% { opacity: 0.9; }
+    50% { opacity: 0.5; }
+    100% { opacity: 0.9; }
+}
+
+.continuityCard {
+    transition: all 0.2s ease;
+}
+
+.continuityCard:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+    transform: translateX(2px);
+}
+
+/* 🟢 GOOGLE TASKS STYLING & COMPLETED CHECKBOXES */
+.eventChip {
+    position: relative;
+    padding: 6px 10px 6px 26px !important;
+}
+
+.eventChip.completed {
+    text-decoration: line-through;
+    opacity: 0.55 !important;
+    box-shadow: none !important;
+    border-left-color: #94a3b8 !important;
+}
+
+.eventChip.completed .eventLabel {
+    opacity: 0.5;
+}
+
+.todayEventItem.completed {
+    opacity: 0.55;
+}
+
+.eventChip .taskCheckboxIcon {
+    position: absolute;
+    left: 7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    font-size: 8px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    cursor: pointer;
+    z-index: 2;
+    transition: all 0.2s var(--ease-smooth);
+    background: transparent;
+}
+
+.eventChip .taskCheckboxIcon:hover {
+    transform: translateY(-50%) scale(1.2) !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.eventChip .taskCheckboxIcon.checked {
+    background: currentColor;
+    color: white !important;
+}
+
+.todayEventItem .taskCheckboxIcon {
+    width: 14px;
+    height: 14px;
+    font-size: 9.5px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-smooth);
+    background: transparent;
+}
+
+.todayEventItem .taskCheckboxIcon:hover {
+    transform: translateY(-50%) scale(1.2) !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.todayEventItem .taskCheckboxIcon.checked {
+    background: currentColor;
+    color: white !important;
+}
+
+/* ==========================================================================
+   🔑 GOOGLE LOGIN BUTTON & AUTH DIVIDERS STYLING
+   ========================================================================== */
+.googleLoginBtn {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 12px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    cursor: pointer !important;
+    transition: all 0.2s var(--ease-smooth) !important;
+    width: 100% !important;
+    box-shadow: var(--shadow-sm) !important;
+    font-family: var(--font-primary) !important;
+}
+
+.googleLoginBtn:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    transform: scale(1.01) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+.googleLoginBtn:active {
+    transform: scale(0.99) !important;
+}
+
+.googleLoginBtn:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.75 !important;
+}
+
+/* Onboarding layout grid adjustments */
+.obThemeGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+}
+
+.obAccentGrid {
+    display: flex !important;
+    gap: 10px !important;
+    margin-top: 6px !important;
+    justify-content: center !important;
+}
+
+.obProfileGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+}
+
+/* ==========================================================================
+   🌀 CHRONO 2.0 WORKSPACE SWITCHER & WORKSPACES STYLING
+   ========================================================================== */
+.wsBtn {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 10px;
+    transition: all 0.2s var(--ease-smooth);
+    outline: none;
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.wsBtn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    opacity: 0.9;
+}
+.wsBtn.active {
+    background: var(--cal-personal-soft) !important;
+    color: var(--cal-personal) !important;
+    opacity: 1 !important;
+    box-shadow: var(--shadow-sm);
+}
+
+.workspaceContainer {
+    flex: 1;
+    display: flex;
+    background: var(--bg-app);
+    overflow: hidden;
+    padding: 20px;
+    gap: 20px;
+    box-sizing: border-box;
+    height: 100%;
+    width: 100%;
+}
+
+.panelSub {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* 📜 Life Continuity Panel Layouts */
+.timelineEnginePanel {
+    flex: 1 1 33%;
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.timelineScroll {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.timelineYearGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.timelineYearHeader {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--cal-personal);
+    border-bottom: 2px solid var(--cal-personal-soft);
+    padding-bottom: 4px;
+    margin: 0;
+    font-family: var(--font-title);
+}
+.timelineNodes {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    position: relative;
+    padding-left: 20px;
+    border-left: 2.5px solid var(--border-color);
+    margin-left: 8px;
+}
+.timelineNode {
+    position: relative;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
+}
+.timelineNode:hover {
+    background: var(--bg-panel);
+    border-color: var(--cal-personal);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+.timelineNode::before {
+    content: '';
+    position: absolute;
+    left: -26.5px;
+    top: 14px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--bg-panel);
+    border: 2.5px solid var(--text-muted);
+    transition: all 0.2s ease;
+}
+.timelineNode.completed::before {
+    border-color: var(--cal-study);
+    background: var(--cal-study);
+}
+.timelineNode.active::before {
+    border-color: var(--cal-personal);
+    background: var(--cal-personal);
+}
+.nodeDate {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.timelineNode h4 {
+    margin: 4px 0 2px 0;
+    font-size: 13px;
+    font-weight: 700;
+}
+.timelineNode p {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+.nodeLabel {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 6px;
+}
+.nodeLabel.milestone {
+    background: var(--cal-study-soft);
+    color: var(--cal-study);
+}
+.nodeLabel.project {
+    background: var(--cal-personal-soft);
+    color: var(--cal-personal);
+}
+.nodeLabel.goal {
+    background: var(--cal-focus-soft);
+    color: var(--cal-focus);
+}
+
+.threadsManagerPanel {
+    flex: 1 1 34%;
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.threadsGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    flex: 1;
+    margin-top: 15px;
+    padding-right: 4px;
+}
+.threadCard {
+    background: var(--bg-chat-box);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.threadCard:hover {
+    background: var(--bg-panel);
+    border-color: var(--cal-personal);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.threadCardPic {
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--bg-panel);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+}
+.threadCardInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.threadCardName {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+}
+.threadCardMeta {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.threadCardMetrics {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+.metricPill {
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.metricPill.score-high {
+    background: var(--cal-study-soft);
+    color: var(--cal-study);
+}
+.metricPill.score-medium {
+    background: var(--cal-personal-soft);
+    color: var(--cal-personal);
+}
+.metricPill.score-low {
+    background: var(--cal-routine-soft);
+    color: var(--text-muted);
+}
+.metricPill.trend-growing {
+    background: #ecfdf5;
+    color: #10b981;
+}
+.metricPill.trend-stable {
+    background: #f0fdfa;
+    color: #0f766e;
+}
+.metricPill.trend-drifting {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.memoryHubPanel {
+    flex: 1 1 33%;
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.memoryHubContent {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 15px;
+    padding-right: 4px;
+}
+
+/* 🧠 Intelligence Hub Panel Layouts */
+.aiConversationsPanel {
+    flex: 1 1 70%;
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.intelChatBox {
+    flex: 1;
+    background: var(--bg-chat-box);
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+.intelObservatoryPanel {
+    flex: 0 0 30%;
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.intelObservatoryContent {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 15px;
+    padding-right: 4px;
+}
+
+
+
+

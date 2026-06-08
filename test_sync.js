@@ -1,0 +1,273 @@
+const http = require('http');
+const Database = require('better-sqlite3');
+const fs = require('fs');
+const path = require('path');
+
+const PORT = 5000;
+const HOST = 'localhost';
+
+function request(path, method, body, token) {
+    return new Promise((resolve, reject) => {
+        const payload = body ? JSON.stringify(body) : '';
+        const headers = {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload)
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const req = http.request({
+            host: HOST,
+            port: PORT,
+            path,
+            method,
+            headers
+        }, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+                    if (res.statusCode >= 400) {
+                        reject({ status: res.statusCode, error: parsed });
+                    } else {
+                        resolve(parsed);
+                    }
+                } catch (e) {
+                    if (res.statusCode >= 400) {
+                        reject({ status: res.statusCode, error: data });
+                    } else {
+                        resolve(data);
+                    }
+                }
+            });
+        });
+
+        req.on('error', (err) => reject(err));
+        if (payload) {
+            req.write(payload);
+        }
+        req.end();
+    });
+}
+
+function initMockDb(dbPath) {
+    if (fs.existsSync(dbPath)) {
+        fs.unlinkSync(dbPath);
+    }
+    const db = new Database(dbPath);
+    db.prepare(`
+        CREATE TABLE tasks (
+            id TEXT PRIMARY KEY,
+            text TEXT NOT NULL,
+            date TEXT NOT NULL,
+            calendar TEXT DEFAULT 'personal',
+            completed INTEGER DEFAULT 0,
+            start_time TEXT,
+            duration_min INTEGER DEFAULT 60,
+            updated_at INTEGER NOT NULL,
+            device_id TEXT,
+            synced INTEGER DEFAULT 0,
+            deleted INTEGER DEFAULT 0
+        )
+    `).run();
+    db.prepare(`
+        CREATE TABLE calendars (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            owner_id TEXT,
+            layer_type TEXT DEFAULT 'personal',
+            updated_at INTEGER NOT NULL,
+            device_id TEXT,
+            synced INTEGER DEFAULT 0,
+            deleted INTEGER DEFAULT 0
+        )
+    `).run();
+    return db;
+}
+
+async function runSyncTests() {
+    console.log("🚀 Starting Offline-First Sync Verification Tests...");
+
+    const dbPathA = path.join(__dirname, 'chrono_A.db');
+    const dbPathB = path.join(__dirname, 'chrono_B.db');
+
+    const dbA = initMockDb(dbPathA);
+    const dbB = initMockDb(dbPathB);
+
+    const deviceIdA = 'device_vian_laptop';
+    const deviceIdB = 'device_princess_phone';
+
+    try {
+        // 1. User Registration on Server
+        console.log("\n1. Registering user on server...");
+        const email = `sync_test_${Date.now()}@example.com`;
+        const regRes = await request('/api/auth/register', 'POST', {
+            email,
+            password: 'password123',
+            displayName: 'Sync User'
+        });
+        const token = regRes.token;
+        const userId = regRes.userId;
+        console.log("✅ User registered successfully. Token obtained.");
+
+        // Pull default calendars created during registration to populate local calendars
+        console.log("\n2. Device A pulls initial default calendars from cloud...");
+        const initialPull = await request('/api/sync/pull', 'POST', { lastSyncTime: 0, deviceId: deviceIdA }, token);
+        console.log(`✅ Pulled ${initialPull.calendars.length} default calendars from cloud.`);
+        
+        // Insert pulled calendars into Device A's SQLite
+        for (const cal of initialPull.calendars) {
+            dbA.prepare(`
+                INSERT INTO calendars (id, name, owner_id, layer_type, updated_at, device_id, synced, deleted)
+                VALUES (?, ?, ?, ?, ?, ?, 1, 0)
+            `).run(cal.id, cal.name, cal.owner_id, cal.layer_type, cal.updated_at, cal.device_id);
+        }
+
+        const studyCal = initialPull.calendars.find(c => c.layer_type === 'study') || initialPull.calendars[0];
+
+        // 3. Device A creates a task locally (Offline)
+        console.log("\n3. Device A schedules a task locally (offline)...");
+        const taskId = 'e_task_123';
+        const taskText = "Study Advanced DSA with Princess";
+        const taskDate = "2026-06-01";
+        const timeA = Date.now();
+
+        dbA.prepare(`
+            INSERT INTO tasks (id, text, date, calendar, completed, start_time, duration_min, updated_at, device_id, synced, deleted)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
+        `).run(taskId, taskText, taskDate, studyCal.id, 0, '09:00', 90, timeA, deviceIdA);
+
+        const localCountA = dbA.prepare("SELECT COUNT(*) as count FROM tasks").get().count;
+        console.log(`✅ Task saved to Device A's chrono_A.db. Local task count: ${localCountA}`);
+
+        // 4. Device A goes online and syncs (Push to Cloud)
+        console.log("\n4. Device A pushes local unsynced task to Cloud...");
+        const unsyncedA = dbA.prepare("SELECT * FROM tasks WHERE synced = 0").all();
+        await request('/api/sync/push', 'POST', {
+            deviceId: deviceIdA,
+            events: unsyncedA.map(e => ({ ...e, completed: e.completed === 1, deleted: e.deleted === 1 }))
+        }, token);
+        
+        dbA.prepare("UPDATE tasks SET synced = 1 WHERE id = ?").run(taskId);
+        console.log("✅ Device A push complete. Synced flag set to 1 in local database.");
+
+        // 5. Device B goes online and pulls updates (Pull from Cloud)
+        console.log("\n5. Device B pulls updates from Cloud...");
+        const pullB = await request('/api/sync/pull', 'POST', { lastSyncTime: 0, deviceId: deviceIdB }, token);
+        console.log(`✅ Device B pulled ${pullB.events.length} events from cloud.`);
+        
+        // Assert B retrieved the task created by A
+        const pulledEvent = pullB.events.find(e => e.id === taskId);
+        if (!pulledEvent) {
+            throw new Error("Device B failed to pull the task created by Device A!");
+        }
+        console.log(`✅ Pulled task verified: "${pulledEvent.text}"`);
+
+        // Reconcile and save in Device B's SQLite database
+        dbB.prepare(`
+            INSERT INTO tasks (id, text, date, calendar, completed, start_time, duration_min, updated_at, device_id, synced, deleted)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+        `).run(pulledEvent.id, pulledEvent.text, pulledEvent.date, pulledEvent.calendar, pulledEvent.completed ? 1 : 0, pulledEvent.start_time, pulledEvent.duration_min, pulledEvent.updated_at, pulledEvent.device_id);
+
+        const localCountB = dbB.prepare("SELECT COUNT(*) as count FROM tasks").get().count;
+        console.log(`✅ Task successfully synchronized to Device B's chrono_B.db. Local task count: ${localCountB}`);
+
+        // 6. Test Conflict Resolution: Newest Version Wins
+        console.log("\n6. Testing Conflict Resolution (Newest Version Wins)...");
+        // Device B updates the task first at T1
+        const timeB1 = Date.now() - 5000;
+        dbB.prepare(`
+            UPDATE tasks SET text = ?, updated_at = ?, device_id = ?, synced = 0 WHERE id = ?
+        `).run("Study Advanced DSA - Basic Edition", timeB1, deviceIdB, taskId);
+
+        // Device A updates the task later at T2 (T2 > T1)
+        const timeA2 = Date.now();
+        dbA.prepare(`
+            UPDATE tasks SET text = ?, updated_at = ?, device_id = ?, synced = 0 WHERE id = ?
+        `).run("Study Advanced DSA - Ultimate Edition", timeA2, deviceIdA, taskId);
+
+        // Device B pushes first (T1)
+        console.log("Device B pushes update (T1)...");
+        const unsyncedB = dbB.prepare("SELECT * FROM tasks WHERE synced = 0").all();
+        await request('/api/sync/push', 'POST', {
+            deviceId: deviceIdB,
+            events: unsyncedB.map(e => ({ ...e, completed: e.completed === 1, deleted: e.deleted === 1 }))
+        }, token);
+        dbB.prepare("UPDATE tasks SET synced = 1 WHERE id = ?").run(taskId);
+
+        // Device A pushes second (T2)
+        console.log("Device A pushes update (T2)...");
+        const unsyncedA2 = dbA.prepare("SELECT * FROM tasks WHERE synced = 0").all();
+        await request('/api/sync/push', 'POST', {
+            deviceId: deviceIdA,
+            events: unsyncedA2.map(e => ({ ...e, completed: e.completed === 1, deleted: e.deleted === 1 }))
+        }, token);
+        dbA.prepare("UPDATE tasks SET synced = 1 WHERE id = ?").run(taskId);
+
+        // Device B pulls updates to reconcile
+        console.log("Device B pulls T2 update to reconcile...");
+        const pullB2 = await request('/api/sync/pull', 'POST', { lastSyncTime: 0, deviceId: deviceIdB }, token);
+        const reconciledEvent = pullB2.events.find(e => e.id === taskId);
+        
+        console.log(`Reconciled event text: "${reconciledEvent.text}"`);
+        if (reconciledEvent.text !== "Study Advanced DSA - Ultimate Edition") {
+            throw new Error("Conflict resolution failed! Newest version did not win.");
+        }
+        console.log("✅ Conflict Resolution passed: T2 (Ultimate Edition) successfully overwrote T1.");
+
+        // 7. Test Soft Deletion Sync
+        console.log("\n7. Testing Soft Deletion Sync...");
+        const timeB3 = Math.max(Date.now(), timeA2 + 1000);
+        console.log(`timeA2 (T2): ${timeA2}, timeB3 (T3): ${timeB3}`);
+        dbB.prepare(`
+            UPDATE tasks SET deleted = 1, updated_at = ?, device_id = ?, synced = 0 WHERE id = ?
+        `).run(timeB3, deviceIdB, taskId);
+
+        // Push deletion from B
+        console.log("Device B pushes deletion...");
+        const unsyncedB_Del = dbB.prepare("SELECT * FROM tasks WHERE synced = 0").all();
+        console.log("Unsynced event from B for delete:", JSON.stringify(unsyncedB_Del));
+        await request('/api/sync/push', 'POST', {
+            deviceId: deviceIdB,
+            events: unsyncedB_Del.map(e => ({ ...e, completed: e.completed === 1, deleted: e.deleted === 1 }))
+        }, token);
+        dbB.prepare("UPDATE tasks SET synced = 1 WHERE id = ?").run(taskId);
+
+        // Device A pulls deletion
+        console.log("Device A pulls deletion...");
+        const pullA_Del = await request('/api/sync/pull', 'POST', { lastSyncTime: 0, deviceId: deviceIdA }, token);
+        console.log("pullA_Del events from server:", JSON.stringify(pullA_Del.events));
+        const deletedEvent = pullA_Del.events.find(e => e.id === taskId);
+        
+        if (!deletedEvent) {
+            console.error("Could not find event in pullA_Del. Full pull response:", JSON.stringify(pullA_Del, null, 2));
+            throw new Error(`Event ${taskId} was not found in pulled events for Device A.`);
+        }
+        console.log(`Deleted event flag from server: ${deletedEvent.deleted}`);
+        if (deletedEvent.deleted !== 1 && deletedEvent.deleted !== true) {
+            throw new Error("Soft delete was not synced to server/pull!");
+        }
+
+        dbA.prepare("UPDATE tasks SET deleted = 1, updated_at = ?, synced = 1 WHERE id = ?").run(deletedEvent.updated_at, taskId);
+        
+        const activeCountA = dbA.prepare("SELECT COUNT(*) as count FROM tasks WHERE deleted = 0").get().count;
+        console.log(`✅ Soft Deletion passed. Device A active tasks count: ${activeCountA}`);
+
+        console.log("\n🌟 ALL OFFLINE-FIRST SYNC TESTS PASSED! 🌟");
+
+    } catch (e) {
+        console.error("❌ Sync Verification Test failed:", e);
+        process.exit(1);
+    } finally {
+        // Clean up mock databases
+        dbA.close();
+        dbB.close();
+        if (fs.existsSync(dbPathA)) fs.unlinkSync(dbPathA);
+        if (fs.existsSync(dbPathB)) fs.unlinkSync(dbPathB);
+        process.exit(0);
+    }
+}
+
+runSyncTests();

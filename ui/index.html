@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Chrono</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Fonts for premium modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="appShell">
+        <!-- LEFT NARROW RAIL -->
+        <aside class="sideBar">
+            <button class="iconButton" id="menuToggle" aria-label="Menu">☰</button>
+            <div class="brandIcon" id="brandIcon" title="Chrono">C</div>
+            <div class="workspaceSwitcher" style="margin-top: 30px; display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%;">
+                <button class="wsBtn active" id="wsBtnOps" onclick="switchWorkspace('ops')" title="Daily Operations (Calendar & Tasks)" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 10px; border-radius: 10px; transition: all 0.2s; outline: none;">📅</button>
+                <button class="wsBtn" id="wsBtnContinuity" onclick="switchWorkspace('continuity')" title="Life Continuity (Timeline & Threads)" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 10px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.6;">📜</button>
+                <button class="wsBtn" id="wsBtnIntelligence" onclick="switchWorkspace('intelligence')" title="Intelligence Hub (AI & Telemetry)" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 10px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.6;">🧠</button>
+            </div>
+        </aside>
+
+        <!-- MAIN VIEW SHELL -->
+        <div class="mainShell">
+            <!-- CALENDAR WORKSPACE (TOP PORTION) -->
+            <section class="calendarWorkspace">
+                
+                <!-- 1. LEFT COLLAPSIBLE PANEL -->
+                <aside class="calendarLeftPanel" id="calendarLeftPanel">
+                    <h2 class="panelTitle">Calendar</h2>
+                    <div class="userGreeting" id="userGreeting">Hello, Planner</div>
+                    <nav class="sideNav">
+                        <button class="sideNavItem active" data-nav="today">Today</button>
+                        <button class="sideNavItem" data-nav="calendars">Calendars</button>
+                        <button class="sideNavItem" data-nav="routines">Routines</button>
+                        <button class="sideNavItem" data-nav="goals">Goals</button>
+                        <button class="sideNavItem" data-nav="settings">Settings</button>
+                        <button class="sideNavItem" data-nav="cloud" id="cloudNavBtn">☁️ Cloud Account</button>
+                    </nav>
+
+                    <div class="dateSection">
+                        <span class="sectionLabel">Date</span>
+                        <div class="datePickerWrapper">
+                            <input type="text" id="datePicker" class="datePickerInput" value="28-05-2026" readonly />
+                            <span class="calendarIcon">📅</span>
+                        </div>
+                        
+                        <!-- MINI CALENDAR -->
+                        <div class="miniCalendar">
+                            <div class="miniCalHeader">
+                                <span id="miniCalTitle">May 2026</span>
+                                <div class="miniCalNav">
+                                    <button id="miniPrevMonth" class="miniCalBtn">←</button>
+                                    <button id="miniNextMonth" class="miniCalBtn">→</button>
+                                </div>
+                            </div>
+                            <div class="miniCalDays">
+                                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                            </div>
+                            <div class="miniCalGrid" id="miniCalendarGrid"></div>
+                        </div>
+                    </div>
+
+                    <!-- LEFT QUICK ADD -->
+                    <div class="leftQuickAdd">
+                        <span class="sectionLabel">Quick Add</span>
+                        <input id="leftTaskInput" type="text" placeholder="New event or task..." />
+                        <select id="leftTaskCategory" class="categorySelect">
+                            <option value="Personal">Personal</option>
+                            <option value="Study">Study</option>
+                            <option value="Family">Family</option>
+                            <option value="Routine">Routine</option>
+                            <option value="Focus">Focus</option>
+                        </select>
+                        <select id="leftTaskVisibilitySelect" onchange="toggleLeftTaskSharedPeers()" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px; margin-top: 4px; width: 100%;">
+                            <option value="private">🔒 Private</option>
+                            <option value="shared_specific">👤 Share Specific</option>
+                            <option value="shared_group">👥 Share Group</option>
+                        </select>
+                        <div id="leftTaskSharedPeersContainer" style="display: none; padding: 6px; margin-top: 4px; background: rgba(0,0,0,0.15); border-radius: 6px; border: 1px solid var(--border-color); flex-direction: column; gap: 4px;">
+                            <span style="font-size: 9px; color: var(--text-muted); font-weight: 700;">Share with:</span>
+                            <div id="leftTaskSharedPeersList" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                        </div>
+                        <button class="primary" onclick="addLeftTask()" style="margin-top: 6px; width: 100%;">+ Add</button>
+                    </div>
+                </aside>
+
+                <!-- 2. CENTRAL MAIN AREA -->
+                <div class="calendarMainArea">
+                    <!-- Context Resurrection Card -->
+                    <div id="contextResurrectionCard" class="resurrectionCard" style="display: none; background: linear-gradient(135deg, rgba(63,117,255,0.1), rgba(16,185,129,0.1)); border: 1.5px solid var(--cal-personal); border-radius: 12px; padding: 16px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; font-family: 'Plus Jakarta Sans', sans-serif;">
+                        <button onclick="document.getElementById('contextResurrectionCard').style.display='none'" style="position: absolute; right: 12px; top: 12px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px;">✕</button>
+                        <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">🌅 Context Resurrection</h3>
+                        <p id="contextResurrectionText" style="margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-main); white-space: pre-line;"></p>
+                    </div>
+
+                    <div class="calendarHeader">
+                        <div class="calendarNav">
+                            <button id="prevMonth" class="navButton" aria-label="Previous month">←</button>
+                            <div id="currentDate" class="currentDate">May 2026</div>
+                            <span class="offlineBadge" id="offlineBadge" style="display:none; margin-left:12px; background:#fee2e2; color:#ef4444; border: 1px solid #fca5a5; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">⚠️ Offline Mode</span>
+                            <button id="nextMonth" class="navButton" aria-label="Next month">→</button>
+                        </div>
+                        
+                        <div class="calendarHeaderActions">
+                            <div class="viewTabs">
+                                <button class="viewButton" data-view="day">Day</button>
+                                <button class="viewButton" data-view="week">Week</button>
+                                <button class="viewButton active" data-view="month">Month</button>
+                                <button class="viewButton" data-view="agenda">Agenda</button>
+                                <button class="viewButton" data-view="focus">Focus</button>
+                            </div>
+                            <div class="headerButtons">
+                                <button class="headerButton" id="togglePanelBtn">Panel</button>
+                                <button class="headerButton" id="toggleMenuBtn">Menu</button>
+                                <button class="headerButton" id="toggleDebugBtn">Debug</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calendarControls">
+                        <div class="layerBar">
+                            <span class="layerLabel">My calendars</span>
+                            <label class="layerPill calendar-personal"><input type="checkbox" data-layer="Personal" checked /> Personal</label>
+                            <label class="layerPill calendar-study"><input type="checkbox" data-layer="Study" checked /> Study</label>
+                            <label class="layerPill calendar-family"><input type="checkbox" data-layer="Family" /> Family</label>
+                            <label class="layerPill calendar-routine"><input type="checkbox" data-layer="Routine" /> Routine</label>
+                            <label class="layerPill calendar-focus"><input type="checkbox" data-layer="Focus" checked /> Focus</label>
+                        </div>
+                        <div class="quickAddBar" id="mainQuickAddBar">
+                            <input id="taskInput" type="text" placeholder="Add event or task..." />
+                            <select id="taskCategory" class="categorySelect">
+                                <option value="Personal">Personal</option>
+                                <option value="Study">Study</option>
+                                <option value="Family">Family</option>
+                                <option value="Routine">Routine</option>
+                                <option value="Focus">Focus</option>
+                            </select>
+                            <select id="taskVisibilitySelect" onchange="toggleTaskSharedPeers()" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px; max-width: 110px;">
+                                <option value="private">🔒 Private</option>
+                                <option value="shared_specific">👤 Share Specific</option>
+                                <option value="shared_group">👥 Share Group</option>
+                            </select>
+                            <button class="primary" onclick="addTask()">+ Add</button>
+                            <span class="eventSummaryText" id="eventSummaryText">0 events</span>
+                        </div>
+                        <div id="taskSharedPeersContainer" style="display: none; padding: 6px 12px; margin-top: 4px; background: rgba(0,0,0,0.15); border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; align-items: center; gap: 8px;">
+                            <span style="font-size: 10px; color: var(--text-muted); font-weight: 700;">Share with:</span>
+                            <span id="taskSharedPeersList" style="display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap;"></span>
+                        </div>
+                    </div>
+
+                    <div class="calendarContent">
+                        <div class="calendarGridHeader" id="calendarGridHeader"></div>
+                        <div class="calendarGrid" id="calendarGrid"></div>
+                    </div>
+
+                    <!-- WORKSPACE SETTINGS -->
+                    <div class="settingsContent" id="settingsContent" style="display: none;">
+                        <div class="settingsHeader">
+                            <h1 class="settingsTitle">Workspace Settings</h1>
+                            <p class="settingsSub">Personalize theme, color scheme, application name, and cognitive assistance profile.</p>
+                        </div>
+                        <div class="settingsGrid">
+                            <!-- Left: Theme & Accent -->
+                            <div class="settingsCard appearanceCard">
+                                <h3>Appearance & Aesthetics</h3>
+                                
+                                <div class="settingsSection">
+                                    <label class="settingLabel">Background Theme</label>
+                                    <div class="themeGrid">
+                                        <div class="themeOption active" data-theme="light" style="--t-bg: #f4f6fa; --t-panel: #ffffff; --t-text: #1e293b;">
+                                            <div class="themePreview"><div class="pBg"></div><div class="pPanel"></div></div>
+                                            <span>Light Minimal</span>
+                                        </div>
+                                        <div class="themeOption" data-theme="dark" style="--t-bg: #0f172a; --t-panel: #1e293b; --t-text: #f8fafc;">
+                                            <div class="themePreview"><div class="pBg"></div><div class="pPanel"></div></div>
+                                            <span>Slate Dark</span>
+                                        </div>
+                                        <div class="themeOption" data-theme="ocean" style="--t-bg: #f0fdfa; --t-panel: #ffffff; --t-text: #0f766e;">
+                                            <div class="themePreview"><div class="pBg"></div><div class="pPanel"></div></div>
+                                            <span>Ocean Breeze</span>
+                                        </div>
+                                        <div class="themeOption" data-theme="sunset" style="--t-bg: #fff7ed; --t-panel: #ffffff; --t-text: #c2410c;">
+                                            <div class="themePreview"><div class="pBg"></div><div class="pPanel"></div></div>
+                                            <span>Sunset Coral</span>
+                                        </div>
+                                        <div class="themeOption" data-theme="emerald" style="--t-bg: #f0fdf4; --t-panel: #ffffff; --t-text: #15803d;">
+                                            <div class="themePreview"><div class="pBg"></div><div class="pPanel"></div></div>
+                                            <span>Deep Emerald</span>
+                                        </div>
+                                        <div class="themeOption" data-theme="violet" style="--t-bg: #faf5ff; --t-panel: #ffffff; --t-text: #6d28d9;">
+                                            <div class="themePreview"><div class="pBg"></div><div class="pPanel"></div></div>
+                                            <span>Royal Violet</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settingsSection">
+                                    <label class="settingLabel">Accent Color</label>
+                                    <div class="accentGrid">
+                                        <button class="accentOption active" data-accent="blue" style="background: #3f75ff;" title="Classic Blue"></button>
+                                        <button class="accentOption" data-accent="emerald" style="background: #10b981;" title="Emerald Green"></button>
+                                        <button class="accentOption" data-accent="orange" style="background: #f97316;" title="Sunset Orange"></button>
+                                        <button class="accentOption" data-accent="purple" style="background: #a855f7;" title="Orchid Purple"></button>
+                                        <button class="accentOption" data-accent="red" style="background: #ef4444;" title="Crimson Red"></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Brand & AI Profile -->
+                            <div class="settingsCard cognitiveCard">
+                                <h3>Branding & Cognition</h3>
+
+                                 <div class="settingsSection">
+                                     <label class="settingLabel" for="appNameInput">Application Name</label>
+                                     <div class="settingInputWrapper">
+                                         <input type="text" id="appNameInput" placeholder="Chrono" />
+                                     </div>
+                                     <p class="settingHelp">Updates UI headers, page title, and virtual assistant name.</p>
+                                 </div>
+
+                                 <div class="settingsSection">
+                                     <label class="settingLabel" for="userNameInput">Your Name</label>
+                                     <div class="settingInputWrapper">
+                                         <input type="text" id="userNameInput" placeholder="Enter your name..." />
+                                     </div>
+                                     <p class="settingHelp">Updates greeting headers and personalization across the workspace.</p>
+                                 </div>
+
+                                 <div class="settingsSection">
+                                     <label class="settingLabel" for="userEmailInput">Your Email Address</label>
+                                     <div class="settingInputWrapper">
+                                         <input type="email" id="userEmailInput" placeholder="name@domain.com" />
+                                     </div>
+                                     <p class="settingHelp">Default email used for cloud account registration and synchronization.</p>
+                                 </div>
+
+                                <div class="settingsSection">
+                                    <label class="settingLabel">Cognitive Profile</label>
+                                    <div class="profileList">
+                                        <div class="profileOption active" data-profile="adaptive">
+                                            <div class="profileHeader">
+                                                <span class="profileTitle">Adaptive Pacing</span>
+                                                <span class="profilePill">Active</span>
+                                            </div>
+                                            <p class="profileDesc">Infers task pacing and tone support by analyzing your message rhythm, stress level, and active calendar tasks dynamically.</p>
+                                        </div>
+                                        <div class="profileOption" data-profile="architect">
+                                            <div class="profileHeader">
+                                                <span class="profileTitle">Systems / Architect</span>
+                                                <span class="profilePill">Analytical</span>
+                                            </div>
+                                            <p class="profileDesc">Detailed, structured, and highly logical summaries. Restricts emotional reassurance to maximize focus efficiency.</p>
+                                        </div>
+                                        <div class="profileOption" data-profile="companion">
+                                            <div class="profileHeader">
+                                                <span class="profileTitle">Warm / Guided</span>
+                                                <span class="profilePill">Gentle</span>
+                                            </div>
+                                            <p class="profileDesc">Soft reassurance, brief responses, and step-by-step guidance to reduce cognitive load and avoid organizer overwhelm.</p>
+                                        </div>
+                                        <div class="profileOption" data-profile="observer">
+                                            <div class="profileHeader">
+                                                <span class="profileTitle">Observer Mode</span>
+                                                <span class="profilePill">Neutral</span>
+                                            </div>
+                                            <p class="profileDesc">Neutral statistical observations, patterns and analytical data without feedback prompts.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settingsSection">
+                                    <label class="settingLabel">Configurable Cognitive Fronts</label>
+                                    <div id="settingsFrontsList" style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: rgba(0,0,0,0.15); border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; margin-top: 6px;">
+                                        <!-- Dynamically populated checkboxes -->
+                                        Loading cognitive fronts...
+                                    </div>
+                                    <p class="settingHelp">Select which active cognitive fronts are monitored and computed in your continuity metrics.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CLOUD ACCOUNT WORKSPACE -->
+                    <div class="cloudContent" id="cloudContent" style="display: none;">
+                        <div class="settingsHeader">
+                            <h1 class="settingsTitle">Chrono Cloud Account</h1>
+                            <p class="settingsSub">Sign in to unlock multi-user collaborative calendars, cross-calendar AI scheduling, and real-time synchronization.</p>
+                        </div>
+                        <div class="settingsGrid" style="max-width: 500px; margin-top: 20px;">
+                            <!-- Auth Card -->
+                            <div class="settingsCard" id="authCard">
+                                <h3 id="authCardTitle">Sign In</h3>
+                                
+                                <button class="googleLoginBtn" id="settingsGoogleLoginBtn" onclick="loginWithGoogle()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; background: #ffffff; color: #1e293b; border: 1.5px solid #cbd5e1; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s var(--ease-smooth); margin-bottom: 15px; font-family: var(--font-primary); font-size: 13px; box-shadow: var(--shadow-sm);">
+                                    <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.24h2.91c1.7-1.56 2.68-3.86 2.68-6.57z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.24c-.8.54-1.84.87-3.05.87-2.34 0-4.33-1.58-5.03-3.7H1.02v2.33C2.51 15.97 5.52 18 9 18z" fill="#34A853"/><path d="M3.97 10.75c-.18-.54-.28-1.12-.28-1.75s.1-1.21.28-1.75V4.92H1.02C.37 6.22 0 7.69 0 9s.37 2.78 1.02 4.08l2.95-2.33z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4C13.46.97 11.42 0 9 0 5.52 0 2.51 2.03 1.02 4.92l2.95 2.33c.7-2.12 2.69-3.7 5.03-3.7z" fill="#EA4335"/></svg>
+                                    <span id="settingsGoogleLoginText">Sign in with Google</span>
+                                </button>
+                                
+                                <div id="settingsAuthDivider" style="margin: 15px 0; display: flex; align-items: center; text-align: center; color: var(--text-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.05em;">
+                                    <div style="flex: 1; border-bottom: 1px solid var(--border-color);"></div>
+                                    <span style="margin: 0 10px;">OR USE EMAIL</span>
+                                    <div style="flex: 1; border-bottom: 1px solid var(--border-color);"></div>
+                                </div>
+                                
+                                <div class="settingsSection" id="authNameGroup" style="display: none;">
+                                    <label class="settingLabel" for="authNameInput">Your Display Name</label>
+                                    <div class="settingInputWrapper">
+                                        <input type="text" id="authNameInput" placeholder="Enter your name..." />
+                                    </div>
+                                </div>
+
+                                <div class="settingsSection">
+                                    <label class="settingLabel" for="authEmailInput">Email Address</label>
+                                    <div class="settingInputWrapper">
+                                        <input type="email" id="authEmailInput" placeholder="name@domain.com" />
+                                    </div>
+                                </div>
+
+                                <div class="settingsSection">
+                                    <label class="settingLabel" for="authPasswordInput">Password</label>
+                                    <div class="settingInputWrapper">
+                                        <input type="password" id="authPasswordInput" placeholder="••••••••" />
+                                    </div>
+                                </div>
+
+                                <button class="primary" id="authSubmitBtn" onclick="submitAuth()" style="padding: 12px; margin-top: 10px;">Sign In</button>
+                                
+                                <p class="settingHelp" style="text-align: center; cursor: pointer; text-decoration: underline;" id="authToggleText" onclick="toggleAuthMode()">
+                                    Don't have a cloud account? Register here.
+                                </p>
+                            </div>
+
+                            <!-- Profile Logged In Card -->
+                            <div class="settingsCard" id="profileCard" style="display: none;">
+                                <h3>Active Session</h3>
+                                <div class="metaSection">
+                                    <div class="metaItem">
+                                        <span class="metaLabel">Account Holder</span>
+                                        <span class="metaVal" id="profileNameVal">User</span>
+                                    </div>
+                                    <div class="metaItem">
+                                        <span class="metaLabel">Cloud Synchronization</span>
+                                        <span class="metaVal" style="color: #10b981;">● Online (Connected)</span>
+                                    </div>
+                                </div>
+                                <button class="primary" onclick="logoutAuth()" style="background: #ef4444; padding: 10px; margin-top: 10px;">Log Out</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. RIGHT COLLAPSIBLE DETAILS PANEL -->
+                <aside class="calendarRightPanel" id="calendarRightPanel">
+                    <div class="rightPanelTabs">
+                        <button class="rightPanelTab active" data-tab="today">Today</button>
+                        <button class="rightPanelTab" data-tab="notes">Notes</button>
+                        <button class="rightPanelTab" data-tab="goals">Goals</button>
+                        <button class="rightPanelTab" data-tab="reflection">Memory</button>
+                        <button class="rightPanelTab" data-tab="people">People</button>
+                        <button class="rightPanelTab" data-tab="insights">Observatory</button>
+                    </div>
+                    <div class="rightPanelContent" id="rightPanelContent">
+                        <div class="tabPane active" id="tab-today">
+                            <h3 class="rightPanelSubtitle">Today</h3>
+                            <p class="rightPanelDescription">A quick read of what's on your plate — open the calendar above for the full picture.</p>
+                            <div class="todayEventList" id="todayEventList">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="tabPane" id="tab-insights">
+                            <h3 class="rightPanelSubtitle">Chrono Observatory</h3>
+                            <p class="rightPanelDescription">Live telemetry and collaborative workspace analytics.</p>
+                            
+                            <div class="observatoryGrid">
+                                <div class="obsSection">
+                                    <h4>🧠 AI Activity</h4>
+                                    <div class="obsRow"><span>Messages:</span> <strong id="obsMsgCount">0</strong></div>
+                                    <div class="obsRow"><span>Active Agent:</span> <strong id="obsActiveAgent">None</strong></div>
+                                    <div class="obsRow"><span>Avg Latency:</span> <strong id="obsAvgLatency">0ms</strong></div>
+                                    <div class="obsRow"><span>Token Usage:</span> <strong id="obsTokens">0</strong></div>
+                                </div>
+                                
+                                <div class="obsSection">
+                                    <h4>🔄 Sync Activity</h4>
+                                    <div class="obsRow"><span>Sync Status:</span> <strong id="obsSyncStatus" style="color:#10b981;">● Online</strong></div>
+                                    <div class="obsRow"><span>Sync Latency:</span> <strong id="obsSyncLatency">0ms</strong></div>
+                                    <div class="obsRow"><span>Conflicts Resolved:</span> <strong id="obsConflicts">0</strong></div>
+                                    <div class="obsRow"><span>Last Sync:</span> <strong id="obsLastSync">Never</strong></div>
+                                </div>
+
+                                <div class="obsSection">
+                                    <h4>📅 Calendar Activity</h4>
+                                    <div class="obsRow"><span>Events Created:</span> <strong id="obsEventsCreated">0</strong></div>
+                                    <div class="obsRow"><span>Events Completed:</span> <strong id="obsEventsCompleted">0</strong></div>
+                                    <div class="obsRow"><span>Focus Hours:</span> <strong id="obsFocusHours">0 hrs</strong></div>
+                                </div>
+
+                                <div class="obsSection">
+                                    <h4>🔥 User Activity</h4>
+                                    <div class="obsRow"><span>Daily Focus Goal:</span> <strong id="obsDailyGoal">60%</strong></div>
+                                    <div class="obsRow"><span>Task Completion:</span> <strong id="obsTaskRate">0%</strong></div>
+                                    <div class="obsRow"><span>Habit Streak:</span> <strong id="obsStreak">0 Days</strong></div>
+                                </div>
+
+                                <div class="obsSection" id="obsProfileSection">
+                                    <h4>🧠 Cognitive Profile</h4>
+                                    <div class="obsRow"><span>Best Focus:</span> <strong id="obsBestFocus">Loading...</strong></div>
+                                    <div class="obsRow"><span>Low Energy:</span> <strong id="obsLowEnergy">Loading...</strong></div>
+                                    <div class="obsRow"><span>Focus Session:</span> <strong id="obsFocusSession">Loading...</strong></div>
+                                    <div class="obsRow" style="flex-direction: column; align-items: flex-start; gap: 4px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+                                        <span>Stress Triggers:</span>
+                                        <strong id="obsTriggers" style="font-size: 11px; font-weight: normal; color: var(--text-muted);">None</strong>
+                                    </div>
+                                    <button class="headerButton smallBtn" id="recalcProfileBtn" onclick="recalculateProfileUI()" style="margin-top: 10px; width: 100%; font-size: 11px; padding: 6px; border-radius: 8px;">Recalculate Profile</button>
+                                </div>
+
+                                <div class="obsSection" id="obsUpdateSection">
+                                    <h4>🚀 Auto-Update Agent</h4>
+                                    <div class="obsRow"><span>Status:</span> <strong id="obsUpdateStatus">Idle</strong></div>
+                                    <button class="headerButton smallBtn" id="checkUpdatesBtn" onclick="triggerUpdateCheck()" style="margin-top: 10px; width: 100%; font-size: 11px; padding: 6px; border-radius: 8px;">Check for Updates</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tabPane" id="tab-notes">
+                            <h3 class="rightPanelSubtitle">Integration Notes</h3>
+                            <p class="rightPanelDescription">All thoughts flow: Thought → Note → Memory → Goal → Action.</p>
+                            
+                            <!-- Note Editor Form -->
+                            <div class="noteFormContainer" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+                                <input type="text" id="noteTitleInput" placeholder="Note Title (e.g. Calculus optimization)" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px;" />
+                                <textarea id="noteContentInput" placeholder="Write down your thoughts... auto-linking will match active goals, projects, subjects, and tasks!" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px; resize: vertical; font-family: inherit;"></textarea>
+                                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                                    <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
+                                        <select id="noteVisibilitySelect" onchange="toggleNoteSharedPeers()" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;">
+                                            <option value="private">🔒 Private</option>
+                                            <option value="shared_specific">👤 Share Specific</option>
+                                            <option value="shared_group">👥 Share Group</option>
+                                        </select>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button class="headerButton smallBtn" onclick="clearNoteEditor()" style="padding: 6px 12px; font-size: 11px;">Clear</button>
+                                            <button class="primary" onclick="submitSaveNote()" style="padding: 6px 16px; font-size: 11px; border-radius: 6px;">Save Note</button>
+                                        </div>
+                                    </div>
+                                    <div id="noteSharedPeersContainer" style="display: none; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 6px; border: 1px solid var(--border-color); flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;">
+                                        <span style="font-size: 10px; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Select peers to share with:</span>
+                                        <div id="noteSharedPeersList" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                            <!-- Dynamically populated peer check-boxes -->
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="noteLinkedDetails" style="font-size: 11px; color: var(--cal-personal); font-weight: 500; display: none; padding-top: 4px; border-top: 1px dashed var(--border-color);">
+                                    <!-- Auto linked markers populate here -->
+                                </div>
+                            </div>
+
+                            <h4 style="margin-top: 15px; margin-bottom: 8px; font-size: 13px; font-weight: 600;">Saved Thoughts & Notes</h4>
+                            <div class="notesListContainer" id="notesListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="tabPane" id="tab-goals">
+                            <h3 class="rightPanelSubtitle">Goals & Study Intelligence</h3>
+                            <p class="rightPanelDescription">Map goals to projects and study subjects. Track your learning mastery.</p>
+                            
+                            <div class="goalFormContainer" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 8px;">
+                                <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600;">+ New Goal Anchor</h4>
+                                <div class="goalInputGroup" style="display: flex; flex-direction: column; gap: 8px;">
+                                    <input type="text" id="newGoalTitle" placeholder="Goal (e.g. Pass Embedded Systems)" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px;" />
+                                    <input type="text" id="newGoalDesc" placeholder="Description (optional)" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px;" />
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <input type="date" id="newGoalDate" title="Target Date" style="flex: 1; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px;" />
+                                        <button class="primary" onclick="submitCreateGoal()" style="padding: 8px 16px; font-size: 12px; border-radius: 6px;">Create</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="goalsListContainer" id="goalsListContainer" style="margin-top: 20px; display: flex; flex-direction: column; gap: 16px;">
+                                <!-- Populated dynamically by app.js -->
+                            </div>
+                        </div>
+                        <div class="tabPane" id="tab-reflection">
+                            <h3 class="rightPanelSubtitle">Human Continuity & Cognitive Stability</h3>
+                            <p class="rightPanelDescription">Track monthly memory cards, search cognitive history, active cognitive fronts, and cognitive stability metrics.</p>
+
+                            <!-- Sub Tabs inside Memory Pane -->
+                            <div class="subTabs" style="display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                                <button class="subTabBtn active" data-subtab="continuity" onclick="switchMemorySubTab('continuity')" style="background: none; border: none; color: var(--text-main); font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Continuity</button>
+                                <button class="subTabBtn" data-subtab="reflection" onclick="switchMemorySubTab('reflection')" style="background: none; border: none; color: var(--text-muted); font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Daily Log</button>
+                                <button class="subTabBtn" data-subtab="cards" onclick="switchMemorySubTab('cards')" style="background: none; border: none; color: var(--text-muted); font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Memory Cards</button>
+                                <button class="subTabBtn" data-subtab="preservation" onclick="switchMemorySubTab('preservation')" style="background: none; border: none; color: var(--text-muted); font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Preservation</button>
+                                <button class="subTabBtn" data-subtab="search" onclick="switchMemorySubTab('search')" style="background: none; border: none; color: var(--text-muted); font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Search</button>
+                            </div>
+
+                            <!-- 1. Life Continuity Dashboard -->
+                            <div class="memorySubPane" id="memPane-continuity">
+                                <div class="continuityContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                                    <!-- Monthly Narrative Engine Story Card -->
+                                    <div class="continuityCard" style="background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(63,117,255,0.08)); border: 1.5px solid #10b981; padding: 14px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                                        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-main); font-weight: 800; display: flex; align-items: center; gap: 6px;">📖 The Month's Story (Narrative Engine)</h4>
+                                        <div id="narrativeEngineText" style="font-size: 12px; font-weight: 500; line-height: 1.5; color: var(--text-main); font-style: italic;">
+                                            Compiling your story...
+                                        </div>
+                                    </div>
+
+                                    <!-- Human Continuity Index & State Machine Card -->
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                            <h4 style="margin: 0; font-size: 13px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">📈 Human Continuity Index</h4>
+                                            <strong id="overallContinuityIndexBadge" style="font-size: 14px; color: var(--cal-personal); background: rgba(63,117,255,0.1); padding: 2px 8px; border-radius: 6px;">0/100</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px dashed var(--border-color); padding-bottom:8px;">
+                                            <span style="font-size:11px; color:var(--text-muted);">Current State:</span>
+                                            <span id="continuityStateBadge" style="font-size:11px; font-weight:700; text-transform:uppercase; padding:2px 6px; border-radius:4px; color:#10b981; background:rgba(16,185,129,0.1);">Maintaining</span>
+                                        </div>
+                                        <div style="font-size:11px; font-style:italic; color:var(--text-muted); margin-bottom:10px;" id="continuityStateExplanation">
+                                            Stable state.
+                                        </div>
+                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:10px;">
+                                            <div>Learning: <strong id="indexScoreLearning">50%</strong></div>
+                                            <div>Projects: <strong id="indexScoreProjects">50%</strong></div>
+                                            <div>Health: <strong id="indexScoreHealth">50%</strong></div>
+                                            <div>Relationships: <strong id="indexScoreRelationships">50%</strong></div>
+                                            <div>Reflection: <strong id="indexScoreReflection">50%</strong></div>
+                                            <div>Values: <strong id="indexScoreValues">50%</strong></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Personal Operating System Profile Card -->
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">⚙️ Personal Operating Style</h4>
+                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11px;">
+                                            <div>Focus Style: <strong id="personalOSFocus" style="color:var(--cal-personal);">Deep Work</strong></div>
+                                            <div>Planning Style: <strong id="personalOSPlanning" style="color:var(--cal-personal);">Weekly</strong></div>
+                                            <div>Review Style: <strong id="personalOSReview" style="color:var(--cal-personal);">Monthly</strong></div>
+                                            <div>Peak Hours: <strong id="personalOSPeak" style="color:var(--cal-personal);">09:00-11:00</strong></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Trust & Reliability Dashboard Card -->
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">🛡️ Trust & Reliability Telemetry</h4>
+                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11px;">
+                                            <div>Data Integrity: <strong id="trustDataIntegrity" style="color:#10b981;">Healthy</strong></div>
+                                            <div>Sync Connection: <strong id="trustSyncHealth" style="color:#10b981;">Synched</strong></div>
+                                            <div>Backup State: <strong id="trustBackupStatus" style="color:#10b981;">Secured</strong></div>
+                                            <div>Index Coverage: <strong id="trustMemoryCoverage" style="color:#10b981;">100%</strong></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Monthly Identity Timeline narratives -->
+                                    <div class="continuityCard" style="background: linear-gradient(135deg, rgba(63,117,255,0.08), rgba(168,85,247,0.08)); border: 1px solid var(--cal-personal); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 13px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">🧠 Identity Timeline ("Who am I becoming?")</h4>
+                                        <div id="identityTimelineNarratives" style="font-size: 12px; display: flex; flex-direction: column; gap: 8px; line-height: 1.4; max-height: 250px; overflow-y: auto;">
+                                            Loading narrative history...
+                                        </div>
+                                    </div>
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--cal-personal); font-weight: 700;">🎯 What Mattered?</h4>
+                                        <div id="continuityMattered" style="font-size: 11px; display: flex; flex-direction: column; gap: 4px;">Loading...</div>
+                                    </div>
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: #10b981; font-weight: 700;">📈 What Changed?</h4>
+                                        <div id="continuityChanged" style="font-size: 11px; display: flex; flex-direction: column; gap: 4px;">Loading...</div>
+                                    </div>
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: #ef4444; font-weight: 700;">⚠️ What Am I Forgetting?</h4>
+                                        <div id="continuityForgetting" style="font-size: 11px; display: flex; flex-direction: column; gap: 4px;">Loading...</div>
+                                    </div>
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: #a855f7; font-weight: 700;">👥 Who Matters?</h4>
+                                        <div id="continuityWho" style="font-size: 11px; display: flex; flex-direction: column; gap: 4px;">Loading...</div>
+                                    </div>
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: #f59e0b; font-weight: 700;">🏆 What Progress Have I Made?</h4>
+                                        <div id="continuityProgress" style="font-size: 11px; display: flex; flex-direction: column; gap: 4px;">Loading...</div>
+                                    </div>
+                                    <div class="continuityCard" style="background: rgba(63,117,255,0.05); border: 1px solid var(--cal-personal); padding: 10px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--cal-personal); font-weight: 700;">💡 What Should I Focus On Next?</h4>
+                                        <div id="continuityFocus" style="font-size: 11px; font-weight: 500;">Loading...</div>
+                                    </div>
+                                    
+                                    <!-- Cognitive Fronts Monitor -->
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">🧭 Active Cognitive Fronts</h4>
+                                        <div id="cognitiveFrontsList" style="font-size: 11px; display: flex; flex-direction: column; gap: 6px;">
+                                            Loading fronts...
+                                        </div>
+                                    </div>
+
+                                    <!-- Expansion vs Completion Monitor -->
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">⚖️ Expansion vs Completion</h4>
+                                        <div id="expansionMetricsContent" style="font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
+                                            Loading metrics...
+                                        </div>
+                                    </div>
+
+                                    <!-- Values Alignment Layer -->
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">🎯 Values Alignment</h4>
+                                        <div id="valuesAlignmentContent" style="font-size: 11px; display: flex; flex-direction: column; gap: 6px;">
+                                            Loading alignment...
+                                        </div>
+                                    </div>
+
+                                    <!-- Loop Detection Panel -->
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">🔄 Cognitive Loop Detections</h4>
+                                        <div id="loopDetectionsList" style="font-size: 11px; display: flex; flex-direction: column; gap: 6px;">
+                                            Loading loops...
+                                        </div>
+                                    </div>
+
+                                    <!-- Weekly Audit Panel Trigger -->
+                                    <div class="continuityCard" style="background: rgba(63,117,255,0.05); border: 1px dashed var(--cal-personal); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">📊 Weekly Continuity Audit</h4>
+                                        <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0;">View detailed weekly audit of what was progressed, stalled, preserved, and released.</p>
+                                        <button class="primary smallBtn" onclick="openWeeklyAuditModal()" style="width: 100%; font-size: 11px; padding: 6px;">Open Weekly Audit Report</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Daily Log / Reflection -->
+                            <div class="memorySubPane" id="memPane-reflection" style="display: none;">
+                                <div class="reflectionContainer">
+                                    <div class="narrativeBox" id="reflectionNarrative">No reflection generated yet. Complete tasks or chat with Chrono to start.</div>
+                                    <div class="reflectionMetrics">
+                                        <div class="refMetric"><span>Completion:</span> <strong id="reflectionCompletionRate">0%</strong></div>
+                                        <div class="refMetric"><span>Emotion:</span> <strong id="reflectionPrimaryEmotion">calm</strong></div>
+                                    </div>
+                                    <div class="reflectionActions" style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                        <button class="headerButton smallBtn" onclick="triggerEditReflection()" style="flex: 1; padding: 6px; font-size: 11px;">✏️ Edit Narrative</button>
+                                        <button class="headerButton smallBtn" onclick="triggerDeleteReflection()" style="flex: 1; padding: 6px; font-size: 11px; color: #ef4444; border-color: #fca5a5;">🗑️ Delete Reflection</button>
+                                    </div>
+                                    <h4>Timeline</h4>
+                                    <div class="timelineList" id="reflectionTimeline">
+                                        <!-- Populated dynamically -->
+                                    </div>
+                                    <h4 style="margin-top: 20px;">Reflective Journal</h4>
+                                    <textarea id="journalInput" class="journalTextarea" placeholder="Write down your thoughts for today..."></textarea>
+                                    <button class="primary" onclick="submitJournal()" style="width: 100%; margin-top: 8px;">Save Journal</button>
+                                </div>
+                            </div>
+
+                            <!-- 3. Monthly Memory Cards -->
+                            <div class="memorySubPane" id="memPane-cards" style="display: none;">
+                                <div class="memoryCardsContainer" id="memoryCardsContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                                    <!-- Memory Cards populate dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- 5. Memory Preservation Score Dashboard -->
+                            <div class="memorySubPane" id="memPane-preservation" style="display: none;">
+                                <div class="continuityContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 6px 0; font-size: 13px; color: var(--text-main); font-weight: 700;">💾 Memory Preservation Engine</h4>
+                                        <p style="font-size: 10px; color: var(--text-muted); margin: 0 0 10px 0;">Classify cognitive commits to define their preservation lifespan.</p>
+                                        <div id="memoryPreservationList" style="display:flex; flex-direction:column; gap:8px; max-height: 400px; overflow-y: auto;">
+                                            Loading preservation scores...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. Memory Search -->
+                            <div class="memorySubPane" id="memPane-search" style="display: none;">
+                                <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                                    <input type="text" id="memorySearchInput" placeholder="Search chats, tasks, notes..." style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px;" />
+                                    <button class="primary" onclick="triggerMemorySearch()" style="font-size: 12px; padding: 8px 12px;">Search</button>
+                                </div>
+                                <div class="searchResultsContainer" id="memorySearchResults" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding-top: 10px;">Enter search term above.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. Relationship OS Tab -->
+                        <div class="tabPane" id="tab-people">
+                            <h3 class="rightPanelSubtitle">Relationship OS</h3>
+                            <p class="rightPanelDescription">Manage peer collaboration networks. Track shared projects, goals, and study sessions.</p>
+                            
+                            <!-- Interactive Visual SVG Relationship Graph -->
+                            <div class="relationshipGraphContainer" style="margin-top: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.15); border: 1px dashed var(--border-color); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);">
+                                <h4 style="margin: 0 0 10px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; width: 100%;">Interactive Peer Network</h4>
+                                <svg id="relationshipSvg" width="260" height="260" style="overflow: visible; background: transparent;"></svg>
+                            </div>
+
+                            <!-- Connect Peer Card -->
+                            <div class="continuityCard" id="connectPeerForm" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; margin-top: 10px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--cal-personal); font-weight: 700; display: flex; align-items: center; gap: 6px;">🔗 Connect External Peer</h4>
+                                <p style="font-size: 10px; color: var(--text-muted); margin: 0 0 8px 0;">Enter name, role, email and peer User ID to connect collaborative calendars.</p>
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <input type="text" id="newPeerName" placeholder="Peer Name (e.g. Princess)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                    <input type="email" id="newPeerEmail" placeholder="Peer Email (e.g. princess@chrono.app)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                    <input type="text" id="newPeerUserId" placeholder="Peer User ID (e.g. u_xyz123)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                    <select id="newPeerRole" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: #1e293b; color: var(--text-main); font-size: 11px; cursor: pointer;">
+                                        <option value="Study Partner">Study Partner</option>
+                                        <option value="Project Partner">Project Partner</option>
+                                        <option value="Close Friend">Close Friend</option>
+                                        <option value="Mentor">Mentor</option>
+                                        <option value="Family">Family</option>
+                                    </select>
+                                    <button class="primary smallBtn" onclick="submitConnectPeer()" style="width: 100%; font-size: 11px; padding: 6px;">Connect Peer</button>
+                                </div>
+                            </div>
+
+                            <!-- Communication Assistant Card -->
+                            <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; margin-top: 10px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--cal-personal); font-weight: 700; display: flex; align-items: center; gap: 6px;">💬 Communication Reflection Assistant</h4>
+                                <p style="font-size: 10px; color: var(--text-muted); margin: 0 0 8px 0;">Test a message draft to check complexity, emotional intensity, and get pacing feedback.</p>
+                                <textarea id="commDraftInput" placeholder="Type your draft message here..." style="width: 100%; height: 50px; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px; resize: vertical; font-family: inherit; margin-bottom: 6px;"></textarea>
+                                <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                                    <select id="tCommDraftMode" style="flex: 1; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: #1e293b; color: var(--text-main); font-size: 11px; cursor: pointer;">
+                                        <option value="concise">Concise Mode</option>
+                                        <option value="friend">Friend Mode</option>
+                                        <option value="deep">Deep Mode</option>
+                                        <option value="technical">Technical Mode</option>
+                                    </select>
+                                    <button class="primary smallBtn" onclick="evaluateCommDraft()" style="flex: 1; font-size: 11px; padding: 6px;">Evaluate & Translate</button>
+                                </div>
+                                <div id="commDraftResult" style="margin-top: 8px; font-size: 11px; display: none; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2);">
+                                    <!-- Results populate here -->
+                                </div>
+                            </div>
+
+                            <div class="peopleListContainer" id="peopleListContainer" style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 15px;">
+                                <!-- Populated dynamically -->
+                            </div>
+                            
+                            <!-- Detailed Peer view -->
+                            <div class="peerDetailsContainer" id="peerDetailsContainer" style="display: none; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <h4 id="peerDetailsName" style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-main);">Princess Profile</h4>
+                                    <button class="tinyLink" onclick="closePeerDetails()" style="font-size: 11px;">← Back to List</button>
+                                </div>
+                                
+                                <!-- Joint Study Session Scheduler Form -->
+                                <div class="jointSessionForm" style="margin-bottom: 15px; padding: 10px; background: rgba(63,117,255,0.03); border: 1px dashed var(--cal-personal); border-radius: 8px;">
+                                    <h5 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 700; color: var(--cal-personal);">📅 Schedule Joint Session</h5>
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                        <input type="text" id="jointSessionTitle" placeholder="Session Title (e.g. Calculus review)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                        <div style="display: flex; gap: 4px;">
+                                            <input type="date" id="jointSessionDate" style="flex: 1; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                            <input type="time" id="jointSessionTime" value="15:00" style="flex: 1; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                        </div>
+                                        <button class="primary smallBtn" onclick="submitJointSession()" style="padding: 6px; font-size: 10px; border-radius: 4px;">Book Shared Calendar Session</button>
+                                    </div>
+                                </div>
+
+                                <div class="peerDetailsSection">
+                                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; margin-bottom:12px; font-size:11px;">
+                                         <div>Trend: <strong id="peerContinuityTrend" style="color:#10b981;">Stable</strong></div>
+                                         <div>Reciprocity: <strong id="peerReciprocity">Balanced</strong></div>
+                                         <div>Frequency (30d): <strong id="peerInteractionsFrequency">0</strong></div>
+                                         <div>Shared Goals: <strong id="peerSharedGoalsCount">0</strong></div>
+                                     </div>
+
+                                    <h5 style="margin: 0 0 8px 0; font-size: 11px; color: var(--text-muted); font-weight: 600;">📜 Relational Continuity Timeline</h5>
+                                    <div id="peerTimelineFeed" style="display: flex; flex-direction: column; gap: 10px; position: relative; padding-left: 14px; border-left: 2px solid var(--border-color); margin-top: 10px; max-height: 250px; overflow-y: auto;">
+                                        <!-- Unified chronological timeline feed goes here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+            </section>
+
+            <!-- CONTINUITY WORKSPACE -->
+            <section class="workspaceContainer" id="continuityWorkspace" style="display: none;">
+                <!-- LEFT SIDE: HUMAN TIMELINE ENGINE -->
+                <div class="timelineEnginePanel">
+                    <h2 class="panelTitle">📜 Life Biography Timeline</h2>
+                    <p class="panelSub">Longitudinal history of your milestones, completed goals, and projects.</p>
+                    <div class="timelineScroll" id="biographyTimelineScroll">
+                        <!-- Filled dynamically by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- CENTER SIDE: CONTINUITY THREADS MANAGER -->
+                <div class="threadsManagerPanel">
+                    <div class="threadsHeader" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 class="panelTitle" style="margin: 0;">👥 Continuity Threads</h2>
+                        <button class="primary smallBtn" onclick="openConnectPeerModal()" style="padding: 6px 12px; font-size: 11px;">+ Connect Peer</button>
+                    </div>
+                    <p class="panelSub">Your relational continuity network based on shared history weight.</p>
+                    
+                    <div class="threadsGrid" id="continuityThreadsGrid">
+                        <!-- Dynamically filled with peer cards -->
+                    </div>
+                    
+                    <!-- Peer Thread Detail View -->
+                    <div class="threadDetailView" id="threadDetailView" style="display: none; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                        <div class="threadDetailHeader" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3 id="threadDetailName" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main);">Princess</h3>
+                            <button class="smallBtn" onclick="closeThreadDetail()" style="padding: 4px 8px; font-size: 11px;">← Back to list</button>
+                        </div>
+                        
+                        <!-- Joint Study Session Scheduler Form -->
+                        <div class="jointSessionForm" style="margin-bottom: 15px; padding: 10px; background: rgba(63,117,255,0.03); border: 1px dashed var(--cal-personal); border-radius: 8px;">
+                            <h5 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 700; color: var(--cal-personal);">📅 Schedule Joint Session</h5>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <input type="text" id="tJointSessionTitle" placeholder="Session Title (e.g. Calculus review)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                <div style="display: flex; gap: 4px;">
+                                    <input type="date" id="tJointSessionDate" style="flex: 1; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                    <input type="time" id="tJointSessionTime" value="15:00" style="flex: 1; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                </div>
+                                <button class="primary smallBtn" onclick="submitThreadJointSession()" style="padding: 6px; font-size: 10px; border-radius: 4px;">Book Shared Calendar Session</button>
+                            </div>
+                        </div>
+
+                        <!-- Add Shared Milestone Form -->
+                        <div class="jointSessionForm" style="margin-bottom: 15px; padding: 10px; background: rgba(16,185,129,0.03); border: 1px dashed #10b981; border-radius: 8px;">
+                            <h5 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 700; color: #10b981;">🏆 Add Shared Milestone</h5>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <input type="text" id="tMilestoneTitle" placeholder="Milestone Title (e.g. Completed Internship)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                <input type="text" id="tMilestoneDesc" placeholder="Description (optional)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                <div style="display: flex; gap: 4px; align-items: center;">
+                                    <input type="date" id="tMilestoneDate" style="flex: 1; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                    <select id="tMilestoneImportance" style="padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: #1e293b; color: var(--text-main); font-size: 11px;">
+                                        <option value="5">Importance: 5</option>
+                                        <option value="6">Importance: 6</option>
+                                        <option value="7">Importance: 7</option>
+                                        <option value="8">Importance: 8</option>
+                                        <option value="9">Importance: 9</option>
+                                        <option value="10">Importance: 10</option>
+                                    </select>
+                                </div>
+                                <button class="primary smallBtn" onclick="submitThreadMilestone()" style="padding: 6px; font-size: 10px; border-radius: 4px; background: #10b981; border: none; color: white;">Create Shared Milestone</button>
+                            </div>
+                        </div>
+
+                        <!-- Tabs inside Thread details -->
+                        <div class="threadTabs" style="display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                            <button class="subTabBtn active" id="ttBtn-overview" onclick="switchThreadTab('overview')" style="background: none; border: none; color: var(--text-main); font-size: 11px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Overview</button>
+                            <button class="subTabBtn" id="ttBtn-timeline" onclick="switchThreadTab('timeline')" style="background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Timeline</button>
+                            <button class="subTabBtn" id="ttBtn-memories" onclick="switchThreadTab('memories')" style="background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Memories</button>
+                            <button class="subTabBtn" id="ttBtn-projects" onclick="switchThreadTab('projects')" style="background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Projects</button>
+                        </div>
+                        
+                        <div class="threadTabContent" id="threadTabContent">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT SIDE: MEMORY & REFLECTION HUB -->
+                <div class="memoryHubPanel">
+                    <h2 class="panelTitle">🧠 Memory & Reflection</h2>
+                    <p class="panelSub">Reflect on daily logs and preserve core life memories.</p>
+                    
+                    <div class="memoryHubContent" id="tMemoryHubContent" style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- INTELLIGENCE WORKSPACE -->
+            <section class="workspaceContainer" id="intelligenceWorkspace" style="display: none;">
+                <!-- LEFT SIDE: AI MEMORY CONVERSATIONS -->
+                <div class="aiConversationsPanel">
+                    <div class="aiConvHeader" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 class="panelTitle" style="margin: 0;">🧠 AI Memory Conversations</h2>
+                        <span class="activeAgentBadge" id="intelActiveAgent" style="background: rgba(63,117,255,0.1); color: var(--cal-personal); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;">Companion Active</span>
+                    </div>
+                    <p class="panelSub">Ask deep reflective queries about your history, timeline, and behavior patterns.</p>
+                    
+                    <div class="intelChatBox" id="intelChatBox"></div>
+                    
+                    <div class="intelSuggestions" style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                        <button class="suggestionButton" onclick="sendIntelChat('Why is Princess important in my timeline?')">Why is Princess important in my timeline?</button>
+                        <button class="suggestionButton" onclick="sendIntelChat('What changed between Semester 3 and Semester 5?')">What changed between Semester 3 and Semester 5?</button>
+                        <button class="suggestionButton" onclick="sendIntelChat('Which goals actually mattered?')">Which goals actually mattered?</button>
+                        <button class="suggestionButton" onclick="sendIntelChat('What milestones did we achieve?')">What milestones did we achieve?</button>
+                    </div>
+                    
+                    <div class="intelChatInputRow" style="display: flex; gap: 8px; margin-top: 12px;">
+                        <input id="intelChatInput" type="text" placeholder="Query your Chrono local brain..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1.5px solid var(--border-color); background: rgba(0,0,0,0.15); color: var(--text-main); outline: none; font-size: 13px;" onkeypress="handleIntelKeyPress(event)" />
+                        <button class="primary" onclick="sendIntelChat()" style="padding: 12px 24px; border-radius: 8px; font-weight: 700;">Send Query</button>
+                    </div>
+                </div>
+
+                <!-- RIGHT SIDE: OBSERVATORY TELEMETRY -->
+                <div class="intelObservatoryPanel">
+                    <h2 class="panelTitle">🛡️ Observatory Diagnostics</h2>
+                    <p class="panelSub">Real-time system telemetry and coherence diagnostics.</p>
+                    <div class="intelObservatoryContent" id="tIntelObservatoryContent">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- VERTICAL SPLITTER FOR CHAT RESIZING -->
+            <div class="splitter" id="splitter">
+                <div class="splitterHandle"></div>
+            </div>
+
+            <!-- CHRONO AI CHAT WORKSPACE (BOTTOM PORTION) -->
+            <section class="chatWorkspace">
+                <div class="chatHeader">
+                    <div class="chatTitle">Chrono AI</div>
+                    <div class="chatHeaderActions">
+                        <button class="smallBtn" id="toggleDockBtn" onclick="toggleDock()">🔄 Dock</button>
+                    </div>
+                </div>
+
+                <!-- Proactive suggestion banner with explanation collapse -->
+                <div id="jarvisSuggestionsContainer" style="display: none; padding: 10px; margin: 8px 12px; background: linear-gradient(135deg, rgba(63,117,255,0.06) 0%, rgba(139,92,246,0.06) 100%); border: 1px solid var(--cal-personal); border-radius: 8px; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                        <div style="flex: 1;">
+                            <span style="font-weight: 700; color: var(--cal-personal);">💡 Proactive Insight:</span>
+                            <span id="jarvisSuggestionText">suggestion text</span>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button id="jarvisAutoScheduleBtn" style="display: none; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: none; background: var(--cal-personal); color: white; cursor: pointer; font-weight: 600;">Auto-Schedule</button>
+                            <button class="smallBtn" id="jarvisWhyBtn" onclick="toggleJarvisWhy()" style="padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; color: var(--text-main); cursor: pointer;">Why?</button>
+                            <button onclick="dismissJarvisSuggestion()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; line-height:1; font-weight:700;">×</button>
+                        </div>
+                    </div>
+                    <div id="jarvisWhyDetails" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color); font-size: 11px; color: var(--text-muted); flex-direction: column; gap: 4px; line-height: 1.4;">
+                        <div><strong>Trigger:</strong> <span id="whyTrigger" style="color:var(--text-main);"></span></div>
+                        <div><strong>Last Active:</strong> <span id="whyLastActive" style="color:var(--text-main);"></span></div>
+                        <div><strong>Upcoming Deadline:</strong> <span id="whyDeadline" style="color:var(--text-main);"></span></div>
+                        <div><strong>Recommendation:</strong> <span id="whyRec" style="color:var(--text-main);"></span></div>
+                    </div>
+                </div>
+
+                <div id="chatBox" class="chatBox"></div>
+
+                <div class="chatSuggestions">
+                    <button class="suggestionButton" onclick="setResponse('Review my week')">Review my week</button>
+                    <button class="suggestionButton" onclick="setResponse('Add focus block')">Add focus block</button>
+                    <button class="suggestionButton" id="suggestionMoveStudy" onclick="setResponse('Move study to evenings')">Move study to evenings</button>
+                </div>
+
+                <div class="chatInputRow">
+                    <input id="chatInput" type="text" placeholder="Message Chrono..." />
+                    <button class="primary" onclick="sendChat()">Send</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- COGNITIVE DIAGNOSTICS FLOATING PANEL -->
+    <div class="debugPanel" id="debugPanel">
+        <div class="debugHeader">
+            <h2>🧠 Cognitive Diagnostics</h2>
+            <button onclick="toggleDebugPanel()" class="debugCloseBtn">×</button>
+        </div>
+        <div class="debugContent">
+            <div class="debugSection">
+                <h3>📊 Quick Summary</h3>
+                <div id="debugQuickSummary">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>💔 Emotional State</h3>
+                <div id="debugEmotional">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>🎭 Identity Stability</h3>
+                <div id="debugIdentity">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>💾 Memory Hierarchy</h3>
+                <div id="debugMemory">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>👁️ Presence State</h3>
+                <div id="debugPresence">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>🔐 Recursion Safety</h3>
+                <div id="debugRecursion">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>📦 Compression</h3>
+                <div id="debugCompression">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>⚠️ System Health</h3>
+                <div id="debugHealth">Loading...</div>
+            </div>
+            
+            <div class="debugSection">
+                <h3>🔍 Debug Info</h3>
+                <div id="debugDebug">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ONBOARDING INITIALIZATION MODAL -->
+    <div class="onboardingOverlay" id="onboardingOverlay" style="display: none;">
+        <div class="onboardingCard">
+            <div class="onboardingHeader">
+                <div class="onboardingLogo" id="obLogo">C</div>
+                <h2>Initialize Your Workspace</h2>
+                <p>Let's tailor the environment and cognitive companion to your style.</p>
+            </div>
+            
+            <div class="onboardingForm">
+                <!-- Google Authentication Integration -->
+                <div class="onboardingSection" style="margin-bottom: 15px; text-align: center;">
+                    <button class="googleLoginBtn" id="obGoogleLoginBtn" onclick="loginWithGoogle()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; background: #ffffff; color: #1e293b; border: 1.5px solid #cbd5e1; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s var(--ease-smooth); font-family: var(--font-primary); font-size: 13px; box-shadow: var(--shadow-sm);">
+                        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.24h2.91c1.7-1.56 2.68-3.86 2.68-6.57z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.24c-.8.54-1.84.87-3.05.87-2.34 0-4.33-1.58-5.03-3.7H1.02v2.33C2.51 15.97 5.52 18 9 18z" fill="#34A853"/><path d="M3.97 10.75c-.18-.54-.28-1.12-.28-1.75s.1-1.21.28-1.75V4.92H1.02C.37 6.22 0 7.69 0 9s.37 2.78 1.02 4.08l2.95-2.33z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4C13.46.97 11.42 0 9 0 5.52 0 2.51 2.03 1.02 4.92l2.95 2.33c.7-2.12 2.69-3.7 5.03-3.7z" fill="#EA4335"/></svg>
+                        <span id="obGoogleLoginText">Sign in with Google</span>
+                    </button>
+                    <div style="margin: 15px 0; display: flex; align-items: center; text-align: center; color: var(--text-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.05em;">
+                        <div style="flex: 1; border-bottom: 1px solid var(--border-color);"></div>
+                        <span style="margin: 0 10px;">OR SETUP OFFLINE PROFILE</span>
+                        <div style="flex: 1; border-bottom: 1px solid var(--border-color);"></div>
+                    </div>
+                </div>
+
+                <!-- Group A: Names & Email -->
+                <div class="onboardingSection">
+                    <div class="inputGroup">
+                        <label for="obUserNameInput">Your Name</label>
+                        <input type="text" id="obUserNameInput" placeholder="Enter your name..." />
+                    </div>
+                    <div class="inputGroup" style="margin-top: 10px;">
+                        <label for="obUserEmailInput">Email Address</label>
+                        <input type="email" id="obUserEmailInput" placeholder="name@domain.com" />
+                    </div>
+                    <div class="inputGroup" style="margin-top: 10px;">
+                        <label for="obAppNameInput">App Name (Rebrand)</label>
+                        <input type="text" id="obAppNameInput" placeholder="Chrono" />
+                    </div>
+                </div>
+
+                <!-- Group B: Appearance -->
+                <div class="onboardingSection" style="margin-top: 10px;">
+                    <label class="settingLabel">Background Theme</label>
+                    <div class="obThemeGrid">
+                        <div class="obThemeOption active" data-theme="light" style="--t-bg: #f4f6fa; --t-panel: #ffffff; --t-text: #1e293b;">
+                            <span>Light</span>
+                        </div>
+                        <div class="obThemeOption" data-theme="dark" style="--t-bg: #0f172a; --t-panel: #1e293b; --t-text: #f8fafc;">
+                            <span>Slate Dark</span>
+                        </div>
+                        <div class="obThemeOption" data-theme="ocean" style="--t-bg: #f0fdfa; --t-panel: #ffffff; --t-text: #0f766e;">
+                            <span>Ocean</span>
+                        </div>
+                        <div class="obThemeOption" data-theme="sunset" style="--t-bg: #fff7ed; --t-panel: #ffffff; --t-text: #c2410c;">
+                            <span>Sunset</span>
+                        </div>
+                        <div class="obThemeOption" data-theme="emerald" style="--t-bg: #f0fdf4; --t-panel: #ffffff; --t-text: #15803d;">
+                            <span>Emerald</span>
+                        </div>
+                        <div class="obThemeOption" data-theme="violet" style="--t-bg: #faf5ff; --t-panel: #ffffff; --t-text: #6d28d9;">
+                            <span>Violet</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group C: Accent -->
+                <div class="onboardingSection" style="margin-top: 10px;">
+                    <label class="settingLabel">Accent Color</label>
+                    <div class="obAccentGrid">
+                        <button class="obAccentOption active" data-accent="blue" style="background: #3f75ff;"></button>
+                        <button class="obAccentOption" data-accent="emerald" style="background: #10b981;"></button>
+                        <button class="obAccentOption" data-accent="orange" style="background: #f97316;"></button>
+                        <button class="obAccentOption" data-accent="purple" style="background: #a855f7;"></button>
+                        <button class="obAccentOption" data-accent="red" style="background: #ef4444;"></button>
+                    </div>
+                </div>
+
+                <!-- Group D: Cognitive Pacing -->
+                <div class="onboardingSection" style="margin-top: 10px;">
+                    <label class="settingLabel">AI Cognitive Pacing Profile</label>
+                    <div class="obProfileGrid">
+                        <div class="obProfileOption active" data-profile="adaptive">
+                            <span class="obProfileTitle">Adaptive</span>
+                            <span class="obProfileDesc">Learns from your stress & activity.</span>
+                        </div>
+                        <div class="obProfileOption" data-profile="architect">
+                            <span class="obProfileTitle">Systems</span>
+                            <span class="obProfileDesc">Structured, analytical, direct.</span>
+                        </div>
+                        <div class="obProfileOption" data-profile="companion">
+                            <span class="obProfileTitle">Guided</span>
+                            <span class="obProfileDesc">Gentle support, reduces load.</span>
+                        </div>
+                        <div class="obProfileOption" data-profile="observer">
+                            <span class="obProfileTitle">Observer</span>
+                            <span class="obProfileDesc">Neutral analytical data insight.</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Group E: Cloud Synchronization -->
+                <div class="onboardingSection" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="obUseCloud" checked style="width: 18px; height: 18px; margin: 0; cursor: pointer;" />
+                    <label for="obUseCloud" style="font-size: 12px; font-weight: 600; cursor: pointer; margin: 0; color: var(--text-main);">Use Supabase cloud sync when signed in</label>
+                </div>
+            </div>
+
+            <button class="primary onboardingSubmitBtn" onclick="submitOnboarding()" style="margin-top: 10px;">Complete Initialization</button>
+        </div>
+    </div>
+
+    <!-- WEEKLY CONTINUITY AUDIT MODAL -->
+    <div class="onboardingOverlay" id="weeklyAuditOverlay" style="display: none; justify-content: center; align-items: center; z-index: 10000; background: rgba(0,0,0,0.6);">
+        <div class="onboardingCard" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div class="onboardingHeader">
+                <div class="onboardingLogo">📊</div>
+                <h2>Weekly Continuity Audit</h2>
+                <p>A compilation of your cognitive commitments, progress vectors, and status changes over the last 7 days.</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px; text-align: left;">
+                <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <h3 style="margin: 0 0 6px 0; font-size: 12px; color: var(--cal-personal); font-weight: 700;">🎯 What Mattered (High Significance)</h3>
+                    <ul id="auditMattered" style="margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.4; color: var(--text-main);"></ul>
+                </div>
+                <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <h3 style="margin: 0 0 6px 0; font-size: 12px; color: #10b981; font-weight: 700;">📈 What Changed (Subject Mastery)</h3>
+                    <ul id="auditChanged" style="margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.4; color: var(--text-main);"></ul>
+                </div>
+                <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <h3 style="margin: 0 0 6px 0; font-size: 12px; color: #3f75ff; font-weight: 700;">⚡ What Progressed</h3>
+                    <ul id="auditProgressed" style="margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.4; color: var(--text-main);"></ul>
+                </div>
+                <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <h3 style="margin: 0 0 6px 0; font-size: 12px; color: #ef4444; font-weight: 700;">⚠️ What Stalled</h3>
+                    <ul id="auditStalled" style="margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.4; color: var(--text-main);"></ul>
+                </div>
+                <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <h3 style="margin: 0 0 6px 0; font-size: 12px; color: #a855f7; font-weight: 700;">🛡️ What Was Preserved (Routines)</h3>
+                    <ul id="auditPreserved" style="margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.4; color: var(--text-main);"></ul>
+                </div>
+                <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <h3 style="margin: 0 0 6px 0; font-size: 12px; color: #f59e0b; font-weight: 700;">🔓 What Was Released</h3>
+                    <ul id="auditReleased" style="margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.4; color: var(--text-main);"></ul>
+                </div>
+            </div>
+            
+            <button class="primary" onclick="closeWeeklyAuditModal()" style="margin-top: 15px; width: 100%;">Close Audit</button>
+        </div>
+    </div>
+
+    <!-- EVENT ACTION & FOCUS TIMER MODAL -->
+    <div class="onboardingOverlay" id="eventActionModal" style="display: none; justify-content: center; align-items: center; z-index: 10000; background: rgba(0,0,0,0.6);">
+        <div class="onboardingCard" style="max-width: 440px; width: 90%;">
+            <div class="onboardingHeader">
+                <div class="onboardingLogo" id="eaLogo" style="background: var(--cal-personal);">📅</div>
+                <h2 id="eaTaskText" style="font-size: 20px; font-weight: 800; margin-top: 8px; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Event Action Center</h2>
+                <p id="eaTaskSub" style="font-size: 12px; color: var(--text-muted); text-align: center;">Configure task session or manage event.</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px; text-align: left;">
+                <!-- 1. Actions Row -->
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <button class="primary" id="eaCompleteBtn" onclick="actionCompleteTask()" style="flex: 1; padding: 10px; font-size: 12px; font-weight: 700; border-radius: 10px; background: #10b981; border: none; color: white; cursor: pointer;">Mark Completed</button>
+                    <button class="primary" id="eaDeleteBtn" onclick="actionDeleteTask()" style="flex: 1; padding: 10px; font-size: 12px; font-weight: 700; border-radius: 10px; background: #ef4444; border: none; color: white; cursor: pointer;">Delete Event</button>
+                </div>
+
+                <!-- 2. Focus Timer Section -->
+                <div style="padding: 14px; background: rgba(0,0,0,0.15); border: 1px solid var(--border-color); border-radius: 12px; display: flex; flex-direction: column; gap: 10px;">
+                    <h3 style="margin: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--cal-personal); letter-spacing: 0.05em;">⏱️ Task Focus Timer</h3>
+                    
+                    <!-- Timer Display -->
+                    <div style="text-align: center; margin: 10px 0;">
+                        <span id="eaTimerDisplay" style="font-size: 36px; font-weight: 800; font-family: monospace; color: var(--text-main);">00:00</span>
+                    </div>
+
+                    <!-- Presets -->
+                    <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 6px;">
+                        <button class="headerButton smallBtn" onclick="setEATimerPreset(10)" style="font-size: 10px; padding: 4px 8px; cursor: pointer;">10s</button>
+                        <button class="headerButton smallBtn" onclick="setEATimerPreset(60)" style="font-size: 10px; padding: 4px 8px; cursor: pointer;">1m</button>
+                        <button class="headerButton smallBtn" onclick="setEATimerPreset(300)" style="font-size: 10px; padding: 4px 8px; cursor: pointer;">5m</button>
+                        <button class="headerButton smallBtn" onclick="setEATimerPreset(1500)" style="font-size: 10px; padding: 4px 8px; cursor: pointer;">25m</button>
+                        <button class="headerButton smallBtn" onclick="setEATimerPreset(3600)" style="font-size: 10px; padding: 4px 8px; cursor: pointer;">1h</button>
+                    </div>
+
+                    <!-- Options -->
+                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main);">
+                            <input type="checkbox" id="eaAutoCompleteCheck" checked style="width: 14px; height: 14px; margin: 0; cursor: pointer;" />
+                            Auto-complete task on timer expiration
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main);">
+                            <input type="checkbox" id="eaAutoRemoveCheck" style="width: 14px; height: 14px; margin: 0; cursor: pointer;" />
+                            Auto-remove (delete) task on timer expiration
+                        </label>
+                    </div>
+
+                    <!-- Control Buttons -->
+                    <div style="display: flex; gap: 8px; margin-top: 6px;">
+                        <button class="primary smallBtn" id="eaTimerControlBtn" onclick="toggleEATimer()" style="flex: 1; padding: 8px; font-size: 11px; cursor: pointer;">Start Focus</button>
+                        <button class="headerButton smallBtn" id="eaTimerResetBtn" onclick="resetEATimer()" style="padding: 8px 12px; font-size: 11px; cursor: pointer;">Reset</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="headerButton" onclick="closeEventActionModal()" style="margin-top: 15px; width: 100%; padding: 10px; border-radius: 10px; font-weight: 600; cursor: pointer;">Close Action Center</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

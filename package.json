@@ -1,0 +1,48 @@
+{
+    "name": "chrono",
+    "version": "1.0.0",
+    "main": "main/main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder"
+    },
+    "devDependencies": {
+        "electron": "^41.0.4",
+        "electron-builder": "^26.8.1",
+        "prisma": "^6.19.3"
+    },
+    "build": {
+        "appId": "com.chrono.app",
+        "productName": "Chrono",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main/**/*",
+            "ui/**/*",
+            "server/**/*",
+            "package.json"
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "build/icon.png"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "Chrono"
+        },
+        "asar": true
+    },
+    "dependencies": {
+        "@prisma/adapter-pg": "^6.19.3",
+        "@prisma/client": "^6.19.3",
+        "@supabase/supabase-js": "^2.106.2",
+        "bcryptjs": "^3.0.3",
+        "better-sqlite3": "^12.8.0",
+        "dotenv": "^16.6.1",
+        "pg": "^8.21.0"
+    }
+}

@@ -1,0 +1,1 @@
+const { db } = require("./main_db"); function getEvents() { return db.prepare("SELECT * FROM events").all(); } module.exports = { getEvents };

@@ -1,0 +1,4 @@
+
+⚡ Supabase Cloud Client initialized successfully.
+🧠 Memory initialized: loaded 0 sessions and 0 chats from DB.
+🚀 Sync Engine: Background sync loop started (interval: 10000ms).

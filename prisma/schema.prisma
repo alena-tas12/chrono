@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                String             @id @db.VarChar(100)
+  email             String             @unique @db.VarChar(255)
+  password_hash     String             @db.VarChar(255)
+  created_at        DateTime           @default(now()) @db.Timestamp(6)
+  profile           Profile?
+  owned_calendars   Calendar[]         @relation("CalendarOwner")
+  calendar_memberships CalendarMember[]
+  created_events    Event[]            @relation("EventCreator")
+  chat_histories    ChatHistory[]
+  cognitive_memories CognitiveMemory[]
+
+  @@map("users")
+}
+
+model Profile {
+  user_id           String             @id @db.VarChar(100)
+  user              User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  display_name      String             @db.VarChar(100)
+  cognitive_style   String             @default("adaptive") @db.VarChar(50)
+  reassurance_needs String             @default("moderate") @db.VarChar(50)
+  updated_at        DateTime           @default(now()) @db.Timestamp(6)
+
+  @@map("profiles")
+}
+
+model Calendar {
+  id                String             @id @db.VarChar(100)
+  name              String             @db.VarChar(100)
+  owner_id          String             @db.VarChar(100)
+  owner             User               @relation("CalendarOwner", fields: [owner_id], references: [id], onDelete: Cascade)
+  layer_type        String             @default("personal") @db.VarChar(50)
+  created_at        DateTime           @default(now()) @db.Timestamp(6)
+  updated_at        BigInt             @default(0)
+  device_id         String?            @db.VarChar(100)
+  deleted           Int                @default(0)
+  members           CalendarMember[]
+  events            Event[]
+
+  @@map("calendars")
+}
+
+model CalendarMember {
+  calendar_id       String             @db.VarChar(100)
+  calendar          Calendar           @relation(fields: [calendar_id], references: [id], onDelete: Cascade)
+  user_id           String             @db.VarChar(100)
+  user              User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role              String             @default("viewer") @db.VarChar(30)
+  updated_at        BigInt             @default(0)
+  device_id         String?            @db.VarChar(100)
+  deleted           Int                @default(0)
+
+  @@id([calendar_id, user_id])
+  @@map("calendar_members")
+}
+
+model Event {
+  id                String             @id @db.VarChar(100)
+  calendar_id       String             @db.VarChar(100)
+  calendar          Calendar           @relation(fields: [calendar_id], references: [id], onDelete: Cascade)
+  text              String
+  date              String?            @db.VarChar(30)
+  completed         Boolean            @default(false)
+  start_time        String?            @db.VarChar(50)
+  duration_min      Int                @default(60)
+  created_by        String?            @db.VarChar(100)
+  creator           User?              @relation("EventCreator", fields: [created_by], references: [id])
+  created_at        DateTime           @default(now()) @db.Timestamp(6)
+  updated_at        BigInt             @default(0)
+  device_id         String?            @db.VarChar(100)
+  deleted           Int                @default(0)
+
+  @@map("events")
+}
+
+model ChatHistory {
+  id                String             @id @db.VarChar(100)
+  user_id           String             @db.VarChar(100)
+  user              User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_input        String
+  ai_response       String
+  model_used        String             @default("mock-engine") @db.VarChar(50)
+  latency_ms        Int                @default(0)
+  created_at        DateTime           @default(now()) @db.Timestamp(6)
+
+  @@map("chat_history")
+}
+
+model CognitiveMemory {
+  id                String             @id @db.VarChar(100)
+  user_id           String             @db.VarChar(100)
+  user              User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  memory_type       String             @default("short_term") @db.VarChar(50)
+  content           String
+  importance_score  Int                @default(5)
+  created_at        DateTime           @default(now()) @db.Timestamp(6)
+
+  @@map("cognitive_memories")
+}
