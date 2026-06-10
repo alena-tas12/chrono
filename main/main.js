@@ -187,7 +187,9 @@ ipcMain.handle('get-menu-bar-visible', () => ({ visible: menuBarVisible }));
 // Health checks
 ipcMain.handle('run-health-checks', async () => {
     try {
-        return healthCheck.runAll();
+        const { HealthCheckEngine } = require('./healthCheck');
+        const engine = new HealthCheckEngine();
+        return await engine.runAll();
     } catch (err) {
         return { success: false, message: 'Health check failed: ' + err.message };
     }
@@ -205,7 +207,9 @@ ipcMain.handle('verify-data-integrity', async () => {
 // Create backup
 ipcMain.handle('create-backup', async (event, options = {}) => {
     try {
-        const result = await backupManager.createLocalBackup(options);
+        const { BackupManager } = require('./backupManager');
+        const backupMgr = new BackupManager();
+        const result = await backupMgr.createLocalBackup(options.label || 'manual');
         return result;
     } catch (err) {
         return { success: false, message: 'Backup creation failed: ' + err.message };
@@ -215,7 +219,9 @@ ipcMain.handle('create-backup', async (event, options = {}) => {
 // List backups
 ipcMain.handle('list-backups', async () => {
     try {
-        return await backupManager.listBackups();
+        const { BackupManager } = require('./backupManager');
+        const backupMgr = new BackupManager();
+        return await backupMgr.listBackups();
     } catch (err) {
         return { success: false, message: 'List backups failed: ' + err.message };
     }
@@ -224,7 +230,9 @@ ipcMain.handle('list-backups', async () => {
 // Restore from backup
 ipcMain.handle('restore-backup', async (event, backupFile) => {
     try {
-        const result = await backupManager.restoreFromBackup(backupFile);
+        const { BackupManager } = require('./backupManager');
+        const backupMgr = new BackupManager();
+        const result = await backupMgr.restoreFromBackup(backupFile);
         return result;
     } catch (err) {
         return { success: false, message: 'Restore failed: ' + err.message };
@@ -234,7 +242,9 @@ ipcMain.handle('restore-backup', async (event, backupFile) => {
 // Run backup verification drill
 ipcMain.handle('run-backup-drill', async () => {
     try {
-        const result = await backupManager.runBackupDrill();
+        const { BackupManager } = require('./backupManager');
+        const backupMgr = new BackupManager();
+        const result = await backupMgr.runBackupDrill();
         return result;
     } catch (err) {
         return { success: false, message: 'Backup drill failed: ' + err.message };
@@ -244,7 +254,8 @@ ipcMain.handle('run-backup-drill', async () => {
 // Run sync reliability tests
 ipcMain.handle('run-sync-tests', async () => {
     try {
-        const results = await syncReliabilityTest.runAllTests();
+        const { runAllSyncTests } = require('./syncReliabilityTest');
+        const results = await runAllSyncTests();
         return results;
     } catch (err) {
         return { success: false, message: 'Sync tests failed: ' + err.message };
@@ -278,7 +289,9 @@ app.whenReady().then(() => {
         console.log('[CHRONO] Initializing Original Chrono Trust Killer Prevention Framework...');
         
         // Initialize health checks (validates system state)
-        healthCheck.runAll();
+        const { HealthCheckEngine } = require('./healthCheck');
+        const healthCheckEngine = new HealthCheckEngine();
+        healthCheckEngine.runAll();
         console.log('[CHRONO] Health checks completed.');
         
         // Initialize data integrity monitoring
@@ -290,7 +303,9 @@ app.whenReady().then(() => {
         console.log('[CHRONO] Trust killer handlers registered.');
         
         // Schedule automatic backup verification drill
-        backupManager.scheduleBackupDrill();
+        const { BackupManager } = require('./backupManager');
+        const backupMgr = new BackupManager();
+        backupMgr.scheduleBackupDrill();
         console.log('[CHRONO] Backup drill scheduler started.');
         
     } catch (err) {

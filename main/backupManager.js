@@ -27,6 +27,25 @@ class BackupManager {
         }
     }
 
+    // Schedule backup verification drill (runs every 24 hours)
+    scheduleBackupDrill() {
+        console.log('⏰ Scheduling daily backup verification drill...');
+        
+        // Run once on startup after a small delay (e.g. 10 seconds) to not block startup
+        const startupTimer = setTimeout(() => {
+            console.log('⏰ Running startup backup verification drill...');
+            this.runBackupDrill('startup');
+        }, 10000);
+        if (startupTimer.unref) startupTimer.unref();
+
+        // Run every 24 hours
+        const dailyTimer = setInterval(() => {
+            console.log('⏰ Running scheduled daily backup verification drill...');
+            this.runBackupDrill('daily');
+        }, 24 * 60 * 60 * 1000);
+        if (dailyTimer.unref) dailyTimer.unref();
+    }
+
     // Create local backup from SQLite
     createLocalBackup(label = 'manual') {
         const db = mainDb.db;
