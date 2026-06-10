@@ -17,7 +17,7 @@ const identityStability = require('./identityStability');
 let performanceState = {
     // Engine activation state
     engines: {
-        aiEngine: { active: true, lastUsed: Date.now(), activationCount: 0 },
+        cognitiveOrchestrator: { active: true, lastUsed: Date.now(), activationCount: 0 },
         presenceEngine: { active: true, lastUsed: Date.now(), activationCount: 0 },
         memoryEngine: { active: true, lastUsed: Date.now(), activationCount: 0 },
         emotionalContinuity: { active: true, lastUsed: Date.now(), activationCount: 0 },
@@ -68,7 +68,7 @@ let performanceState = {
  */
 function determineEngineActivation(context = {}) {
     const activation = {
-        aiEngine: true,
+        cognitiveOrchestrator: true,
         presenceEngine: true,
         memoryEngine: true,
         emotionalContinuity: true,
@@ -383,7 +383,7 @@ function optimizeForLoad() {
 function resetPerformanceState() {
     performanceState = {
         engines: {
-            aiEngine: { active: true, lastUsed: Date.now(), activationCount: 0 },
+            cognitiveOrchestrator: { active: true, lastUsed: Date.now(), activationCount: 0 },
             presenceEngine: { active: true, lastUsed: Date.now(), activationCount: 0 },
             memoryEngine: { active: true, lastUsed: Date.now(), activationCount: 0 },
             emotionalContinuity: { active: true, lastUsed: Date.now(), activationCount: 0 },

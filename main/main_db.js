@@ -967,6 +967,35 @@ function setSyncMeta(key, value) {
     db.prepare("INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)").run(key, String(value));
 }
 
+// 🛡️ TRUST KILLER PREVENTION TABLES (Original Chrono Framework)
+// Operation logging for data integrity & silent failure detection
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS operation_log (
+        op_id TEXT PRIMARY KEY,
+        operation_type TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        device_id TEXT,
+        status TEXT DEFAULT 'pending',
+        error TEXT,
+        retry_count INTEGER DEFAULT 0,
+        timestamp INTEGER NOT NULL
+    )
+`).run();
+
+// Backup verification log for restore drills
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS backup_log (
+        id TEXT PRIMARY KEY,
+        operation TEXT,
+        backup_file TEXT,
+        status TEXT DEFAULT 'pending',
+        details TEXT,
+        created_at INTEGER NOT NULL,
+        verified_at INTEGER
+    )
+`).run();
+
 module.exports = {
     db,
     dbPath,

@@ -35,6 +35,7 @@ const cognitiveDiagnostics = require('./cognitiveDiagnostics');
 const stressTestEngine = require('./stressTestEngine');
 const safetyFramework = require('./safetyFramework');
 const performanceOptimizer = require('./performanceOptimizer');
+const architecturePolicy = require('./architecturePolicy');
 
 // 🔧 SUPPORTING SYSTEMS
 const memory = require('./memoryEngine');
@@ -46,6 +47,13 @@ const interactionAdaptation = require('./interactionAdaptation');
 const syncEngine = require('./syncEngine');
 const realtimeSync = require('./realtimeSync');
 const observatory = require('./observatory');
+
+// 🛡️ TRUST KILLER PREVENTION FRAMEWORK (Original Chrono Inner Circle)
+const dataIntegrity = require('./dataIntegrity');
+const trustKillerHandlers = require('./trustKillerHandlers');
+const healthCheck = require('./healthCheck');
+const backupManager = require('./backupManager');
+const syncReliabilityTest = require('./syncReliabilityTest');
 
 let win;
 let menuBarVisible = false;
@@ -172,6 +180,87 @@ ipcMain.handle('toggle-menu-bar', () => {
 
 ipcMain.handle('get-menu-bar-visible', () => ({ visible: menuBarVisible }));
 
+// ========================================
+// 🛡️ TRUST KILLER PREVENTION HANDLERS
+// ========================================
+
+// Health checks
+ipcMain.handle('run-health-checks', async () => {
+    try {
+        return healthCheck.runAll();
+    } catch (err) {
+        return { success: false, message: 'Health check failed: ' + err.message };
+    }
+});
+
+// Data integrity verification
+ipcMain.handle('verify-data-integrity', async () => {
+    try {
+        return await dataIntegrity.verifyDataIntegrity();
+    } catch (err) {
+        return { success: false, message: 'Data integrity verification failed: ' + err.message };
+    }
+});
+
+// Create backup
+ipcMain.handle('create-backup', async (event, options = {}) => {
+    try {
+        const result = await backupManager.createLocalBackup(options);
+        return result;
+    } catch (err) {
+        return { success: false, message: 'Backup creation failed: ' + err.message };
+    }
+});
+
+// List backups
+ipcMain.handle('list-backups', async () => {
+    try {
+        return await backupManager.listBackups();
+    } catch (err) {
+        return { success: false, message: 'List backups failed: ' + err.message };
+    }
+});
+
+// Restore from backup
+ipcMain.handle('restore-backup', async (event, backupFile) => {
+    try {
+        const result = await backupManager.restoreFromBackup(backupFile);
+        return result;
+    } catch (err) {
+        return { success: false, message: 'Restore failed: ' + err.message };
+    }
+});
+
+// Run backup verification drill
+ipcMain.handle('run-backup-drill', async () => {
+    try {
+        const result = await backupManager.runBackupDrill();
+        return result;
+    } catch (err) {
+        return { success: false, message: 'Backup drill failed: ' + err.message };
+    }
+});
+
+// Run sync reliability tests
+ipcMain.handle('run-sync-tests', async () => {
+    try {
+        const results = await syncReliabilityTest.runAllTests();
+        return results;
+    } catch (err) {
+        return { success: false, message: 'Sync tests failed: ' + err.message };
+    }
+});
+
+// Detect silent failures
+ipcMain.handle('detect-silent-failures', async () => {
+    try {
+        const failures = await dataIntegrity.detectSilentFailures();
+        return { success: true, silentFailures: failures };
+    } catch (err) {
+        return { success: false, message: 'Silent failure detection failed: ' + err.message };
+    }
+});
+
 app.whenReady().then(() => {
     // Open the main window immediately
     createWindow();
@@ -182,6 +271,31 @@ app.whenReady().then(() => {
         continuityStability.getTrustReliability();
     } catch (err) {
         console.error("Failed to execute startup backup check:", err.message);
+    }
+
+    // 🛡️ INITIALIZE TRUST KILLER PREVENTION FRAMEWORK
+    try {
+        console.log('[CHRONO] Initializing Original Chrono Trust Killer Prevention Framework...');
+        
+        // Initialize health checks (validates system state)
+        healthCheck.runAll();
+        console.log('[CHRONO] Health checks completed.');
+        
+        // Initialize data integrity monitoring
+        dataIntegrity.initializeOperationLogging();
+        console.log('[CHRONO] Data integrity monitoring initialized.');
+        
+        // Register trust killer handlers (IPC for visible results)
+        trustKillerHandlers.registerTrustKillerHandlers();
+        console.log('[CHRONO] Trust killer handlers registered.');
+        
+        // Schedule automatic backup verification drill
+        backupManager.scheduleBackupDrill();
+        console.log('[CHRONO] Backup drill scheduler started.');
+        
+    } catch (err) {
+        console.error('[CHRONO] Trust killer framework initialization failed:', err.message);
+        console.error('[CHRONO] Continuing with core systems (framework disabled)');
     }
 
     // Automatically restore active session if auth token exists locally and cloud is enabled
@@ -724,33 +838,47 @@ ipcMain.handle('get-identity-state', () => {
 });
 
 ipcMain.handle('get-complete-diagnostics', () => {
+    const blocked = architecturePolicy.requireFounderLayer('complete diagnostics');
+    if (blocked) return blocked;
     return cognitiveDiagnostics.getCompleteDiagnostics();
 });
 
 ipcMain.handle('get-observatory-telemetry', () => {
+    const blocked = architecturePolicy.requireFounderLayer('observatory telemetry');
+    if (blocked) return blocked;
     return observatory.getTelemetryState();
 });
 
 ipcMain.handle('get-quick-summary', () => {
+    const blocked = architecturePolicy.requireFounderLayer('quick diagnostics summary');
+    if (blocked) return blocked;
     return cognitiveDiagnostics.getQuickSummary();
 });
 
 // 🧪 STRESS TEST HANDLERS
 
 ipcMain.handle('run-stress-test', (event, scenarioName) => {
+    const blocked = architecturePolicy.requireFounderLayer('local stress test');
+    if (blocked) return blocked;
     return stressTestEngine.runStressTest(scenarioName);
 });
 
 ipcMain.handle('get-coherence-metrics', () => {
+    const blocked = architecturePolicy.requireFounderLayer('coherence metrics');
+    if (blocked) return blocked;
     return stressTestEngine.getCoherenceMetrics();
 });
 
 ipcMain.handle('reset-coherence-metrics', () => {
+    const blocked = architecturePolicy.requireFounderLayer('reset coherence metrics');
+    if (blocked) return blocked;
     stressTestEngine.resetCoherenceMetrics();
     return { reset: true };
 });
 
 ipcMain.handle('get-stress-test-scenarios', () => {
+    const blocked = architecturePolicy.requireFounderLayer('stress test scenarios');
+    if (blocked) return blocked;
     return Object.keys(stressTestEngine.stressTestScenarios).map(key => ({
         name: key,
         ...stressTestEngine.stressTestScenarios[key]
@@ -769,6 +897,8 @@ ipcMain.handle('reset-safety-state', () => {
 });
 
 ipcMain.handle('trigger-emergency', (event, trigger) => {
+    const blocked = architecturePolicy.requireFounderLayer('local safety emergency trigger');
+    if (blocked) return blocked;
     safetyFramework.triggerEmergency(trigger);
     return { triggered: true };
 });
@@ -1183,84 +1313,20 @@ ipcMain.handle('translate-expression-bandwidth', async (event, text, targetMode)
 // 🚀 AUTO-UPDATE FRAMEWORK CONFIGURATION
 // ========================================
 
-let updateStatus = 'Idle';
+let updateStatus = 'Manual updates only';
 let updateError = null;
 
 function sendUpdateStatusToWindows() {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('auto-update-status', { status: updateStatus, error: updateError });
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('auto-update-status', { status: updateStatus, error: updateError });
     }
-}
-
-try {
-    const { autoUpdater, app } = require('electron');
-    if (autoUpdater && app) {
-        const feedURL = 'http://localhost:54321/update/' + process.platform + '/' + app.getVersion();
-        if (app.isPackaged) {
-            autoUpdater.setFeedURL({ url: feedURL });
-        }
-
-        autoUpdater.on('checking-for-update', () => {
-            updateStatus = 'Checking for updates...';
-            sendUpdateStatusToWindows();
-        });
-
-        autoUpdater.on('update-available', (info) => {
-            updateStatus = 'Update available!';
-            sendUpdateStatusToWindows();
-        });
-
-        autoUpdater.on('update-not-available', (info) => {
-            updateStatus = 'Chrono is up to date.';
-            sendUpdateStatusToWindows();
-        });
-
-        autoUpdater.on('error', (err) => {
-            updateStatus = 'Update check failed.';
-            updateError = err.message;
-            sendUpdateStatusToWindows();
-        });
-
-        autoUpdater.on('update-downloaded', (info) => {
-            updateStatus = 'Update downloaded. Restart to apply.';
-            sendUpdateStatusToWindows();
-        });
-    }
-} catch (e) {
-    console.warn("autoUpdater framework not initialized:", e.message);
 }
 
 ipcMain.handle('check-for-updates', async () => {
     updateError = null;
-    try {
-        const { autoUpdater, app } = require('electron');
-        if (autoUpdater && app) {
-            if (app.isPackaged) {
-                autoUpdater.checkForUpdates();
-                updateStatus = 'Checking...';
-                return { success: true, status: updateStatus };
-            } else {
-                updateStatus = 'Checking...';
-                sendUpdateStatusToWindows();
-                await new Promise(resolve => setTimeout(resolve, 800));
-
-                updateStatus = 'Update available! Downloading...';
-                sendUpdateStatusToWindows();
-                await new Promise(resolve => setTimeout(resolve, 1200));
-
-                updateStatus = 'Update downloaded. Restart to apply.';
-                sendUpdateStatusToWindows();
-                return { success: true, status: updateStatus };
-            }
-        } else {
-            return { success: false, error: 'autoUpdater not available' };
-        }
-    } catch (err) {
-        updateStatus = 'Update check error.';
-        updateError = err.message;
-        sendUpdateStatusToWindows();
-        return { success: false, error: err.message };
-    }
+    updateStatus = 'Auto-update is disabled until a signed production feed is configured.';
+    sendUpdateStatusToWindows();
+    return { success: false, status: updateStatus };
 });
 
 // ========================================

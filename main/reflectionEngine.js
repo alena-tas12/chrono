@@ -12,9 +12,9 @@ function generateDailyReflection(userId, dateKey) {
     const deviceId = mainDb.getDeviceId();
     const now = Date.now();
 
-    // Timestamps for start and end of the day
-    const startOfDay = new Date(todayStr + "T00:00:00").getTime();
-    const endOfDay = new Date(todayStr + "T23:59:59").getTime();
+    // Timestamps for start and end of the day in UTC so dateKey matches ISO date strings reliably.
+    const startOfDay = Date.parse(`${todayStr}T00:00:00Z`);
+    const endOfDay = Date.parse(`${todayStr}T23:59:59Z`);
 
     try {
         // 1. Fetch completed tasks for today

@@ -440,7 +440,7 @@ function gatherEngineInputs(input, metadata) {
     return {
         ai: {
             weight: 0.5,
-            source: 'aiEngine',
+            source: 'cognitiveOrchestrator',
             input: { tasks: tasks.length, currentTask },
             priority: 'medium'
         },

@@ -290,9 +290,9 @@ function resolveLoopIntervention(topic, status, action) {
         `).run(id, topic, action, Date.now());
 
         if (action === 'schedule_review') {
-            const taskEngine = require('./main_db');
+            const mainDb = require('./main_db');
             const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-            taskEngine.addTask({
+            mainDb.addTask({
                 text: `Review Repeating Topic: ${topic}`,
                 date: tomorrowStr,
                 calendar: 'focus',
