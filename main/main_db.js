@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3');
+﻿const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const cloudDb = require('./cloudDb');
@@ -14,11 +14,14 @@ try {
 }
 
 let dbPath = 'chrono.db';
+let activeUserId = 'local_user';
+let userIndexPath = null;
 try {
     const { app } = require('electron');
     if (app) {
         const userDataPath = app.getPath('userData');
         if (userDataPath) {
+            userIndexPath = path.join(userDataPath, 'chrono_user.json');
             dbPath = path.join(userDataPath, 'chrono.db');
         }
     }
@@ -26,30 +29,199 @@ try {
     console.warn("Could not load Electron app paths, falling back to local database path.");
 }
 
+// Support a test/dev override when Electron `app` is not available.
+if (!userIndexPath && process.env.CHRONO_USER_DATA) {
+    try {
+        const userDataPath = process.env.CHRONO_USER_DATA;
+        userIndexPath = path.join(userDataPath, 'chrono_user.json');
+        dbPath = path.join(userDataPath, 'chrono.db');
+    } catch (e) {
+        console.warn('Failed to apply CHRONO_USER_DATA override:', e.message);
+    }
+}
+
+function sanitizeUserId(userId) {
+    if (!userId) return 'local_user';
+    return String(userId)
+        .replace(/[^a-z0-9_-]/gi, '_')
+        .substring(0, 64) || 'local_user';
+}
+
+function getUserDbPath(userId) {
+    if (!userIndexPath) {
+        return dbPath;
+    }
+    const safeId = sanitizeUserId(userId || 'local_user');
+    return path.join(path.dirname(userIndexPath), `chrono_${safeId}.db`);
+}
+
+function loadActiveUserId() {
+    if (userIndexPath && fs.existsSync(userIndexPath)) {
+        try {
+            const saved = JSON.parse(fs.readFileSync(userIndexPath, 'utf-8'));
+            if (saved && saved.activeUserId) {
+                return saved.activeUserId;
+            }
+        } catch (err) {
+            console.warn('Failed to read active user index:', err.message);
+        }
+    }
+    // Legacy support: if the legacy chrono.db exists and contains an authenticated user id,
+    // use that as the active DB identifier.
+    if (userIndexPath) {
+        const legacyPath = path.join(path.dirname(userIndexPath), 'chrono.db');
+        if (fs.existsSync(legacyPath)) {
+            try {
+                const legacyDb = new Database(legacyPath, { readonly: true });
+                const row = legacyDb.prepare("SELECT value FROM sync_meta WHERE key = 'auth_user_id'").get();
+                legacyDb.close();
+                if (row && row.value) {
+                    return row.value;
+                }
+            } catch (err) {
+                console.warn('Failed to read legacy sync_meta for auth_user_id:', err.message);
+            }
+        }
+    }
+    return 'local_user';
+}
+
+function persistActiveUserId(userId) {
+    if (!userIndexPath) return;
+    try {
+        fs.writeFileSync(userIndexPath, JSON.stringify({ activeUserId: userId }), 'utf-8');
+    } catch (err) {
+        console.warn('Failed to persist active user index:', err.message);
+    }
+}
+
+function copyLegacyDbTo(targetPath) {
+    if (!userIndexPath) return;
+    const legacyPath = path.join(path.dirname(userIndexPath), 'chrono.db');
+    if (fs.existsSync(legacyPath) && !fs.existsSync(targetPath)) {
+        try {
+            fs.copyFileSync(legacyPath, targetPath);
+        } catch (err) {
+            console.warn('Failed to migrate legacy database file:', err.message);
+        }
+    }
+}
+
+// Internal DB reference (will be opened later) and stable proxy exported as `db`
+let db = null;
+const dbProxy = new Proxy({}, {
+    get(target, prop) {
+        if (!db) {
+            throw new Error('Database not initialized yet');
+        }
+        const val = db[prop];
+        if (typeof val === 'function') return val.bind(db);
+        return val;
+    },
+    set(target, prop, value) {
+        if (!db) {
+            throw new Error('Database not initialized yet');
+        }
+        db[prop] = value;
+        return true;
+    }
+});
+
+function setCurrentUserId(userId) {
+    activeUserId = userId || 'local_user';
+    if (db && typeof db.function === 'function') {
+        db.function('current_user_id', () => activeUserId || 'local_user');
+    }
+}
+
+function openDatabaseAtPath(pathToOpen) {
+    if (!fs.existsSync(path.dirname(pathToOpen))) {
+        fs.mkdirSync(path.dirname(pathToOpen), { recursive: true });
+    }
+    let openedDb;
+    try {
+        openedDb = new Database(pathToOpen);
+        const check = openedDb.prepare("PRAGMA integrity_check").get();
+        if (check && check.integrity_check !== 'ok') {
+            throw new Error("Integrity check returned: " + JSON.stringify(check));
+        }
+    } catch (error) {
+        const nativeModuleMismatch =
+            error && (
+                error.code === 'ERR_DLOPEN_FAILED' ||
+                String(error.message || '').includes('NODE_MODULE_VERSION')
+            );
+        if (nativeModuleMismatch) {
+            console.error("SQLite native driver failed to load. Database file was not modified.", error.message);
+            throw error;
+        }
+        console.error("⚠️ SQLite Database Integrity Check Failed! Recreating database...", error);
+        try {
+            if (openedDb) openedDb.close();
+        } catch (closeErr) {}
+        if (fs.existsSync(pathToOpen)) {
+            const corruptPath = path.join(path.dirname(pathToOpen), `chrono_corrupt_${Date.now()}.db`);
+            fs.renameSync(pathToOpen, corruptPath);
+        }
+        openedDb = new Database(pathToOpen);
+    }
+    if (typeof openedDb.function === 'function') {
+        openedDb.function('current_user_id', () => activeUserId || 'local_user');
+    }
+    return openedDb;
+}
+
+function setActiveUserId(newUserId) {
+    const normalizedUserId = newUserId || 'local_user';
+    const newDbPath = getUserDbPath(normalizedUserId);
+    if (newDbPath === dbPath) {
+        setCurrentUserId(normalizedUserId);
+        persistActiveUserId(normalizedUserId);
+        return;
+    }
+    if (db) {
+        try {
+            if (activeUserId === 'local_user' && normalizedUserId !== 'local_user' && !fs.existsSync(newDbPath)) {
+                copyLegacyDbTo(newDbPath);
+            }
+            db.close();
+        } catch (err) {
+            console.warn('Failed to close previous database:', err.message);
+        }
+    }
+    activeUserId = normalizedUserId;
+    dbPath = newDbPath;
+    db = openDatabaseAtPath(dbPath);
+    // Ensure metadata table exists on newly opened per-user DB so setSyncMeta can run
+    try {
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS sync_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        `).run();
+    } catch (e) {
+        console.warn('Failed to ensure sync_meta on new DB:', e.message);
+    }
+    setCurrentUserId(normalizedUserId);
+    persistActiveUserId(activeUserId);
+}
+
 const dbDir = path.dirname(dbPath);
 if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }
 
-let db;
-try {
-    // Open DB and check integrity
-    db = new Database(dbPath);
-    const check = db.prepare("PRAGMA integrity_check").get();
-    if (check && check.integrity_check !== 'ok') {
-        throw new Error("Integrity check returned: " + JSON.stringify(check));
-    }
-} catch (error) {
-    console.error("🚨 SQLite Database Integrity Check Failed! Recreating database...", error);
-    try {
-        if (db) db.close();
-    } catch (closeErr) {}
-    if (fs.existsSync(dbPath)) {
-        const corruptPath = path.join(dbDir, `chrono_corrupt_${Date.now()}.db`);
-        fs.renameSync(dbPath, corruptPath);
-    }
-    db = new Database(dbPath);
+// If the active user index file is present, use it; otherwise, migrate legacy base DB into local_user or the authenticated user's DB.
+const chosenActiveUserId = loadActiveUserId();
+activeUserId = chosenActiveUserId;
+const chosenDbPath = getUserDbPath(activeUserId);
+if (userIndexPath && !fs.existsSync(chosenDbPath) && fs.existsSync(path.join(path.dirname(userIndexPath), 'chrono.db'))) {
+    copyLegacyDbTo(chosenDbPath);
 }
+dbPath = chosenDbPath;
+db = openDatabaseAtPath(dbPath);
+setCurrentUserId(activeUserId);
 
 // Create metadata table first
 db.prepare(`
@@ -71,7 +243,7 @@ if (tableInfo.length > 0) {
 }
 
 if (requiresMigration) {
-    console.log("⚠️ Old INTEGER tasks table schema detected. Starting migration to UUID-based Offline-Sync schema...");
+    console.log("âš ï¸ Old INTEGER tasks table schema detected. Starting migration to UUID-based Offline-Sync schema...");
     
     // 1. Fetch old tasks
     const oldTasks = db.prepare('SELECT * FROM tasks').all();
@@ -106,7 +278,7 @@ if (requiresMigration) {
             0  // Not deleted
         );
     }
-    console.log(`✅ Successfully migrated ${oldTasks.length} legacy tasks to offline-sync UUID model.`);
+    console.log(`âœ… Successfully migrated ${oldTasks.length} legacy tasks to offline-sync UUID model.`);
 } else {
     createNewTasksTable();
 }
@@ -229,6 +401,60 @@ db.prepare(`
         rationale TEXT,
         applied INTEGER DEFAULT 1,
         undo_data TEXT
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chat_experience_turns (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        user_input TEXT NOT NULL,
+        ai_response TEXT,
+        depth_level INTEGER DEFAULT 0,
+        depth_label TEXT DEFAULT 'ordinary',
+        familiarity_level TEXT DEFAULT 'new',
+        mode TEXT DEFAULT 'practical',
+        created_at INTEGER NOT NULL
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chat_questions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        parent_id TEXT,
+        question_text TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        depth_level INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chat_hypotheses (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        hypothesis TEXT NOT NULL,
+        evidence TEXT DEFAULT '[]',
+        counterevidence TEXT DEFAULT '[]',
+        confidence REAL DEFAULT 0.5,
+        status TEXT DEFAULT 'active',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chat_misunderstandings (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        previous_belief TEXT,
+        correction TEXT,
+        missing_distinction TEXT,
+        recurrence_count INTEGER DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
     )
 `).run();
 
@@ -501,7 +727,7 @@ try {
 // Seed default templates if empty
 const templateCount = db.prepare("SELECT COUNT(*) as count FROM relationship_templates").get();
 if (templateCount && templateCount.count === 0) {
-    console.log("🌱 Seeding default relationship templates...");
+    console.log("ðŸŒ± Seeding default relationship templates...");
     const insertTemplate = db.prepare(`
         INSERT INTO relationship_templates (id, name, description)
         VALUES (?, ?, ?)
@@ -516,129 +742,35 @@ if (templateCount && templateCount.count === 0) {
     for (const tmpl of defaultTemplates) {
         insertTemplate.run(tmpl.id, tmpl.name, tmpl.description);
     }
-    console.log("✅ Seeding relationship templates completed.");
+    console.log("âœ… Seeding relationship templates completed.");
 }
 
-// Check environment to decide if we seed test peer relationships
-let isDevOrTest = false;
-try {
-    const { app } = require('electron');
-    isDevOrTest = app && !app.isPackaged;
-} catch (e) {
-    // Safe fallback for CLI test suites or if electron main process hasn't finished setup
-    isDevOrTest = true;
-}
-if (process.env.NODE_ENV === 'test' || process.env.CHRONO_ENV === 'test' || process.env.CHRONO_SEED_TEST_PEERS === 'true') {
-    isDevOrTest = true;
-}
+// Demo peer seeding removed: people must be added by the user.
 
-// Seed default peer profiles if relationships is empty AND we are in test/dev mode
-const relationshipCount = db.prepare("SELECT COUNT(*) as count FROM relationships").get();
-if (relationshipCount && relationshipCount.count === 0 && isDevOrTest) {
-    console.log("🌱 Seeding default relationships for Princess and friends...");
-    const seedTime = Date.now();
-    const defaultPeers = [
-        { id: 'rel_princess', name: 'Princess', role: 'Study Partner', pic: '👑' },
-        { id: 'rel_rayhaan', name: 'Rayhaan', role: 'Project Partner', pic: '🚀' },
-        { id: 'rel_sana', name: 'Sana', role: 'Study Partner', pic: '✨' },
-        { id: 'rel_tara', name: 'Tara', role: 'Study Partner', pic: '🌸' },
-        { id: 'rel_anwesha', name: 'Anwesha', role: 'Study Partner', pic: '💫' }
-    ];
 
-    const insertPeer = db.prepare(`
-        INSERT INTO relationships (id, user_id, name, role, display_picture, created_at, updated_at)
-        VALUES (?, 'local_user', ?, ?, ?, ?, ?)
-    `);
 
-    for (const peer of defaultPeers) {
-        insertPeer.run(peer.id, peer.name, peer.role, peer.pic, seedTime, seedTime);
+
+const DEMO_PEER_IDS = ['rel_princess', 'rel_rayhaan', 'rel_sana', 'rel_tara', 'rel_anwesha'];
+if (process.env.CHRONO_SEED_TEST_PEERS !== 'true') {
+    try {
+        const placeholders = DEMO_PEER_IDS.map(() => '?').join(', ');
+        const cleanupDemoPeers = db.transaction(() => {
+            db.prepare(`DELETE FROM shared_activities WHERE relationship_id IN (${placeholders})`).run(...DEMO_PEER_IDS);
+            db.prepare(`DELETE FROM shared_milestones WHERE peer_id IN (${placeholders})`).run(...DEMO_PEER_IDS);
+            db.prepare(`DELETE FROM relationship_interactions WHERE peer_id IN (${placeholders})`).run(...DEMO_PEER_IDS);
+            db.prepare(`DELETE FROM shared_memories WHERE peer_id IN (${placeholders})`).run(...DEMO_PEER_IDS);
+            db.prepare(`DELETE FROM continuity_metrics WHERE peer_id IN (${placeholders})`).run(...DEMO_PEER_IDS);
+            db.prepare("DELETE FROM tasks WHERE id = 'e_shared_study_princess'").run();
+            db.prepare(`DELETE FROM relationships WHERE id IN (${placeholders})`).run(...DEMO_PEER_IDS);
+        });
+        cleanupDemoPeers();
+    } catch (e) {
+        console.error("Failed to clean up demo peer profiles:", e.message);
     }
-
-    // Add some default shared activities to illustrate the feature
-    const firstGoal = db.prepare("SELECT id FROM goals WHERE user_id = 'local_user' LIMIT 1").get();
-    if (firstGoal) {
-        db.prepare(`
-            INSERT INTO shared_activities (id, relationship_id, activity_type, target_id, created_at, updated_at)
-            VALUES (?, 'rel_princess', 'goal', ?, ?, ?)
-        `).run('sha_goal_1', firstGoal.id, seedTime, seedTime);
-    }
-
-    // Create a default shared study session task
-    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-    const taskUuid = 'e_shared_study_princess';
-    db.prepare(`
-        INSERT OR REPLACE INTO tasks (id, text, date, calendar, completed, start_time, duration_min, updated_at, device_id, synced, deleted, visibility, shared_with)
-        VALUES (?, 'Calculus Peer Study with Princess', ?, 'study', 0, '15:00', 90, ?, 'server', 0, 0, 'shared_specific', '["rel_princess"]')
-    `).run(taskUuid, tomorrowStr, seedTime);
-
-    db.prepare(`
-        INSERT INTO shared_activities (id, relationship_id, activity_type, target_id, created_at, updated_at)
-        VALUES (?, 'rel_princess', 'event', ?, ?, ?)
-    `).run('sha_event_1', taskUuid, seedTime, seedTime);
-
-    // Seed default shared milestones for Princess and Rayhaan
-    const milestoneInsert = db.prepare(`
-        INSERT OR REPLACE INTO shared_milestones (id, title, description, target_date, peer_id, status, importance_score, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    // Princess Milestones
-    milestoneInsert.run('ms_cal_midterm', 'Passed Calculus Midterm', 'Aced the midterm exam with solid grades through collective focus.', '2026-04-15', 'rel_princess', 'completed', 9, seedTime, seedTime);
-    milestoneInsert.run('ms_chrono_cal', 'Launched Chrono OS Collaborative Calendar', 'Shipped the first joint calendar layers for multiplayer study sync.', '2026-05-20', 'rel_princess', 'completed', 8, seedTime, seedTime);
-    milestoneInsert.run('ms_semester_end', 'Finish Semester 4 Exams', 'Goal to graduate the semester with high distinction.', '2026-06-25', 'rel_princess', 'active', 8, seedTime, seedTime);
-
-    // Rayhaan Milestones
-    milestoneInsert.run('ms_micro_kickoff', 'Hardware Microcontrollers Lab Kickoff', 'Formed project partnership and initialized hardware repository.', '2026-05-02', 'rel_rayhaan', 'completed', 7, seedTime, seedTime);
-    milestoneInsert.run('ms_micro_demo', 'Completed Microcontroller Demo', 'Successful breadboard prototype with real-time sensor logging.', '2026-05-28', 'rel_rayhaan', 'completed', 8, seedTime, seedTime);
-
-    // Seed relationship interactions for metrics & trend calculation
-    const interactionInsert = db.prepare(`
-        INSERT OR REPLACE INTO relationship_interactions (id, peer_id, interaction_type, timestamp)
-        VALUES (?, ?, ?, ?)
-    `);
-
-    // Princess Interactions: 6 in last 30 days, 2 in previous 30 days -> Growing/Stable
-    const nowMs = Date.now();
-    const dayMs = 86400000;
-    interactionInsert.run('int_pr_1', 'rel_princess', 'study', nowMs - 2 * dayMs);
-    interactionInsert.run('int_pr_2', 'rel_princess', 'conversation', nowMs - 5 * dayMs);
-    interactionInsert.run('int_pr_3', 'rel_princess', 'meeting', nowMs - 9 * dayMs);
-    interactionInsert.run('int_pr_4', 'rel_princess', 'study', nowMs - 12 * dayMs);
-    interactionInsert.run('int_pr_5', 'rel_princess', 'project', nowMs - 19 * dayMs);
-    interactionInsert.run('int_pr_6', 'rel_princess', 'study', nowMs - 25 * dayMs);
-    interactionInsert.run('int_pr_7', 'rel_princess', 'conversation', nowMs - 35 * dayMs);
-    interactionInsert.run('int_pr_8', 'rel_princess', 'meeting', nowMs - 45 * dayMs);
-
-    // Rayhaan Interactions: 2 in last 30 days, 4 in previous 30 days -> Drifting / Declining
-    interactionInsert.run('int_ray_1', 'rel_rayhaan', 'project', nowMs - 4 * dayMs);
-    interactionInsert.run('int_ray_2', 'rel_rayhaan', 'meeting', nowMs - 15 * dayMs);
-    interactionInsert.run('int_ray_3', 'rel_rayhaan', 'project', nowMs - 33 * dayMs);
-    interactionInsert.run('int_ray_4', 'rel_rayhaan', 'study', nowMs - 38 * dayMs);
-    interactionInsert.run('int_ray_5', 'rel_rayhaan', 'meeting', nowMs - 48 * dayMs);
-    interactionInsert.run('int_ray_6', 'rel_rayhaan', 'conversation', nowMs - 55 * dayMs);
-
-    // Sana Interactions: 3 in last 30 days -> Stable
-    interactionInsert.run('int_sa_1', 'rel_sana', 'study', nowMs - 3 * dayMs);
-    interactionInsert.run('int_sa_2', 'rel_sana', 'study', nowMs - 11 * dayMs);
-    interactionInsert.run('int_sa_3', 'rel_sana', 'conversation', nowMs - 22 * dayMs);
-
-    // Seed shared memories
-    const memoryInsert = db.prepare(`
-        INSERT OR REPLACE INTO shared_memories (id, peer_id, title, summary, importance, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    memoryInsert.run('sm_pr_1', 'rel_princess', 'Calculus Cram Session', 'Studied derivatives and limits for 4 hours. Ordered pizza and passed the exam.', 8, nowMs - 35 * dayMs);
-    memoryInsert.run('sm_pr_2', 'rel_princess', 'Chrono Sync Testing', 'Completed websocket testing on Supabase and verified offline synchronization caches.', 9, nowMs - 12 * dayMs);
-    memoryInsert.run('sm_ray_1', 'rel_rayhaan', 'Late Night Lab Session', 'Debugged the SPI communication logic on the microcontroller board till 2 AM.', 8, nowMs - 15 * dayMs);
-
-    console.log("✅ Finished seeding peer profiles and shared study session.");
 }
-
-
-
 
 // ========================================
-// 🛠️ DATABASE UTILITY METHODS
+// ðŸ› ï¸ DATABASE UTILITY METHODS
 // ========================================
 
 function generateUUID() {
@@ -959,15 +1091,21 @@ function setSyncMeta(key, value) {
             const encryptedBuffer = safeStorage.encryptString(String(value));
             const hexString = encryptedBuffer.toString('hex');
             db.prepare("INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)").run(key, hexString);
+            if (key === 'auth_user_id') {
+                setActiveUserId(value || 'local_user');
+            }
             return;
         } catch (err) {
             console.error(`Encryption failed for key ${key}:`, err.message);
         }
     }
+    if (key === 'auth_user_id') {
+        setActiveUserId(value || 'local_user');
+    }
     db.prepare("INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)").run(key, String(value));
 }
 
-// 🛡️ TRUST KILLER PREVENTION TABLES (Original Chrono Framework)
+// ðŸ›¡ï¸ TRUST KILLER PREVENTION TABLES (Original Chrono Framework)
 // Operation logging for data integrity & silent failure detection
 db.prepare(`
     CREATE TABLE IF NOT EXISTS operation_log (
@@ -997,8 +1135,12 @@ db.prepare(`
 `).run();
 
 module.exports = {
-    db,
-    dbPath,
+    db: dbProxy,
+    // `dbPath` can change when switching users; provide a dynamic getter below
+    getDbPath: () => dbPath,
+    getActiveUserId: () => activeUserId,
+    setActiveUserId,
+    getUserDbPath,
     generateUUID,
     getDeviceId,
     addTask,
@@ -1010,3 +1152,9 @@ module.exports = {
     getSyncMeta,
     setSyncMeta
 };
+
+// Backwards-compat: allow `require('./main_db').dbPath` to reflect current path
+Object.defineProperty(module.exports, 'dbPath', {
+    get() { return dbPath; }
+});
+
