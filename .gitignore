@@ -2,5 +2,13 @@ node_modules
 # Keep environment variables out of version control
 .env
 
+# Build and runtime artifacts
+/dist
+*.exe
+*.blockmap
+chrono.db
+chrono_app_test_data/
+output/
+
 /generated/prisma
 server/backups/
