@@ -1,10 +1,16 @@
 {
     "name": "chrono",
     "version": "2.0.0",
+    "description": "Chrono personal productivity and AI assistance desktop application.",
+    "author": "Chrono Team <barnes.vianalen@gmail.com>",
     "main": "main/main.js",
     "scripts": {
         "start": "electron .",
-        "build": "electron-builder"
+        "build": "electron-builder",
+        "build:win": "electron-builder --win",
+        "build:linux": "electron-builder --linux",
+        "build:mac": "electron-builder --mac",
+        "build:all": "electron-builder --win --linux --mac"
     },
     "devDependencies": {
         "electron": "^41.0.4",
@@ -23,9 +29,16 @@
             "server/**/*",
             "package.json"
         ],
+        "icon": "build/icon.png",
         "win": {
-            "target": "nsis",
-            "icon": "build/icon.png"
+            "target": "nsis"
+        },
+        "mac": {
+            "target": ["dmg", "zip"]
+        },
+        "linux": {
+            "target": ["AppImage", "deb"],
+            "category": "Utility"
         },
         "nsis": {
             "oneClick": false,
