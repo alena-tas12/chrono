@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Google Fonts for premium modern typography -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#3f75ff">
 </head>
 <body>
     <div class="appShell">
@@ -1208,5 +1210,12 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').catch(function(e){
+                console.warn('ServiceWorker registration failed:', e);
+            });
+        }
+    </script>
 </body>
 </html>
