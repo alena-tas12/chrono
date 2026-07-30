@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, Menu, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, screen, dialog } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const cloudDb = require('./cloudDb');
 const googleAuth = require('./googleAuth');
@@ -435,9 +436,19 @@ ipcMain.handle('ai-response', async (event, data) => {
     }
 });
 
-// Safe save-chat handler to prevent IPC registration error
-ipcMain.handle('save-chat', (event, message, response) => {
-    return { saved: true };
+// Safe save-chat handler to persist chat memory and avoid lost conversations
+ipcMain.handle('save-chat', async (event, message, response, context = {}) => {
+    try {
+        memory.saveChatWithContext(message, response, {
+            emotion: context.emotion || 'neutral',
+            attention: context.attention || 'open',
+            priority: context.priority || null
+        });
+        return { saved: true };
+    } catch (err) {
+        console.error('Failed to save chat message:', err);
+        return { saved: false, error: err.message };
+    }
 });
 
 // complete-task handler to mark tasks as completed in SQLite
@@ -472,6 +483,59 @@ ipcMain.handle('get-history', () => {
 
 ipcMain.handle('get-chat-history', (event, limit) => {
     return memory.getRecentChats(limit || 50);
+});
+
+ipcMain.handle('backup-chat-history', async () => {
+    try {
+        const backupFilePath = await dialog.showSaveDialog(win, {
+            title: 'Export Chat History Backup',
+            defaultPath: path.join(app.getPath('documents'), 'chrono-chat-backup.json'),
+            filters: [{ name: 'JSON', extensions: ['json'] }]
+        });
+
+        if (backupFilePath.canceled || !backupFilePath.filePath) {
+            return { success: false, message: 'Chat backup cancelled.' };
+        }
+
+        const data = memory.getChatBackupData();
+        fs.writeFileSync(backupFilePath.filePath, JSON.stringify(data, null, 2), 'utf8');
+        return { success: true, file: backupFilePath.filePath };
+    } catch (err) {
+        console.error('Failed to backup chat history:', err);
+        return { success: false, message: err.message };
+    }
+});
+
+ipcMain.handle('restore-chat-history', async () => {
+    try {
+        const selected = await dialog.showOpenDialog(win, {
+            title: 'Restore Chat History Backup',
+            properties: ['openFile'],
+            filters: [{ name: 'JSON', extensions: ['json'] }]
+        });
+
+        if (selected.canceled || !selected.filePaths || selected.filePaths.length === 0) {
+            return { success: false, message: 'Chat restore cancelled.' };
+        }
+
+        const raw = fs.readFileSync(selected.filePaths[0], 'utf8');
+        const imported = JSON.parse(raw);
+        await memory.importChatBackupData(imported);
+        return { success: true, restored: true };
+    } catch (err) {
+        console.error('Failed to restore chat history:', err);
+        return { success: false, message: err.message };
+    }
+});
+
+ipcMain.handle('reset-chat-history', async () => {
+    try {
+        await memory.resetChatHistory();
+        return { success: true };
+    } catch (err) {
+        console.error('Failed to reset chat history:', err);
+        return { success: false, message: err.message };
+    }
 });
 
 ipcMain.handle('get-average-focus', () => {

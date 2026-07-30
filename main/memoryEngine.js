@@ -64,25 +64,29 @@ const decayConfig = {
 
 function saveChat(userInput, aiResponse) {
     const entry = {
+        id: mainDb.generateUUID(),
+        source: 'chat',
         userInput,
         aiResponse,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        emotion: 'neutral',
+        attention: 'open',
+        importance: 0.5
     };
 
     chatHistory.push(entry);
 
     // Determine memory type based on context
     const memoryType = classifyMemory(userInput, aiResponse);
-    saveToHierarchy(userInput, aiResponse, memoryType);
+    saveToHierarchy(entry, memoryType);
 
     try {
-        const uuid = mainDb.generateUUID();
         const deviceId = mainDb.getDeviceId();
         const updatedAt = Date.now();
         db.prepare(`
             INSERT OR REPLACE INTO memory_chat (id, user_input, ai_response, timestamp, updated_at, device_id, synced)
             VALUES (?, ?, ?, ?, ?, ?, 0)
-        `).run(uuid, userInput, aiResponse, entry.timestamp, updatedAt, deviceId);
+        `).run(entry.id, userInput, aiResponse, entry.timestamp, updatedAt, deviceId);
     } catch (e) {
         console.error("Failed to save chat to local memory db:", e.message);
     }
@@ -93,6 +97,8 @@ function saveChat(userInput, aiResponse) {
  */
 function saveChatWithContext(userInput, aiResponse, context = {}) {
     const entry = {
+        id: mainDb.generateUUID(),
+        source: 'chat',
         userInput,
         aiResponse,
         timestamp: Date.now(),
@@ -108,13 +114,12 @@ function saveChatWithContext(userInput, aiResponse, context = {}) {
     saveToHierarchy(entry, memoryType);
 
     try {
-        const uuid = mainDb.generateUUID();
         const deviceId = mainDb.getDeviceId();
         const updatedAt = Date.now();
         db.prepare(`
             INSERT OR REPLACE INTO memory_chat (id, user_input, ai_response, timestamp, updated_at, device_id, synced)
             VALUES (?, ?, ?, ?, ?, ?, 0)
-        `).run(uuid, userInput, aiResponse, entry.timestamp, updatedAt, deviceId);
+        `).run(entry.id, userInput, aiResponse, entry.timestamp, updatedAt, deviceId);
     } catch (e) {
         console.error("Failed to save chat with context to local memory db:", e.message);
     }
@@ -205,6 +210,67 @@ function saveToHierarchy(entry, memoryType = 'shortTerm') {
 
 function getRecentChats(limit = 5) {
     return chatHistory.slice(-limit);
+}
+
+function resetChatHistory() {
+    chatHistory = [];
+    for (const type in memoryHierarchy) {
+        memoryHierarchy[type] = memoryHierarchy[type].filter(mem => mem.source !== 'chat');
+    }
+    try {
+        db.prepare('DELETE FROM memory_chat').run();
+    } catch (e) {
+        console.error('Failed to clear chat history from DB:', e.message);
+    }
+}
+
+function getChatBackupData() {
+    try {
+        return db.prepare('SELECT * FROM memory_chat ORDER BY timestamp ASC').all();
+    } catch (e) {
+        console.error('Failed to read chat backup data:', e.message);
+        return [];
+    }
+}
+
+function importChatBackupData(entries = []) {
+    if (!Array.isArray(entries)) {
+        throw new Error('Expected an array of chat backup entries');
+    }
+
+    const insertStmt = db.prepare(`
+        INSERT OR REPLACE INTO memory_chat (id, user_input, ai_response, timestamp, updated_at, device_id, synced)
+        VALUES (?, ?, ?, ?, ?, ?, 0)
+    `);
+
+    const insertTransaction = db.transaction((items) => {
+        items.forEach(item => {
+            const id = item.id || mainDb.generateUUID();
+            const timestamp = item.timestamp || Date.now();
+            const deviceId = mainDb.getDeviceId();
+            const updatedAt = Date.now();
+            const userInput = item.userInput || item.user_input || '';
+            const aiResponse = item.aiResponse || item.ai_response || '';
+            insertStmt.run(id, userInput, aiResponse, timestamp, updatedAt, deviceId);
+
+            const entry = {
+                id,
+                source: 'chat',
+                userInput,
+                aiResponse,
+                timestamp,
+                emotion: item.emotion || 'neutral',
+                attention: item.attention || 'open',
+                importance: item.importance || 0.5
+            };
+            chatHistory.push(entry);
+            const memoryType = classifyMemory(userInput, aiResponse, { emotion: entry.emotion, attention: entry.attention });
+            saveToHierarchy(entry, memoryType);
+        });
+    });
+
+    insertTransaction(entries);
+    return entries.length;
 }
 
 /**
@@ -638,16 +704,21 @@ function initializeMemory() {
         const chats = db.prepare("SELECT * FROM memory_chat ORDER BY timestamp ASC").all();
         chats.forEach(row => {
             const entry = {
-                userInput: row.user_input,
-                aiResponse: row.ai_response,
-                timestamp: row.timestamp,
-                emotion: 'neutral',
-                attention: 'open',
-                importance: 0.5
-            };
-            chatHistory.push(entry);
-            const memoryType = classifyMemory(row.user_input, row.ai_response);
-            saveToHierarchy(entry, memoryType);
+                    id: row.id || mainDb.generateUUID(),
+                    source: row.source || 'chat',
+                    userInput: row.user_input,
+                    aiResponse: row.ai_response,
+                    timestamp: row.timestamp,
+                    emotion: row.emotion || 'neutral',
+                    attention: row.attention || 'open',
+                    importance: row.importance || 0.5
+                };
+                chatHistory.push(entry);
+                const memoryType = classifyMemory(row.user_input, row.ai_response, {
+                    emotion: entry.emotion,
+                    attention: entry.attention
+                });
+                saveToHierarchy(entry, memoryType);
         });
 
         console.log(`🧠 Memory initialized: loaded ${sessionHistory.length} sessions and ${chatHistory.length} chats from DB.`);
@@ -685,6 +756,9 @@ module.exports = {
     getCoreIdentity,
     getPatterns,
     pruneMemories,
+    resetChatHistory,
+    getChatBackupData,
+    importChatBackupData,
 
     // Context compression
     compressContext,

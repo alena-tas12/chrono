@@ -39,6 +39,53 @@ function addChatMessage(text, type) {
     box.scrollTop = box.scrollHeight;
 }
 
+async function backupChatHistory() {
+    try {
+        const result = await ipcRenderer.invoke('backup-chat-history');
+        if (result.success) {
+            addChatMessage('Your conversation history has been saved to a backup file.', 'ai');
+        } else {
+            addChatMessage(result.message || 'Chat backup was cancelled.', 'ai');
+        }
+    } catch (err) {
+        console.error('Failed to backup chat history:', err);
+        addChatMessage('Unable to create chat backup right now.', 'ai');
+    }
+}
+
+async function restoreChatHistory() {
+    try {
+        const result = await ipcRenderer.invoke('restore-chat-history');
+        if (result.success) {
+            await loadChatHistory();
+            addChatMessage('Chat history restored from backup. Your AI memory has been refreshed.', 'ai');
+        } else {
+            addChatMessage(result.message || 'Chat restore was cancelled.', 'ai');
+        }
+    } catch (err) {
+        console.error('Failed to restore chat history:', err);
+        addChatMessage('Unable to restore chat history right now.', 'ai');
+    }
+}
+
+async function resetChatHistory() {
+    const confirmReset = confirm('This will remove your local chat history and reset conversation memory. Continue?');
+    if (!confirmReset) return;
+
+    try {
+        const result = await ipcRenderer.invoke('reset-chat-history');
+        if (result.success) {
+            await loadChatHistory();
+            addChatMessage('Chat history has been reset. We can start fresh from here.', 'ai');
+        } else {
+            addChatMessage(result.message || 'Chat reset was cancelled.', 'ai');
+        }
+    } catch (err) {
+        console.error('Failed to reset chat history:', err);
+        addChatMessage('Unable to reset chat history right now.', 'ai');
+    }
+}
+
 async function loadChatHistory() {
     try {
         let history = [];
@@ -979,6 +1026,11 @@ async function sendChat() {
             response = await apiCall('/api/chat', 'POST', { input: message, selectedDate, activeView, taskCount: tasks.length });
             responseText = response?.response || 'I’m here. Let’s start fresh.';
             callSuccessful = true;
+            await ipcRenderer.invoke('save-chat', message, responseText, {
+                source: 'cloud',
+                selectedDate,
+                activeView
+            }).catch(() => {});
         } catch (e) {
             console.warn("Direct Supabase Chat failed, falling back to local orchestrator.");
         }
@@ -987,7 +1039,6 @@ async function sendChat() {
     if (!callSuccessful) {
         response = await ipcRenderer.invoke('ai-response', { userInput: message, selectedDate, activeView, taskCount: tasks.length });
         responseText = response?.response || 'I’m here. Let’s start fresh.';
-        await ipcRenderer.invoke('save-chat', message, responseText).catch(() => {});
     }
 
     addChatMessage(responseText, 'ai');
@@ -1300,6 +1351,9 @@ window.onload = () => {
     window.toggleDebugPanel = toggleDebugPanel;
     window.setResponse = setResponse;
     window.sendChat = sendChat;
+    window.backupChatHistory = backupChatHistory;
+    window.restoreChatHistory = restoreChatHistory;
+    window.resetChatHistory = resetChatHistory;
     window.addTask = addTask;
     window.addLeftTask = addLeftTask;
     window.toggleDock = toggleDock;
