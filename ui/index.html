@@ -117,7 +117,10 @@
                                 <button class="headerButton" id="togglePanelBtn">Panel</button>
                                 <button class="headerButton" id="toggleMenuBtn">Menu</button>
                                 <button class="headerButton" id="toggleDebugBtn">Debug</button>
+                                <button class="headerButton" id="importTimetableBtn" onclick="triggerTimetableImport()">Import Timetable</button>
+                                <input id="timetableFileInput" type="file" accept=".csv,.ics,.json" style="display:none" onchange="handleTimetableFile(event)" />
                             </div>
+                            <div id="timetableImportStatus" class="importStatus" style="margin-top: 8px; font-size: 12px; color: var(--text-muted);"></div>
                         </div>
                     </div>
 
@@ -908,6 +911,9 @@
                     <div class="chatTitle">Chrono AI</div>
                     <div class="chatHeaderActions">
                         <button class="smallBtn" id="toggleDockBtn" onclick="toggleDock()">🔄 Dock</button>
+                        <button class="smallBtn" onclick="backupChatHistory()">💾 Backup</button>
+                        <button class="smallBtn" onclick="restoreChatHistory()">🗂️ Restore</button>
+                        <button class="smallBtn" onclick="resetChatHistory()">⚠️ Reset</button>
                     </div>
                 </div>
 

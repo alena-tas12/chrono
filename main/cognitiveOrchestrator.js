@@ -28,6 +28,7 @@ const reflectionEngine = require('./reflectionEngine');
 const cognitiveProfile = require('./cognitiveProfile');
 const goalIntelligence = require('./goalIntelligence');
 const multiAgent = require('./multiAgentSystem');
+const contextCompression = require('./contextCompression');
 
 // ========================================
 // 🎯 COGNITIVE STATE STRUCTURE
@@ -249,6 +250,11 @@ async function generateOrchestratedResponse(input, metadata = {}) {
     // 1.6 Calculate memory decay periodically
     memory.calculateMemoryDecay();
 
+    // 1.6a Generate compressed memory summary to avoid raw chat bloating
+    const memorySummary = contextCompression.createAbstraction(memory.getHierarchicalMemories(60));
+    cognitiveState.memory.activeContext = memorySummary ? memorySummary.summary : null;
+    cognitiveState.continuity.conversationTheme = memorySummary?.themes?.[0] || cognitiveState.continuity.conversationTheme;
+
     // 1.7 Safety assessment (dependency, escalation, attachment loops)
     const safetyAssessment = safetyFramework.assessSafety(
         userModel.getUserModel(),
@@ -320,11 +326,15 @@ async function generateOrchestratedResponse(input, metadata = {}) {
     let agentResult = null;
     try {
         const userId = mainDb.getSyncMeta('auth_user_id') || 'local_user';
+        const selectedMemories = contextCompression.selectiveRecall(input, 400);
         agentResult = await multiAgent.processAgentQuery(input, {
             displayName: userModel.getUserModel().display_name || 'friend',
             cognitiveStyle: cognitiveState.response.tone,
             taskCount: metadata.tasks ? metadata.tasks.length : 0,
-            selectedDate: metadata.selectedDate
+            selectedDate: metadata.selectedDate,
+            memorySummary: cognitiveState.memory.activeContext,
+            recentMemories: selectedMemories,
+            compressedContext: contextCompression.getCompressedContext(3)
         });
     } catch(err) {
         console.error("Orchestrator: failed to process agent query:", err);
@@ -335,7 +345,10 @@ async function generateOrchestratedResponse(input, metadata = {}) {
         response = agentResult.response;
         cognitiveState.response.tone = agentResult.tone || 'supportive';
     } else {
-        response = synthesizeResponse(prioritized);
+        response = synthesizeResponse(prioritized, {
+            memorySummary: cognitiveState.memory.activeContext,
+            recentMemories: contextCompression.selectiveRecall(input, 250)
+        });
     }
 
     // 4.5 Cognitive adaptation — density, tone, executive support, calendar interpreter
@@ -395,6 +408,13 @@ async function generateOrchestratedResponse(input, metadata = {}) {
         attention: cognitiveState.attention.focus,
         priority: cognitiveState.attention.priority
     });
+
+    // 8.1 Keep long-term memory compressed and abstracted
+    try {
+        contextCompression.compressOldMemories(7);
+    } catch (err) {
+        console.error('Failed to compress old memories:', err);
+    }
 
     // Proactively generate/update daily reflection and recalculate cognitive profile
     reflectionEngine.generateDailyReflection(userId, metadata.selectedDate);
@@ -482,11 +502,10 @@ function prioritizeEngineOutputs(contributions) {
  * Synthesize final response from prioritized inputs
  * Enhanced for natural flow, emotional smoothness, and conversational rhythm
  */
-function synthesizeResponse(prioritized) {
+function synthesizeResponse(prioritized, context = {}) {
     const primary = prioritized[0];
     const userProfile = userModel.getUserProfileSummary();
     let response = '';
-
     // Get base response from primary engine
     let baseResponse = '';
     if (primary.source === 'presenceEngine' && cognitiveState.attention.focus !== 'focused') {
@@ -503,6 +522,10 @@ function synthesizeResponse(prioritized) {
 
     // Apply synthesis quality enhancements
     response = enhanceResponseQuality(baseResponse, userProfile, primary);
+
+    if (context.memorySummary) {
+        response += ` I also remember that ${context.memorySummary}`;
+    }
 
     return response;
 }

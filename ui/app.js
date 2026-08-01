@@ -39,6 +39,53 @@ function addChatMessage(text, type) {
     box.scrollTop = box.scrollHeight;
 }
 
+async function backupChatHistory() {
+    try {
+        const result = await ipcRenderer.invoke('backup-chat-history');
+        if (result.success) {
+            addChatMessage('Your conversation history has been saved to a backup file.', 'ai');
+        } else {
+            addChatMessage(result.message || 'Chat backup was cancelled.', 'ai');
+        }
+    } catch (err) {
+        console.error('Failed to backup chat history:', err);
+        addChatMessage('Unable to create chat backup right now.', 'ai');
+    }
+}
+
+async function restoreChatHistory() {
+    try {
+        const result = await ipcRenderer.invoke('restore-chat-history');
+        if (result.success) {
+            await loadChatHistory();
+            addChatMessage('Chat history restored from backup. Your AI memory has been refreshed.', 'ai');
+        } else {
+            addChatMessage(result.message || 'Chat restore was cancelled.', 'ai');
+        }
+    } catch (err) {
+        console.error('Failed to restore chat history:', err);
+        addChatMessage('Unable to restore chat history right now.', 'ai');
+    }
+}
+
+async function resetChatHistory() {
+    const confirmReset = confirm('This will remove your local chat history and reset conversation memory. Continue?');
+    if (!confirmReset) return;
+
+    try {
+        const result = await ipcRenderer.invoke('reset-chat-history');
+        if (result.success) {
+            await loadChatHistory();
+            addChatMessage('Chat history has been reset. We can start fresh from here.', 'ai');
+        } else {
+            addChatMessage(result.message || 'Chat reset was cancelled.', 'ai');
+        }
+    } catch (err) {
+        console.error('Failed to reset chat history:', err);
+        addChatMessage('Unable to reset chat history right now.', 'ai');
+    }
+}
+
 async function loadChatHistory() {
     try {
         let history = [];
@@ -440,6 +487,231 @@ async function addTask() {
     await updateJarvisSuggestions();
 }
 
+function triggerTimetableImport() {
+    const input = document.getElementById('timetableFileInput');
+    if (input) {
+        input.value = null;
+        input.click();
+    }
+}
+
+function setTimetableImportStatus(message, isError = false) {
+    const statusEl = document.getElementById('timetableImportStatus');
+    if (!statusEl) return;
+    statusEl.innerText = message;
+    statusEl.style.color = isError ? '#ef4444' : 'var(--text-muted)';
+}
+
+function parseCsvSchedule(text) {
+    const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
+    if (!lines.length) return [];
+    const headerLine = lines[0].trim();
+    const headers = headerLine.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(h => h.trim().toLowerCase());
+    return lines.slice(1).map(line => {
+        const values = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(v => v.trim().replace(/^\"|\"$/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+        });
+        return row;
+    });
+}
+
+function parseJsonSchedule(text) {
+    try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.events)) return parsed.events;
+        return [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function parseIcsSchedule(text) {
+    const cleaned = text.replace(/\r\n\s+/g, '');
+    const eventBlocks = cleaned.split(/BEGIN:VEVENT/i).slice(1);
+    return eventBlocks.map(block => {
+        const lines = block.split(/\r?\n/).filter(line => line.trim());
+        const event = {};
+        lines.forEach(line => {
+            const separatorIndex = line.indexOf(':');
+            if (separatorIndex < 0) return;
+            const name = line.slice(0, separatorIndex).split(';')[0].toUpperCase();
+            const value = line.slice(separatorIndex + 1);
+            event[name] = event[name] ? event[name] + '\n' + value : value;
+        });
+        return {
+            summary: event.SUMMARY || event.TITLE || '',
+            description: event.DESCRIPTION || '',
+            dtstart: event.DTSTART || event['DTSTART;TZID'] || '',
+            dtend: event.DTEND || event['DTEND;TZID'] || '',
+            location: event.LOCATION || '',
+            calendar: event.CATEGORIES || ''
+        };
+    });
+}
+
+function parseDateInput(value) {
+    if (!value) return null;
+    let candidate = value.trim();
+    if (/^\d{8}T\d{6}Z$/.test(candidate)) {
+        return new Date(candidate);
+    }
+    if (/^\d{8}T\d{6}$/.test(candidate)) {
+        const year = candidate.slice(0, 4);
+        const month = candidate.slice(4, 6);
+        const day = candidate.slice(6, 8);
+        const hours = candidate.slice(9, 11);
+        const minutes = candidate.slice(11, 13);
+        const seconds = candidate.slice(13, 15);
+        return new Date(`${year}-${month}-${day}T${hours}:${minutes}:${seconds}`);
+    }
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z)?$/.test(candidate)) {
+        return new Date(candidate);
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(candidate)) {
+        return new Date(candidate + 'T00:00:00');
+    }
+    if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(candidate)) {
+        return new Date(`${selectedDate}T${candidate}`);
+    }
+    const parsed = new Date(candidate);
+    return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatTimeString(date) {
+    if (!date || !(date instanceof Date)) return null;
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
+function guessTaskCalendar(summary, category) {
+    if (category) {
+        const normalized = category.toString().trim().toLowerCase();
+        if (['study', 'academic', 'class', 'lecture', 'exam', 'revision'].some(word => normalized.includes(word))) return 'Study';
+        if (['family', 'friend', 'social', 'parent', 'sibling', 'relative', 'dinner'].some(word => normalized.includes(word))) return 'Family';
+        if (['routine', 'habit', 'exercise', 'sleep', 'meditation', 'meal', 'commute', 'wellness'].some(word => normalized.includes(word))) return 'Routine';
+        if (['focus', 'deep work', 'project', 'presentation', 'meeting', 'call', 'interview', 'deadline', 'demo'].some(word => normalized.includes(word))) return 'Focus';
+        if (['personal', 'life', 'misc', 'other'].some(word => normalized.includes(word))) return 'Personal';
+    }
+    const summaryLower = (summary || '').toLowerCase();
+    if (/\b(study|lecture|class|exam|assignment|tutorial|lab|revision|course)\b/.test(summaryLower)) return 'Study';
+    if (/\b(family|mom|dad|sister|brother|friend|dinner|birthday|anniversary|parents|house)\b/.test(summaryLower)) return 'Family';
+    if (/\b(routine|habit|sleep|exercise|workout|meditation|meal|break|commute|self-care)\b/.test(summaryLower)) return 'Routine';
+    if (/\b(focus|deep work|project|presentation|meeting|call|interview|deadline|demo|review|plan|strategy|research)\b/.test(summaryLower)) return 'Focus';
+    return 'Personal';
+}
+
+function makeTaskFromSchedule(entry) {
+    const summary = entry.summary || entry.title || entry.event || entry.name || entry.text || entry.description || 'Untitled event';
+    const calendar = guessTaskCalendar(summary, entry.calendar || entry.category || entry.categories);
+    let startDate = null;
+    let endDate = null;
+    let dateString = '';
+    let startTime = null;
+    let durationMin = 60;
+
+    const candidateStart = entry.dtstart || entry.start || entry['start_time'] || entry['begin'] || entry.date;
+    const candidateEnd = entry.dtend || entry.end || entry['end_time'] || entry['finish'];
+    const parsedStart = parseDateInput(candidateStart);
+    const parsedEnd = parseDateInput(candidateEnd);
+
+    if (parsedStart) {
+        startDate = parsedStart;
+        dateString = parsedStart.toISOString().split('T')[0];
+        startTime = formatTimeString(parsedStart);
+    }
+
+    if (parsedEnd) {
+        endDate = parsedEnd;
+    }
+
+    if (!dateString && entry.date) {
+        const parsedDate = parseDateInput(entry.date);
+        if (parsedDate) {
+            dateString = parsedDate.toISOString().split('T')[0];
+            if (!startTime) startTime = formatTimeString(parsedDate);
+        }
+    }
+
+    if (parsedStart && parsedEnd) {
+        const diffMinutes = Math.round((parsedEnd - parsedStart) / 60000);
+        if (diffMinutes > 0) durationMin = diffMinutes;
+    }
+
+    if (!dateString) {
+        const fallback = new Date();
+        dateString = fallback.toISOString().split('T')[0];
+    }
+
+    return {
+        text: summary,
+        date: dateString,
+        calendar,
+        start_time: startTime,
+        duration_min: durationMin,
+        visibility: 'private',
+        shared_with: []
+    };
+}
+
+async function handleTimetableFile(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    setTimetableImportStatus(`Importing ${file.name}…`);
+
+    const reader = new FileReader();
+    reader.onload = async (loadEvent) => {
+        const content = loadEvent.target.result;
+        let scheduleItems = [];
+        const fileName = file.name.toLowerCase();
+
+        if (fileName.endsWith('.ics')) {
+            scheduleItems = parseIcsSchedule(content);
+        } else if (fileName.endsWith('.csv')) {
+            scheduleItems = parseCsvSchedule(content);
+        } else if (fileName.endsWith('.json')) {
+            scheduleItems = parseJsonSchedule(content);
+        } else {
+            setTimetableImportStatus('Unsupported timetable file format. Please upload CSV, ICS, or JSON.', true);
+            return;
+        }
+
+        if (!scheduleItems.length) {
+            setTimetableImportStatus('No schedule entries were detected in the uploaded file.', true);
+            return;
+        }
+
+        const tasksToAdd = scheduleItems.map(makeTaskFromSchedule);
+        const addedTaskTexts = [];
+        for (const task of tasksToAdd) {
+            try {
+                await ipcRenderer.invoke('add-task', task);
+                addedTaskTexts.push(`${task.date} · ${task.text}`);
+            } catch (e) {
+                console.error('Failed to import task:', e);
+            }
+        }
+
+        if (!addedTaskTexts.length) {
+            setTimetableImportStatus('The timetable file could not be imported. Please check the file data and try again.', true);
+            return;
+        }
+
+        await loadTasks();
+        const summaryMessage = `Imported ${addedTaskTexts.length} timetable item${addedTaskTexts.length === 1 ? '' : 's'} into your calendar.`;
+        setTimetableImportStatus(summaryMessage);
+        addChatMessage(summaryMessage, 'ai');
+    };
+    reader.onerror = () => {
+        setTimetableImportStatus('Unable to read the selected file. Try a different timetable file.', true);
+    };
+    reader.readAsText(file);
+}
+
 async function addLeftTask() {
     const input = document.getElementById('leftTaskInput');
     const categorySelect = document.getElementById('leftTaskCategory');
@@ -754,6 +1026,11 @@ async function sendChat() {
             response = await apiCall('/api/chat', 'POST', { input: message, selectedDate, activeView, taskCount: tasks.length });
             responseText = response?.response || 'I’m here. Let’s start fresh.';
             callSuccessful = true;
+            await ipcRenderer.invoke('save-chat', message, responseText, {
+                source: 'cloud',
+                selectedDate,
+                activeView
+            }).catch(() => {});
         } catch (e) {
             console.warn("Direct Supabase Chat failed, falling back to local orchestrator.");
         }
@@ -762,7 +1039,6 @@ async function sendChat() {
     if (!callSuccessful) {
         response = await ipcRenderer.invoke('ai-response', { userInput: message, selectedDate, activeView, taskCount: tasks.length });
         responseText = response?.response || 'I’m here. Let’s start fresh.';
-        await ipcRenderer.invoke('save-chat', message, responseText).catch(() => {});
     }
 
     addChatMessage(responseText, 'ai');
@@ -1075,6 +1351,9 @@ window.onload = () => {
     window.toggleDebugPanel = toggleDebugPanel;
     window.setResponse = setResponse;
     window.sendChat = sendChat;
+    window.backupChatHistory = backupChatHistory;
+    window.restoreChatHistory = restoreChatHistory;
+    window.resetChatHistory = resetChatHistory;
     window.addTask = addTask;
     window.addLeftTask = addLeftTask;
     window.toggleDock = toggleDock;
