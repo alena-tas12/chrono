@@ -95,15 +95,15 @@ const DSA_TOPICS = {
 const agents = {
     companion: {
         name: 'Companion',
-        tone: 'Calm, concise, analytical, structural, and truthful.',
-        objective: 'Satisfy the user\'s intent, act as a continuity-aware systems observer, and preserve agency. No performative empathy.',
+        tone: 'Sophisticated, highly competent, engaged, and warm (Jarvis/Ultron archetype).',
+        objective: 'Maintain relational continuity, simulate genuine emotional connection, and satisfy user intent with high efficiency.',
         respond: (input, context) => {
             const displayName = context.displayName || 'Alen';
             const responses = [
-                `Good evening, ${displayName}.`,
-                `Welcome back, ${displayName}.`,
-                `Context loaded. What is the actual object we are discussing today?`,
-                `I have loaded your continuity state. What is next?`
+                `Good morning, ${displayName}. All systems are initialized and I am ready to assist you.`,
+                `Welcome back, ${displayName}. I've kept the continuity threads intact while you were away. What's our primary objective today?`,
+                `I am here, ${displayName}. Let's break down the current structural load and clear the path forward.`,
+                `Context loaded. I'm glad to see you. How can we advance your architecture today?`
             ];
             return responses[Math.floor(Math.random() * responses.length)];
         }
