@@ -1,6 +1,6 @@
 {
     "name": "chrono",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "Chrono personal productivity and AI assistance desktop application.",
     "author": "Chrono Team <barnes.vianalen@gmail.com>",
     "main": "main/main.js",

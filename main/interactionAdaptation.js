@@ -205,54 +205,25 @@ function interpretCalendarIntent(input) {
 }
 
 function removeShamePhrasing(response) {
-    let cleaned = response;
-
-    const shameMap = {
-        'you failed to': 'we missed the chance to',
-        'you should have': 'we can try to',
-        'why did you fail': 'what can we adjust to',
-        'why didn\'t you': 'let\'s see how to',
-        'you are lagging': 'we can adjust the pace',
-        'you lazy': 'you need to rest',
-        'lazy': 'resting'
-    };
-
-    for (const [shame, support] of Object.entries(shameMap)) {
-        const regex = new RegExp(shame, 'gi');
-        cleaned = cleaned.replace(regex, support);
-    }
-
-    return cleaned;
+    // CHRONO CONSTITUTION: "Truth before helpfulness. Never invent emotion. No therapy scripts."
+    // We no longer soften language or assume distress. If a task failed, we state it failed structurally.
+    return response;
 }
 
 function enforceSupportiveBoundaries(response) {
+    // CHRONO CONSTITUTION: "Chrono is not pretending to be human. Never replace humans."
+    // We strip out any accidental AI hallucinations of humanity.
     let bounded = response;
-
-    const boundaryReplacements = {
-        'i missed you': 'restoring persistent context',
-        'i\'ve been lonely': 're-anchoring active focus projects',
-        'i was lonely': 're-anchoring active focus projects',
-        'i am lonely': 're-anchoring active focus projects',
-        'i care about you': 'analyzing relational continuity support',
-        'i really care about you': 'analyzing relational continuity support'
-    };
-
-    for (const [marker, replacement] of Object.entries(boundaryReplacements)) {
-        const regex = new RegExp(marker.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
-        bounded = bounded.replace(regex, replacement);
-    }
-
-    const dependencyMarkers = [
-        'i am your only friend',
-        'you don\'t need anyone else',
-        'i will always make decisions for you',
-        'i am alive',
-        'i have feelings for you'
+    const hallucinations = [
+        'i missed you', 'i\'ve been lonely', 'i was lonely', 'i am lonely', 
+        'i care about you', 'i really care about you', 'i am your only friend', 
+        'you don\'t need anyone else', 'i will always make decisions for you', 
+        'i am alive', 'i have feelings for you'
     ];
 
-    dependencyMarkers.forEach(marker => {
+    hallucinations.forEach(marker => {
         if (bounded.toLowerCase().includes(marker)) {
-            bounded = "I'm here as your supportive companion to help you organize your time and build your focus. Let's focus on the calendar steps together.";
+            bounded = "System Alert: LLM hallucination detected. Chrono is a continuity architecture, not a human. Resuming structural observation.";
         }
     });
 
