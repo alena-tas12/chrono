@@ -77,6 +77,19 @@ let userProfile = {
         peakTimes: [],
         averageSessionLength: 0,
         returnRate: 0
+    },
+    
+    // Proactivity configuration and per-domain policies
+    proactivity: {
+        mode: 'balanced', // 'disabled', 'quiet', 'balanced', 'proactive'
+        onboardingCompleted: false,
+        domainPolicies: {
+            personal: 'balanced',
+            study: 'proactive',
+            family: 'quiet',
+            routine: 'balanced',
+            focus: 'quiet'
+        }
     }
 };
 
@@ -375,11 +388,83 @@ function initializeUserProfile() {
 // Run startup initialization
 initializeUserProfile();
 
+function getProactivitySettings() {
+    if (!userProfile.proactivity) {
+        userProfile.proactivity = {
+            mode: 'balanced',
+            onboardingCompleted: false,
+            domainPolicies: {
+                personal: 'balanced',
+                study: 'proactive',
+                family: 'quiet',
+                routine: 'balanced',
+                focus: 'quiet'
+            }
+        };
+    }
+    return userProfile.proactivity;
+}
+
+function setProactivityMode(mode) {
+    const settings = getProactivitySettings();
+    if (['disabled', 'quiet', 'balanced', 'proactive'].includes(mode)) {
+        settings.mode = mode;
+        saveUserProfileToDB();
+    }
+    return settings;
+}
+
+function setDomainProactivity(domain, level) {
+    const settings = getProactivitySettings();
+    const validDomains = ['personal', 'study', 'family', 'routine', 'focus'];
+    const validLevels = ['disabled', 'quiet', 'balanced', 'proactive'];
+    if (validDomains.includes(domain) && validLevels.includes(level)) {
+        settings.domainPolicies[domain] = level;
+        saveUserProfileToDB();
+    }
+    return settings;
+}
+
+function completeProactivityOnboarding(mode, domainPolicies = {}) {
+    const settings = getProactivitySettings();
+    settings.onboardingCompleted = true;
+    if (mode) settings.mode = mode;
+    if (domainPolicies && typeof domainPolicies === 'object') {
+        Object.assign(settings.domainPolicies, domainPolicies);
+    }
+    saveUserProfileToDB();
+    return settings;
+}
+
+function evaluateProactiveThought(thoughtContext = {}) {
+    const { domain = 'personal', priority = 'medium', confidence = 0.5 } = thoughtContext;
+    const settings = getProactivitySettings();
+    if (settings.mode === 'disabled') return { allow: false, reason: 'Global proactivity disabled' };
+    
+    const domainLevel = settings.domainPolicies[domain] || settings.mode;
+    if (domainLevel === 'disabled') return { allow: false, reason: `Domain ${domain} proactivity disabled` };
+    
+    if (domainLevel === 'quiet' && priority !== 'high') {
+        return { allow: false, reason: 'Quiet domain policy allows high priority only' };
+    }
+    
+    if (confidence < 0.4) {
+        return { allow: false, reason: 'Confidence score below proactivity threshold' };
+    }
+    
+    return { allow: true, domainLevel, globalMode: settings.mode };
+}
+
 module.exports = {
     getUserModel,
     updateUserModel,
     getUserProfileSummary,
     resetUserProfile,
     saveUserProfileToDB,
-    initializeUserProfile
+    initializeUserProfile,
+    getProactivitySettings,
+    setProactivityMode,
+    setDomainProactivity,
+    completeProactivityOnboarding,
+    evaluateProactiveThought
 };

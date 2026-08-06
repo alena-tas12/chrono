@@ -7,7 +7,7 @@
  */
 
 const path = require('path');
-const mainDb = require('./main/main_db');
+const mainDb = require('../main/main_db');
 
 console.log('\n' + '='.repeat(80));
 console.log('🛡️  TRUST KILLER FRAMEWORK - INTEGRATION TEST');
@@ -35,35 +35,35 @@ async function runTests() {
     let dataIntegrity, trustKillerHandlers, healthCheck, backupManager, syncReliabilityTest;
 
     try {
-        dataIntegrity = require('./main/dataIntegrity');
+        dataIntegrity = require('../main/dataIntegrity');
         logTest('Load dataIntegrity module', !!dataIntegrity);
     } catch (err) {
         logTest('Load dataIntegrity module', false, err);
     }
 
     try {
-        trustKillerHandlers = require('./main/trustKillerHandlers');
+        trustKillerHandlers = require('../main/trustKillerHandlers');
         logTest('Load trustKillerHandlers module', !!trustKillerHandlers);
     } catch (err) {
         logTest('Load trustKillerHandlers module', false, err);
     }
 
     try {
-        healthCheck = require('./main/healthCheck');
+        healthCheck = require('../main/healthCheck');
         logTest('Load healthCheck module', !!healthCheck);
     } catch (err) {
         logTest('Load healthCheck module', false, err);
     }
 
     try {
-        backupManager = require('./main/backupManager');
+        backupManager = require('../main/backupManager');
         logTest('Load backupManager module', !!backupManager);
     } catch (err) {
         logTest('Load backupManager module', false, err);
     }
 
     try {
-        syncReliabilityTest = require('./main/syncReliabilityTest');
+        syncReliabilityTest = require('../main/syncReliabilityTest');
         logTest('Load syncReliabilityTest module', !!syncReliabilityTest);
     } catch (err) {
         logTest('Load syncReliabilityTest module', false, err);

@@ -1,0 +1,366 @@
+{
+  "timestamp": "2026-08-06T12:33:00.558Z",
+  "mainProcessErrors": [],
+  "rendererErrors": [
+    {
+      "level": 3,
+      "message": "Failed to load chat history: Error: Error invoking remote method 'get-chat-history': Error: No handler registered for 'get-chat-history'",
+      "line": 74,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to store app_theme in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta'",
+      "line": 1274,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to store app_accent in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta'",
+      "line": 1294,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to store app_name in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta'",
+      "line": 1327,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to store user_name in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta'",
+      "line": 1688,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to store user_email in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta'",
+      "line": 1710,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to load cognitive profile: Error: Error invoking remote method 'get-cognitive-profile': Error: No handler registered for 'get-cognitive-profile'",
+      "line": 1376,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to load proactivity settings: Error: Error invoking remote method 'get-proactivity-settings': Error: No handler registered for 'get-proactivity-settings'",
+      "line": 1582,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to load local tasks: Error: Error invoking remote method 'get-tasks-range': Error: No handler registered for 'get-tasks-range'",
+      "line": 93,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to load Life Continuity UI data: Error: Error invoking remote method 'get-life-continuity': Error: No handler registered for 'get-life-continuity'",
+      "line": 2855,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to populate peer selectors: Error: Error invoking remote method 'get-relationships': Error: No handler registered for 'get-relationships'",
+      "line": 3401,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to update JARVIS suggestions: Error: Error invoking remote method 'get-jarvis-suggestions': Error: No handler registered for 'get-jarvis-suggestions'",
+      "line": 3497,
+      "sourceId": "app.js"
+    },
+    {
+      "level": 3,
+      "message": "Failed to load context resurrection on startup: Error: Error invoking remote method 'get-context-resurrection': Error: No handler registered for 'get-context-resurrection'",
+      "line": 3345,
+      "sourceId": "app.js"
+    }
+  ],
+  "rendererWarnings": [
+    {
+      "level": 2,
+      "message": "%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged.",
+      "line": 2,
+      "sourceId": "renderer_init"
+    }
+  ],
+  "ipcFailures": [],
+  "networkFailures": [],
+  "domState": {
+    "body": {
+      "display": "flex",
+      "bg": "rgb(15, 23, 42)",
+      "children": 8,
+      "htmlLen": 120491
+    },
+    "appShell": {
+      "display": "flex",
+      "w": "1518px",
+      "h": "817px",
+      "vis": "visible"
+    },
+    "calendarGrid": {
+      "display": "grid",
+      "w": "861px",
+      "h": "336.891px",
+      "childCount": 37,
+      "innerHTML": "<div class=\"dayCell empty\"></div><div class=\"dayCell empty\"></div><div class=\"dayCell empty\"></div><div class=\"dayCell empty\"></div><div class=\"dayCell empty\"></div><div class=\"dayCell empty\"></div><div class=\"dayCell\"><div class=\"dayHeader\"><div class=\"dayNumber\">1</div><div class=\"dayWeek\">Sat</di"
+    },
+    "localStorage": {
+      "theme": "dark",
+      "accent": "purple",
+      "token": null,
+      "userName": "Alena",
+      "appName": "ALENA CHRONO",
+      "onboardingComplete": "true"
+    },
+    "functions": {
+      "renderCalendar": "function",
+      "loadTasks": "function",
+      "initializeSettings": "function",
+      "addTask": "function",
+      "switchWorkspace": "undefined",
+      "sendChat": "function"
+    },
+    "tasksArrayLength": 0,
+    "selectedDate": "2026-08-06",
+    "activeView": "month",
+    "overlays": [],
+    "chatWorkspace": {
+      "display": "flex",
+      "w": "1413px",
+      "h": "201.109px"
+    },
+    "visibleHeadings": [
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "Calendar"
+      },
+      {
+        "tag": "DIV",
+        "id": "userGreeting",
+        "text": "Hello, Alena"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "🌅 Context Resurrection"
+      },
+      {
+        "tag": "DIV",
+        "id": "currentDate",
+        "text": "August 2026"
+      },
+      {
+        "tag": "H1",
+        "id": "",
+        "text": "Workspace Settings"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Appearance & Aesthetics"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Branding & Cognition"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Proactivity & Domain Control"
+      },
+      {
+        "tag": "H1",
+        "id": "",
+        "text": "Chrono Cloud Account"
+      },
+      {
+        "tag": "H3",
+        "id": "authCardTitle",
+        "text": "Sign In"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Active Session"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Today"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Chrono Observatory"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Integration Notes"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Goals & Study Intelligence"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Human Continuity & Cognitive Stability"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "Relationship OS"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "📜 Life Biography Timeline"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "👥 Continuity Threads"
+      },
+      {
+        "tag": "H3",
+        "id": "threadDetailName",
+        "text": "Princess"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "🧠 Memory & Reflection"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "🧠 AI Memory Conversations"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "🛡️ Observatory Diagnostics"
+      },
+      {
+        "tag": "DIV",
+        "id": "",
+        "text": "ALENA CHRONO AI"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "🧠 Cognitive Diagnostics"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "📊 Quick Summary"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "💔 Emotional State"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "🎭 Identity Stability"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "💾 Memory Hierarchy"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "👁️ Presence State"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "🔐 Recursion Safety"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "📦 Compression"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "⚠️ System Health"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "🔍 Debug Info"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "Initialize Your Workspace"
+      },
+      {
+        "tag": "H2",
+        "id": "",
+        "text": "Weekly Continuity Audit"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "🎯 What Mattered (High Significance)"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "📈 What Changed (Subject Mastery)"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "⚡ What Progressed"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "⚠️ What Stalled"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "🛡️ What Was Preserved (Routines)"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "🔓 What Was Released"
+      },
+      {
+        "tag": "H2",
+        "id": "eaTaskText",
+        "text": "Event Action Center"
+      },
+      {
+        "tag": "H3",
+        "id": "",
+        "text": "⏱️ Task Focus Timer"
+      }
+    ],
+    "ipcRendererAvailable": true
+  },
+  "initFunctions": null,
+  "localStorageState": null,
+  "uncaughtRejections": []
+}

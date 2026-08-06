@@ -13,8 +13,8 @@ if (!connectionString || connectionString.includes('[YOUR-PASSWORD]')) {
 }
 
 // Import client modules
-const cloudDb = require('./main/cloudDb');
-const cloudSync = require('./main/cloudSyncService');
+const cloudDb = require('../main/cloudDb');
+const cloudSync = require('../main/cloudSyncService');
 const bcrypt = require('bcryptjs');
 
 function initMockDb(dbPath) {

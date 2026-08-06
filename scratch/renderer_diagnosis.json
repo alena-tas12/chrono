@@ -1,0 +1,114 @@
+{
+  "bodyDisplay": "flex",
+  "bodyVisibility": "visible",
+  "bodyOpacity": "1",
+  "bodyBg": "rgb(15, 23, 42)",
+  "bodyChildren": 8,
+  "bodyInnerHTMLLength": 120529,
+  "appShellDisplay": "flex",
+  "appShellVisibility": "visible",
+  "appShellOpacity": "1",
+  "appShellWidth": "1182px",
+  "appShellHeight": "727px",
+  "rootChildrenInfo": [
+    {
+      "tag": "SCRIPT",
+      "id": "",
+      "className": "",
+      "display": "none",
+      "visibility": "visible",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "className": "appShell",
+      "display": "flex",
+      "visibility": "visible",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "DIV",
+      "id": "debugPanel",
+      "className": "debugPanel",
+      "display": "none",
+      "visibility": "visible",
+      "zIndex": "1000"
+    },
+    {
+      "tag": "DIV",
+      "id": "onboardingOverlay",
+      "className": "onboardingOverlay",
+      "display": "none",
+      "visibility": "visible",
+      "zIndex": "9999"
+    },
+    {
+      "tag": "DIV",
+      "id": "weeklyAuditOverlay",
+      "className": "onboardingOverlay",
+      "display": "none",
+      "visibility": "visible",
+      "zIndex": "10000"
+    },
+    {
+      "tag": "DIV",
+      "id": "eventActionModal",
+      "className": "onboardingOverlay",
+      "display": "none",
+      "visibility": "visible",
+      "zIndex": "10000"
+    },
+    {
+      "tag": "SCRIPT",
+      "id": "",
+      "className": "",
+      "display": "none",
+      "visibility": "visible",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "SCRIPT",
+      "id": "",
+      "className": "",
+      "display": "none",
+      "visibility": "visible",
+      "zIndex": "auto"
+    }
+  ],
+  "fixedElements": [
+    {
+      "tag": "DIV",
+      "id": "debugPanel",
+      "zIndex": "1000",
+      "display": "none",
+      "width": "340px",
+      "height": "auto"
+    },
+    {
+      "tag": "DIV",
+      "id": "onboardingOverlay",
+      "zIndex": "9999",
+      "display": "none",
+      "width": "auto",
+      "height": "auto"
+    },
+    {
+      "tag": "DIV",
+      "id": "weeklyAuditOverlay",
+      "zIndex": "10000",
+      "display": "none",
+      "width": "auto",
+      "height": "auto"
+    },
+    {
+      "tag": "DIV",
+      "id": "eventActionModal",
+      "zIndex": "10000",
+      "display": "none",
+      "width": "auto",
+      "height": "auto"
+    }
+  ],
+  "firstScriptTag": "found"
+}

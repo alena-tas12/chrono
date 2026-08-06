@@ -1,5 +1,5 @@
 const { ipcRenderer } = require('electron');
-
+console.log('HELLO FROM RENDERER');
 let selectedDate = new Date().toISOString().split('T')[0];
 let activeView = 'month';
 let tasks = [];
@@ -986,8 +986,7 @@ function toggleRightPanel() {
     }
 }
 
-// 🔄 WINDOW ONLOAD & LISTENERS
-window.onload = () => {
+document.addEventListener('DOMContentLoaded', () => {
     // Set date input value
     document.getElementById('datePicker').value = formatDateString(selectedDate);
     
@@ -1103,7 +1102,7 @@ window.onload = () => {
 
     // Start loading
     loadTasks();
-};
+});
 
 function changeMonth(offset) {
     const date = new Date(selectedDate);
@@ -1553,8 +1552,52 @@ async function initializeSettings() {
     setUserEmail(savedUserEmail);
 
     loadCognitiveProfile();
+    loadProactivitySettings();
     setupSideNav();
     checkOnboarding();
+}
+
+async function loadProactivitySettings() {
+    try {
+        const settings = await ipcRenderer.invoke('get-proactivity-settings');
+        if (!settings) return;
+
+        const globalSelect = document.getElementById('globalProactivitySelect');
+        if (globalSelect && settings.mode) {
+            globalSelect.value = settings.mode;
+        }
+
+        if (settings.domainPolicies) {
+            const domains = ['personal', 'study', 'family', 'routine', 'focus'];
+            domains.forEach(domain => {
+                const capitalize = domain.charAt(0).toUpperCase() + domain.slice(1);
+                const el = document.getElementById(`domainSel${capitalize}`);
+                if (el && settings.domainPolicies[domain]) {
+                    el.value = settings.domainPolicies[domain];
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Failed to load proactivity settings:", err);
+    }
+}
+
+async function updateGlobalProactivityMode(mode) {
+    try {
+        await ipcRenderer.invoke('set-proactivity-mode', mode);
+        console.log(`Global proactivity mode updated to ${mode}`);
+    } catch (err) {
+        console.error("Failed to update global proactivity mode:", err);
+    }
+}
+
+async function updateDomainProactivity(domain, level) {
+    try {
+        await ipcRenderer.invoke('set-domain-proactivity', domain, level);
+        console.log(`Domain ${domain} proactivity updated to ${level}`);
+    } catch (err) {
+        console.error("Failed to update domain proactivity:", err);
+    }
 }
 
 // Onboarding Helper Functions
@@ -3267,10 +3310,8 @@ window.submitJointSession = submitJointSession;
 window.loadNoteToEditor = loadNoteToEditor;
 window.autoScheduleStudyGap = autoScheduleStudyGap;
 
-// Append trigger to existing window.onload to initialize badge and defaults
-const existingOnload = window.onload;
-window.onload = () => {
-    if (existingOnload) existingOnload();
+// Register DOMContentLoaded event to initialize badge and defaults
+document.addEventListener('DOMContentLoaded', () => {
     updateOfflineBadge();
     
     // Set default date picker for joint study scheduling to tomorrow
@@ -3306,7 +3347,7 @@ window.onload = () => {
 
     // Poll for new suggestions periodically
     setInterval(updateJarvisSuggestions, 30000);
-};
+});
 
 // ========================================
 // 🧠 GRANULAR SHARING & JARVIS UI HELPER FUNCTIONS
@@ -3928,5 +3969,287 @@ ipcRenderer.on('auto-update-status', (event, info) => {
 
 window.triggerUpdateCheck = triggerUpdateCheck;
 
+// ========================================
+// 🌐 WORKSPACE SWITCHER
+// ========================================
 
+let activeWorkspace = 'ops';
 
+function switchWorkspace(ws) {
+    activeWorkspace = ws;
+
+    // Hide all workspace sections
+    const allWorkspaces = [
+        { id: null, cls: 'calendarWorkspace' },
+        { id: 'continuityWorkspace', cls: null },
+        { id: 'intelligenceWorkspace', cls: null }
+    ];
+
+    // Calendar workspace uses a class, not an id at top level
+    const calWs = document.querySelector('.mainShell > .calendarWorkspace') ||
+                  document.querySelector('section.calendarWorkspace');
+    const contWs = document.getElementById('continuityWorkspace');
+    const intelWs = document.getElementById('intelligenceWorkspace');
+
+    if (calWs)   calWs.style.display   = ws === 'ops'          ? 'flex'  : 'none';
+    if (contWs)  contWs.style.display  = ws === 'continuity'   ? 'flex'  : 'none';
+    if (intelWs) intelWs.style.display = ws === 'intelligence' ? 'flex'  : 'none';
+
+    // Update sidebar button active states
+    document.querySelectorAll('.wsBtn').forEach(btn => btn.style.opacity = '0.5');
+    const activeMap = { ops: 'wsBtnOps', continuity: 'wsBtnContinuity', intelligence: 'wsBtnIntelligence' };
+    const activeBtn = document.getElementById(activeMap[ws]);
+    if (activeBtn) activeBtn.style.opacity = '1';
+
+    // Load data for newly activated workspace
+    if (ws === 'continuity') {
+        updateLifeContinuityUI().catch(() => {});
+        updatePeopleUI().catch(() => {});
+        updateBiographyTimelineUI().catch(() => {});
+    } else if (ws === 'intelligence') {
+        updateObservatoryUI().catch(() => {});
+    }
+}
+window.switchWorkspace = switchWorkspace;
+
+// ========================================
+// 🔗 CONTINUITY WORKSPACE — PEER THREAD FUNCTIONS
+// ========================================
+
+let activeThreadPeerId = null;
+
+function openConnectPeerModal() {
+    // Navigate to Intelligence workspace where the peer connect form lives
+    switchWorkspace('intelligence');
+    const form = document.getElementById('connectPeerForm');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const origBorder = form.style.border;
+        form.style.border = '2px solid var(--cal-personal)';
+        setTimeout(() => { form.style.border = origBorder || '1px solid var(--border-color)'; }, 2000);
+    }
+}
+window.openConnectPeerModal = openConnectPeerModal;
+
+function closeThreadDetail() {
+    activeThreadPeerId = null;
+    const detail = document.getElementById('threadDetailView');
+    const grid   = document.getElementById('continuityThreadsGrid');
+    if (detail) detail.style.display = 'none';
+    if (grid)   grid.style.display   = 'grid';
+}
+window.closeThreadDetail = closeThreadDetail;
+
+function switchThreadTab(tabName) {
+    const tabIds = ['overview', 'timeline', 'memories', 'projects'];
+    tabIds.forEach(t => {
+        const btn = document.getElementById(`ttBtn-${t}`);
+        if (btn) {
+            btn.style.color      = t === tabName ? 'var(--text-main)' : 'var(--text-muted)';
+            btn.style.fontWeight = t === tabName ? '700' : '500';
+        }
+    });
+    if (activeThreadPeerId) {
+        openThreadDetail(activeThreadPeerId, tabName);
+    }
+}
+window.switchThreadTab = switchThreadTab;
+
+async function openThreadDetail(peerId, tab) {
+    tab = tab || 'overview';
+    activeThreadPeerId = peerId;
+    const grid   = document.getElementById('continuityThreadsGrid');
+    const detail = document.getElementById('threadDetailView');
+    if (!detail) return;
+
+    if (grid)   grid.style.display   = 'none';
+    detail.style.display = 'block';
+
+    try {
+        const rel = await ipcRenderer.invoke('get-relationship-details', peerId);
+        if (!rel) return;
+        const nameEl = document.getElementById('threadDetailName');
+        if (nameEl) nameEl.innerText = rel.name || 'Peer';
+
+        const contentEl = document.getElementById('threadTabContent');
+        if (!contentEl) return;
+
+        if (tab === 'overview') {
+            contentEl.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
+                    <div style="padding:8px;background:rgba(63,117,255,0.05);border-radius:6px;">
+                        <span style="font-weight:700;color:var(--cal-personal);">Role:</span>
+                        <span style="color:var(--text-main);"> ${rel.role || 'N/A'}</span>
+                    </div>
+                    <div style="padding:8px;background:rgba(63,117,255,0.05);border-radius:6px;">
+                        <span style="font-weight:700;color:var(--cal-personal);">Interaction Score:</span>
+                        <span style="color:var(--text-main);"> ${rel.interaction_score || 0}</span>
+                    </div>
+                    <div style="padding:8px;background:rgba(63,117,255,0.05);border-radius:6px;">
+                        <span style="font-weight:700;color:var(--cal-personal);">Connected Since:</span>
+                        <span style="color:var(--text-main);"> ${rel.created_at ? new Date(rel.created_at).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                </div>`;
+        } else if (tab === 'timeline') {
+            const milestones = await ipcRenderer.invoke('get-shared-milestones', peerId).catch(() => []);
+            if (!milestones || !milestones.length) {
+                contentEl.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:12px;">No shared milestones yet.</div>';
+            } else {
+                contentEl.innerHTML = milestones.map(m => `
+                    <div style="padding:8px;border-left:3px solid var(--cal-personal);margin-bottom:8px;font-size:12px;">
+                        <div style="font-weight:700;">${m.title}</div>
+                        <div style="color:var(--text-muted);font-size:11px;">${m.target_date || ''} — importance: ${m.importance_score || 5}/10</div>
+                    </div>`).join('');
+            }
+        } else if (tab === 'memories') {
+            const memories = await ipcRenderer.invoke('get-linked-memories', rel.name).catch(() => []);
+            if (!memories || !memories.length) {
+                contentEl.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:12px;">No linked memories found.</div>';
+            } else {
+                contentEl.innerHTML = memories.map(m => `
+                    <div style="padding:6px 0;border-bottom:1px solid var(--border-color);font-size:12px;">
+                        <div>${m.content || m.text || ''}</div>
+                        <div style="color:var(--text-muted);font-size:10px;">${m.date || ''}</div>
+                    </div>`).join('');
+            }
+        } else if (tab === 'projects') {
+            const goals = await ipcRenderer.invoke('get-goals').catch(() => []);
+            const sharedGoals = (goals || []).filter(g => g.shared_with && g.shared_with.includes(peerId));
+            if (!sharedGoals.length) {
+                contentEl.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:12px;">No shared projects yet.</div>';
+            } else {
+                contentEl.innerHTML = sharedGoals.map(g => `
+                    <div style="padding:8px;background:rgba(16,185,129,0.05);border-radius:6px;margin-bottom:8px;font-size:12px;">
+                        <div style="font-weight:700;">${g.title}</div>
+                        <div style="color:var(--text-muted);font-size:11px;">${g.description || ''}</div>
+                    </div>`).join('');
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load thread detail:', e);
+    }
+}
+window.openThreadDetail = openThreadDetail;
+
+async function submitThreadJointSession() {
+    if (!activeThreadPeerId) return;
+    const title = (document.getElementById('tJointSessionTitle') || {}).value || '';
+    const date  = (document.getElementById('tJointSessionDate') || {}).value || '';
+    const time  = (document.getElementById('tJointSessionTime') || {}).value || '15:00';
+    if (!title.trim() || !date) { alert('Please fill in title and date.'); return; }
+    try {
+        await ipcRenderer.invoke('schedule-joint-session', activeThreadPeerId, title.trim(), date, time, 60);
+        alert('✅ Joint session booked and added to calendar!');
+        if (document.getElementById('tJointSessionTitle')) document.getElementById('tJointSessionTitle').value = '';
+        if (document.getElementById('tJointSessionDate'))  document.getElementById('tJointSessionDate').value  = '';
+        await loadTasks();
+    } catch (e) {
+        console.error('Failed to book joint session:', e);
+        alert('Failed to book session: ' + (e.message || e));
+    }
+}
+window.submitThreadJointSession = submitThreadJointSession;
+
+async function submitThreadMilestone() {
+    if (!activeThreadPeerId) return;
+    const title      = ((document.getElementById('tMilestoneTitle') || {}).value || '').trim();
+    const desc       = ((document.getElementById('tMilestoneDesc') || {}).value || '').trim();
+    const date       = (document.getElementById('tMilestoneDate') || {}).value || '';
+    const importance = parseInt((document.getElementById('tMilestoneImportance') || {}).value || '7', 10);
+    if (!title) { alert('Please enter a milestone title.'); return; }
+    try {
+        await ipcRenderer.invoke('add-shared-milestone', {
+            peer_id: activeThreadPeerId, title, description: desc,
+            target_date: date, importance_score: importance
+        });
+        alert('✅ Shared milestone created!');
+        if (document.getElementById('tMilestoneTitle')) document.getElementById('tMilestoneTitle').value = '';
+        if (document.getElementById('tMilestoneDesc'))  document.getElementById('tMilestoneDesc').value  = '';
+        switchThreadTab('timeline');
+    } catch (e) {
+        console.error('Failed to create milestone:', e);
+        alert('Failed to create milestone: ' + (e.message || e));
+    }
+}
+window.submitThreadMilestone = submitThreadMilestone;
+
+// ========================================
+// 🧠 INTELLIGENCE WORKSPACE — INTEL CHAT
+// ========================================
+
+async function sendIntelChat(prefillText) {
+    const input = document.getElementById('intelChatInput');
+    const box   = document.getElementById('intelChatBox');
+    if (!box) return;
+
+    const text = prefillText || (input ? input.value.trim() : '');
+    if (!text) return;
+    if (input && !prefillText) input.value = '';
+
+    const userMsg = document.createElement('div');
+    userMsg.style.cssText = 'margin-bottom:10px;text-align:right;';
+    userMsg.innerHTML = '<span style="background:var(--cal-personal);color:white;padding:8px 12px;border-radius:12px 12px 4px 12px;font-size:13px;display:inline-block;max-width:80%;">' + text + '</span>';
+    box.appendChild(userMsg);
+    box.scrollTop = box.scrollHeight;
+
+    const typing = document.createElement('div');
+    typing.style.cssText = 'margin-bottom:10px;color:var(--text-muted);font-size:12px;font-style:italic;';
+    typing.innerText = 'Chrono is thinking...';
+    box.appendChild(typing);
+    box.scrollTop = box.scrollHeight;
+
+    try {
+        const result = await ipcRenderer.invoke('ai-response', { message: text, useMemory: true, useContext: true });
+        typing.remove();
+        const responseText = (result && result.response) ? result.response : 'No response.';
+        const aiMsg = document.createElement('div');
+        aiMsg.style.cssText = 'margin-bottom:10px;text-align:left;';
+        aiMsg.innerHTML = '<span style="background:var(--bg-panel);border:1px solid var(--border-color);color:var(--text-main);padding:8px 12px;border-radius:12px 12px 12px 4px;font-size:13px;display:inline-block;max-width:85%;line-height:1.5;">' + responseText.replace(/\n/g, '<br>') + '</span>';
+        box.appendChild(aiMsg);
+        box.scrollTop = box.scrollHeight;
+    } catch (e) {
+        typing.remove();
+        const errMsg = document.createElement('div');
+        errMsg.style.cssText = 'margin-bottom:10px;color:#ef4444;font-size:12px;';
+        errMsg.innerText = 'Failed to get response: ' + (e.message || e);
+        box.appendChild(errMsg);
+        box.scrollTop = box.scrollHeight;
+    }
+}
+window.sendIntelChat = sendIntelChat;
+
+function handleIntelKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendIntelChat();
+    }
+}
+window.handleIntelKeyPress = handleIntelKeyPress;
+
+// ========================================
+// 📜 BIOGRAPHY TIMELINE (Continuity Workspace)
+// ========================================
+
+async function updateBiographyTimelineUI() {
+    const scroll = document.getElementById('biographyTimelineScroll');
+    if (!scroll) return;
+    try {
+        const goals = await ipcRenderer.invoke('get-goals');
+        if (!goals || !goals.length) {
+            scroll.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:12px;padding:16px 0;">No milestones yet. Add goals to build your biography timeline.</div>';
+            return;
+        }
+        scroll.innerHTML = goals.slice().reverse().map(g =>
+            '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;">' +
+            '<div style="width:10px;height:10px;border-radius:50%;background:var(--cal-personal);flex-shrink:0;margin-top:4px;"></div>' +
+            '<div>' +
+            '<div style="font-size:13px;font-weight:700;color:var(--text-main);">' + (g.title || '') + '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);">' + (g.target_date ? new Date(g.target_date).toLocaleDateString() : 'Ongoing') + '</div>' +
+            (g.description ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + g.description + '</div>' : '') +
+            '</div></div>'
+        ).join('');
+    } catch (e) {
+        console.error('Failed to load biography timeline:', e);
+    }
+}
+window.updateBiographyTimelineUI = updateBiographyTimelineUI;

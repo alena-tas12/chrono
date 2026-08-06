@@ -210,19 +210,17 @@ class BackupManager {
             // Read backup SQL
             const backupSQL = fs.readFileSync(backupPath, 'utf8');
 
-            // Execute each statement
-            const statements = backupSQL.split(';').filter(s => s.trim().length > 0);
+            // Execute each statement (split by double newline boundaries so semicolons in strings aren't split)
+            const statements = backupSQL.split(/\n\s*\n/).map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
             let executedCount = 0;
 
             for (const statement of statements) {
-                if (!statement.trim().startsWith('--')) {
-                    try {
-                        testDb.exec(statement);
-                        executedCount++;
-                    } catch (execErr) {
-                        // Some statements might fail, log but continue
-                        console.warn(`⚠️ Statement execution warning: ${execErr.message}`);
-                    }
+                try {
+                    testDb.exec(statement);
+                    executedCount++;
+                } catch (execErr) {
+                    // Some statements might fail, log but continue
+                    console.warn(`⚠️ Statement execution warning: ${execErr.message}`);
                 }
             }
 

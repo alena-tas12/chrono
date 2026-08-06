@@ -1,0 +1,21 @@
+[L3] Failed to load chat history: Error: Error invoking remote method 'get-chat-history': Error: No handler registered for 'get-chat-history' (file:///C:/chrono%20app/ui/app.js:74)
+[L3] Failed to store app_theme in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta' (file:///C:/chrono%20app/ui/app.js:1274)
+[L3] Failed to store app_accent in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta' (file:///C:/chrono%20app/ui/app.js:1294)
+[L3] Failed to store app_name in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta' (file:///C:/chrono%20app/ui/app.js:1327)
+[L3] Failed to store user_name in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta' (file:///C:/chrono%20app/ui/app.js:1688)
+[L3] Failed to store user_email in sync_meta: Error: Error invoking remote method 'set-sync-meta': Error: No handler registered for 'set-sync-meta' (file:///C:/chrono%20app/ui/app.js:1710)
+[L3] Failed to load cognitive profile: Error: Error invoking remote method 'get-cognitive-profile': Error: No handler registered for 'get-cognitive-profile' (file:///C:/chrono%20app/ui/app.js:1376)
+[L3] Failed to load proactivity settings: Error: Error invoking remote method 'get-proactivity-settings': Error: No handler registered for 'get-proactivity-settings' (file:///C:/chrono%20app/ui/app.js:1582)
+[L3] Failed to load local tasks: Error: Error invoking remote method 'get-tasks-range': Error: No handler registered for 'get-tasks-range' (file:///C:/chrono%20app/ui/app.js:93)
+[L3] Failed to load Life Continuity UI data: Error: Error invoking remote method 'get-life-continuity': Error: No handler registered for 'get-life-continuity' (file:///C:/chrono%20app/ui/app.js:2855)
+[L3] Failed to populate peer selectors: Error: Error invoking remote method 'get-relationships': Error: No handler registered for 'get-relationships' (file:///C:/chrono%20app/ui/app.js:3401)
+[L3] Failed to update JARVIS suggestions: Error: Error invoking remote method 'get-jarvis-suggestions': Error: No handler registered for 'get-jarvis-suggestions' (file:///C:/chrono%20app/ui/app.js:3497)
+[L3] Failed to load context resurrection on startup: Error: Error invoking remote method 'get-context-resurrection': Error: No handler registered for 'get-context-resurrection' (file:///C:/chrono%20app/ui/app.js:3345)
+[L2] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+  this app to unnecessary security risks.
+
+For more information and help, consult
+https://electronjs.org/docs/tutorial/security.
+This warning will not show up
+once the app is packaged. (node:electron/js2c/renderer_init:2)

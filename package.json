@@ -6,6 +6,8 @@
     "main": "main/main.js",
     "scripts": {
         "start": "electron .",
+        "test": "set ELECTRON_RUN_AS_NODE=1 && electron tests/test_trust_killer_integration.js",
+        "test:all": "set ELECTRON_RUN_AS_NODE=1 && electron tests/test_trust_killer_integration.js && set ELECTRON_RUN_AS_NODE=1 && electron tests/test_sync.js",
         "build": "electron-builder",
         "build:win": "electron-builder --win",
         "build:linux": "electron-builder --linux",
@@ -55,7 +57,10 @@
         "@supabase/supabase-js": "^2.106.2",
         "bcryptjs": "^3.0.3",
         "better-sqlite3": "^12.8.0",
+        "cors": "^2.8.5",
         "dotenv": "^16.6.1",
+        "express": "^4.19.2",
+        "jsonwebtoken": "^9.0.2",
         "pg": "^8.21.0"
     }
 }

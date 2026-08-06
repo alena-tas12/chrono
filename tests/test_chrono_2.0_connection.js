@@ -12,9 +12,9 @@ console.log("⚙️ Test Environment Loaded:");
 console.log(`- Supabase URL: ${supabaseUrl}`);
 console.log(`- Supabase Anon Key: ${supabaseAnonKey ? '[Present]' : '[Missing]'}`);
 
-const cloudDb = require('./main/cloudDb');
-const cloudSync = require('./main/cloudSyncService');
-const observatory = require('./main/observatory');
+const cloudDb = require('../main/cloudDb');
+const cloudSync = require('../main/cloudSyncService');
+const observatory = require('../main/observatory');
 
 function initMockDb(dbPath) {
     if (fs.existsSync(dbPath)) {

@@ -8,7 +8,7 @@ const fs = require('fs');
         process.env.CHRONO_USER_DATA = testData;
         if (!fs.existsSync(testData)) fs.mkdirSync(testData, { recursive: true });
 
-        const dbMod = require('./main/main_db');
+        const dbMod = require('../main/main_db');
         console.log('Initial activeUserId:', dbMod.getActiveUserId());
         const db = dbMod.db;
         // run a harmless query

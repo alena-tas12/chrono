@@ -1,5 +1,12 @@
 const { app, BrowserWindow, ipcMain, Menu, screen } = require('electron');
 const path = require('path');
+
+// Set application name and align userData path in development mode to load the production DB
+app.name = 'Chrono';
+app.disableHardwareAcceleration();
+if (!app.isPackaged) {
+    app.setPath('userData', path.join(app.getPath('appData'), 'Chrono'));
+}
 const cloudDb = require('./cloudDb');
 const googleAuth = require('./googleAuth');
 const bcrypt = require('bcryptjs');
@@ -120,12 +127,34 @@ function createWindow() {
         height: Math.min(864, workH),
         minWidth: 960,
         minHeight: 600,
+        backgroundColor: '#0f172a',
         autoHideMenuBar: true,
         webPreferences: {
             nodeIntegration: true,
-            contextIsolation: false
+            contextIsolation: false,
+            sandbox: false
         }
     });
+
+    win.webContents.on('console-message', (event, ...args) => {
+        let level = 0, message = '', line = 0, sourceId = '';
+        if (args[0] && typeof args[0] === 'object') {
+            level = args[0].level;
+            message = args[0].message;
+            line = args[0].lineNumber;
+            sourceId = args[0].sourceId;
+        } else {
+            [level, message, line, sourceId] = args;
+        }
+        console.log(`[RENDERER CONSOLE (${level})] ${message} (${sourceId}:${line})`);
+    });
+    win.webContents.on('render-process-gone', (event, details) => {
+        console.error(`❌ RENDERER CRASHED:`, details);
+    });
+    win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+        console.error(`❌ FAILED TO LOAD URL: ${validatedURL} - ${errorDescription} (${errorCode})`);
+    });
+    // DevTools can be opened via View > Toggle DevTools in the menu (Ctrl+Shift+I)
 
     setMenuBarVisible(false);
     win.loadFile(path.join(__dirname, '../ui/index.html'));
@@ -835,6 +864,16 @@ ipcMain.handle('get-contextual-presence', (event, metadata) => ({
     line: interactionAdaptation.getContextualPresenceLine(metadata || {}),
     adaptation: interactionAdaptation.getAdaptationState()
 }));
+
+// ========================================
+// 🔔 PROACTIVITY & DOMAIN CONTROL HANDLERS
+// ========================================
+
+ipcMain.handle('get-proactivity-settings', () => userModel.getProactivitySettings());
+ipcMain.handle('set-proactivity-mode', (event, mode) => userModel.setProactivityMode(mode));
+ipcMain.handle('set-domain-proactivity', (event, domain, level) => userModel.setDomainProactivity(domain, level));
+ipcMain.handle('complete-proactivity-onboarding', (event, mode, domainPolicies) => userModel.completeProactivityOnboarding(mode, domainPolicies));
+ipcMain.handle('evaluate-proactive-thought', (event, thoughtContext) => userModel.evaluateProactiveThought(thoughtContext));
 
 // ========================================
 // 🧠 STATE & DEBUGGING HANDLERS

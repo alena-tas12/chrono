@@ -11,6 +11,18 @@
     <meta name="theme-color" content="#3f75ff">
 </head>
 <body>
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            console.error("CRITICAL RENDERER UNCAUGHT ERROR:", msg, "at", url, ":", line, col, error ? error.stack : "");
+            const errDiv = document.createElement('div');
+            errDiv.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; color:#ff4444; background:#111; padding:30px; font-family:monospace; font-size:14px; overflow:auto;';
+            errDiv.innerHTML = '<h2>🚨 Fatal Renderer Error</h2><p>' + msg + '</p><pre>' + (error && error.stack ? error.stack : '') + '</pre>';
+            document.body.appendChild(errDiv);
+        };
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error("CRITICAL UNHANDLED REJECTION:", e.reason);
+        });
+    </script>
     <div class="appShell">
         <!-- LEFT NARROW RAIL -->
         <aside class="sideBar">
@@ -101,7 +113,7 @@
                         <div class="calendarNav">
                             <button id="prevMonth" class="navButton" aria-label="Previous month">←</button>
                             <div id="currentDate" class="currentDate">May 2026</div>
-                            <span class="offlineBadge" id="offlineBadge" style="display:none; margin-left:12px; background:#fee2e2; color:#ef4444; border: 1px solid #fca5a5; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">⚠️ Offline Mode</span>
+                            <span class="offlineBadge" id="offlineBadge" style="display:none; margin-left:12px; background:#fee2e2; color:#ef4444; border: 1px solid #fca5a5; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight:700; align-items:center; gap:4px;">⚠️ Offline Mode</span>
                             <button id="nextMonth" class="navButton" aria-label="Next month">→</button>
                         </div>
                         
@@ -280,6 +292,75 @@
                                         Loading cognitive fronts...
                                     </div>
                                     <p class="settingHelp">Select which active cognitive fronts are monitored and computed in your continuity metrics.</p>
+                                </div>
+                            </div>
+
+                            <!-- Proactivity & Domain Controls Card -->
+                            <div class="settingsCard proactivityCard">
+                                <h3>Proactivity & Domain Control</h3>
+                                <div class="settingsSection">
+                                    <label class="settingLabel" for="globalProactivitySelect">Global Proactivity Mode</label>
+                                    <div class="settingInputWrapper">
+                                        <select id="globalProactivitySelect" onchange="updateGlobalProactivityMode(this.value)" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px;">
+                                            <option value="disabled">🚫 Disabled (Silent)</option>
+                                            <option value="quiet">🔕 Quiet (High priority only)</option>
+                                            <option value="balanced" selected>⚖️ Balanced (Recommended)</option>
+                                            <option value="proactive">⚡ Proactive (Active suggestions)</option>
+                                        </select>
+                                    </div>
+                                    <p class="settingHelp">Controls overall frequency of proactive suggestions, alerts, and companion interventions.</p>
+                                </div>
+
+                                <div class="settingsSection">
+                                    <label class="settingLabel">Per-Domain Proactivity Policies</label>
+                                    <div id="domainProactivityControls" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid var(--border-color); font-size: 11px; margin-top: 6px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span>📅 Personal Domain</span>
+                                            <select onchange="updateDomainProactivity('personal', this.value)" class="domainSel" id="domainSelPersonal" style="padding: 4px; font-size: 11px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+                                                <option value="disabled">Disabled</option>
+                                                <option value="quiet">Quiet</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="proactive">Proactive</option>
+                                            </select>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span>📚 Study Domain</span>
+                                            <select onchange="updateDomainProactivity('study', this.value)" class="domainSel" id="domainSelStudy" style="padding: 4px; font-size: 11px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+                                                <option value="disabled">Disabled</option>
+                                                <option value="quiet">Quiet</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="proactive">Proactive</option>
+                                            </select>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span>👨‍👩‍👧 Family Domain</span>
+                                            <select onchange="updateDomainProactivity('family', this.value)" class="domainSel" id="domainSelFamily" style="padding: 4px; font-size: 11px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+                                                <option value="disabled">Disabled</option>
+                                                <option value="quiet">Quiet</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="proactive">Proactive</option>
+                                            </select>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span>🔁 Routine Domain</span>
+                                            <select onchange="updateDomainProactivity('routine', this.value)" class="domainSel" id="domainSelRoutine" style="padding: 4px; font-size: 11px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+                                                <option value="disabled">Disabled</option>
+                                                <option value="quiet">Quiet</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="proactive">Proactive</option>
+                                            </select>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span>🎯 Focus Domain</span>
+                                            <select onchange="updateDomainProactivity('focus', this.value)" class="domainSel" id="domainSelFocus" style="padding: 4px; font-size: 11px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+                                                <option value="disabled">Disabled</option>
+                                                <option value="quiet">Quiet</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="proactive">Proactive</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p class="settingHelp">Fine-tune companion intervention levels for each calendar domain independently.</p>
                                 </div>
                             </div>
                         </div>
@@ -1211,7 +1292,7 @@
 
     <script src="app.js"></script>
     <script>
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
             navigator.serviceWorker.register('service-worker.js').catch(function(e){
                 console.warn('ServiceWorker registration failed:', e);
             });

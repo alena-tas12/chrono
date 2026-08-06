@@ -2,13 +2,13 @@
     --font-primary: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
     --font-title: 'Outfit', sans-serif;
 
-    /* Custom Color Palette (HSL Tailored) */
-    --bg-app: #f4f6fa;
-    --bg-panel: #ffffff;
-    --bg-chat-box: #f8fafc;
-    --border-color: #e2e8f0;
-    --text-main: #1e293b;
-    --text-muted: #64748b;
+    /* Custom Color Palette (Sleek Dark Mode Default) */
+    --bg-app: #0f172a;
+    --bg-panel: #1e293b;
+    --bg-chat-box: #0f172a;
+    --border-color: #334155;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
 
     /* Calendar Layer Colors */
     --cal-personal: #3f75ff;
