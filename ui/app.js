@@ -68,11 +68,25 @@ async function loadChatHistory() {
                 if (chat.aiResponse) addChatMessage(chat.aiResponse, 'ai');
             });
         } else {
-            addChatMessage('Hi — I can help you plan your week, move events, or protect focus time.', 'ai');
+            
+            try {
+                const greeting = await ipcRenderer.invoke('get-startup-greeting');
+                addChatMessage(greeting, 'ai');
+            } catch (e) {
+                addChatMessage('Good morning, Alen. Systems initialized.', 'ai');
+            }
+
         }
     } catch (e) {
         console.error('Failed to load chat history:', e);
-        addChatMessage('Hi — I can help you plan your week, move events, or protect focus time.', 'ai');
+        
+            try {
+                const greeting = await ipcRenderer.invoke('get-startup-greeting');
+                addChatMessage(greeting, 'ai');
+            } catch (e) {
+                addChatMessage('Good morning, Alen. Systems initialized.', 'ai');
+            }
+
     }
 }
 
@@ -987,6 +1001,13 @@ function toggleRightPanel() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    const appModeSelect = document.getElementById('appModeSelect');
+    if (appModeSelect) {
+        const savedMode = localStorage.getItem('chrono_app_mode') || 'developer';
+        appModeSelect.value = savedMode;
+        applyAppMode(savedMode);
+        appModeSelect.addEventListener('change', (e) => applyAppMode(e.target.value));
+    }
     // Set date input value
     document.getElementById('datePicker').value = formatDateString(selectedDate);
     
@@ -2353,6 +2374,27 @@ async function updateNotesUI() {
                     `</div>`;
             }
 
+            let blockHtml = '';
+            if (note.blocks && note.blocks.length > 0) {
+                blockHtml = '<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">';
+                for (const block of note.blocks) {
+                    if (block.type === 'heading') {
+                        blockHtml += `<h6 style="margin:0; font-size:12px; font-weight:700; color:var(--text-main);">${block.content.replace(/^#+\s/, '')}</h6>`;
+                    } else if (block.type === 'quote') {
+                        blockHtml += `<div style="border-left: 2px solid var(--accent); padding-left: 6px; font-size:11px; font-style:italic; color:var(--text-muted);">${block.content.replace(/^>\s/, '')}</div>`;
+                    } else if (block.type === 'code') {
+                        blockHtml += `<pre style="margin:0; padding:4px 8px; background:rgba(0,0,0,0.3); border-radius:4px; font-family:monospace; font-size:10px; color:var(--cal-work); overflow-x:auto;">${block.content.replace(/^```\w*\n?/, '').replace(/```$/, '')}</pre>`;
+                    } else if (block.type === 'list') {
+                        blockHtml += `<div style="padding-left:12px; font-size:11px; color:var(--text-muted);">${block.content}</div>`;
+                    } else {
+                        blockHtml += `<p style="margin:0; font-size:11px; color:var(--text-muted); line-height:1.4;">${block.content}</p>`;
+                    }
+                }
+                blockHtml += '</div>';
+            } else {
+                blockHtml = `<p style="margin:6px 0 0 0; font-size:12px; color:var(--text-muted); line-height:1.4;">${note.content || 'No description.'}</p>`;
+            }
+            
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <h5 style="margin:0; font-size:13px; font-weight:700; color:var(--text-main); cursor:pointer;" onclick="loadNoteToEditor('${note.id}', \`${note.title.replace(/'/g, "\\'")}\`, \`${(note.content || '').replace(/'/g, "\\'")}\`, '${note.visibility}', '${sharedWithEscaped}')">${note.title}</h5>
@@ -2361,7 +2403,7 @@ async function updateNotesUI() {
                         <button onclick="triggerDeleteNote('${note.id}')" style="background:none; border:none; color:#ef4444; font-size:13px; cursor:pointer; opacity:0.7;">🗑️</button>
                     </div>
                 </div>
-                <p style="margin:6px 0 0 0; font-size:12px; color:var(--text-muted); line-height:1.4;">${note.content || 'No description.'}</p>
+                ${blockHtml}
                 ${linkedHtml}
             `;
             container.appendChild(card);
@@ -4253,3 +4295,27 @@ async function updateBiographyTimelineUI() {
     }
 }
 window.updateBiographyTimelineUI = updateBiographyTimelineUI;
+
+
+function applyAppMode(mode) {
+    localStorage.setItem('chrono_app_mode', mode);
+    const debugBtn = document.getElementById('toggleDebugBtn');
+    const insightsTab = document.querySelector('.rightPanelTab[data-tab="insights"]');
+    const wsBtnIntel = document.getElementById('wsBtnIntelligence');
+
+    if (mode === 'developer') {
+        if(debugBtn) debugBtn.style.display = '';
+        if(insightsTab) insightsTab.style.display = '';
+        if(wsBtnIntel) wsBtnIntel.style.display = '';
+    } else {
+        if(debugBtn) debugBtn.style.display = 'none';
+        if(insightsTab) insightsTab.style.display = 'none';
+        if(wsBtnIntel) wsBtnIntel.style.display = 'none';
+        
+        // If they are on the insights tab, switch them to today
+        if (insightsTab && insightsTab.classList.contains('active')) {
+            const todayTab = document.querySelector('.rightPanelTab[data-tab="today"]');
+            if(todayTab) todayTab.click();
+        }
+    }
+}

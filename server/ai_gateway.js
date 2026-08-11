@@ -107,15 +107,15 @@ async function processAIChat(userId, userInput, userContext = {}) {
             const taskText = userInput.replace(/.*?(?:add|create|schedule|put)\s*/i, '').trim();
             responseText = `I've mapped "${taskText || 'New Event'}" onto your schedule details. 📅 Block added to your calendar layers.`;
         } else if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
-            responseText = `Hello ${displayName}! I'm looking at your calendar blocks. We have a clear window this afternoon. What's on your agenda?`;
+            responseText = `Systems online, ${displayName}. I've synchronized the timeline. We have open bandwidth this afternoon. What are your parameters?`;
         } else {
             // Default AI responses adapted to styles
             if (cognitiveStyle === 'companion') {
-                responseText = `Let's focus on one step. I see your daily routines are set. How can I help you clear some space today?`;
+                responseText = `Focus locked. Daily operations are stabilized. Transmit your next directive, and I'll clear the path.`;
             } else if (cognitiveStyle === 'architect') {
                 responseText = `Analyzing calendar metadata: 3 scheduled events, 0 active conflicts, open temporal bandwidth in evening slots (6-8 PM). Recommend allocating 1 hour for Focus work.`;
             } else {
-                responseText = `I've synchronized your calendar layers. Focus blocks are protected. Let me know what you would like to schedule next.`;
+                responseText = `Data synchronized. Focus boundaries are secured. Awaiting your next architectural input.`;
             }
         }
     }

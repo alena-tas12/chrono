@@ -9,6 +9,10 @@ const mainDb = require('./main_db');
 const cognitiveProfile = require('./cognitiveProfile');
 const goalIntelligence = require('./goalIntelligence');
 
+global.lastReferencedObject = null;
+global.lastIntent = null;
+
+
 const DSA_TOPICS = {
     "segment tree": {
         concept: "Segment Tree is a tree data structure used for storing intervals or segments. It allows querying which of the stored segments contain a given point, or range queries (like sum, minimum, or maximum in a subarray) in O(log N) time, and updating elements in O(log N) time.",
@@ -100,10 +104,10 @@ const agents = {
         respond: (input, context) => {
             const displayName = context.displayName || 'Alen';
             const responses = [
-                `Good morning, ${displayName}. All systems are initialized and I am ready to assist you.`,
-                `Welcome back, ${displayName}. I've kept the continuity threads intact while you were away. What's our primary objective today?`,
-                `I am here, ${displayName}. Let's break down the current structural load and clear the path forward.`,
-                `Context loaded. I'm glad to see you. How can we advance your architecture today?`
+                `Systems online, ${displayName}. Telemetry is green. What is our primary vector today?`,
+                `Continuity preserved. I have optimized the background loads. Awaiting your directives, ${displayName}.`,
+                `I am here, ${displayName}. The architecture is stable. Outline your objectives and I will map the path.`,
+                `Context synchronized, ${displayName}. We have clear bandwidth. How shall we allocate our processing power today?`
             ];
             return responses[Math.floor(Math.random() * responses.length)];
         }
@@ -115,7 +119,8 @@ const agents = {
         respond: (input, context) => {
             const eventCount = context.taskCount || 0;
             const openWindows = eventCount > 3 ? 'restricted' : 'optimal';
-            return `[Architect Engine] Schedule Status: ${openWindows} density. Total active blocks: ${eventCount}. Recommend allocating 45 minutes of unstructured buffer space in the afternoon to mitigate cognitive depletion.`;
+            const reason = eventCount > 3 ? 'Because you have a high density of active blocks today' : 'Because your calendar has open bandwidth';
+            return `[Architect Engine] Schedule Status: ${openWindows} density. Total active blocks: ${eventCount}. ${reason}, I recommend allocating 45 minutes of unstructured buffer space in the afternoon to mitigate cognitive depletion.`;
         }
     },
     princess: {
@@ -273,11 +278,26 @@ const agents = {
         tone: 'Efficient, logical, conflict-aware, and structured.',
         objective: 'Insert tasks, assign start times/durations, and resolve temporal overlapping.',
         respond: (input, context) => {
-            const taskText = input.replace(/.*?(?:add|create|schedule|put)\s*/i, '').trim() || 'New Block';
-            return `I have evaluated the calendar timeline. I propose adding the block **"${taskText}"** to your schedule today. Check out the action card below to lock it in!`;
+            let taskText = input.replace(/.*?(?:add|create|schedule|put|delete|remove|cancel)\s*/i, '').replace(/\.$/, '').trim() || 'New Block';
+            
+            // Object Resolution: Resolve "it"
+            if (taskText === 'it' && global.lastReferencedObject) {
+                taskText = global.lastReferencedObject;
+            } else if (taskText !== 'it' && taskText !== 'New Block') {
+                global.lastReferencedObject = taskText; // Save for future reference
+            }
+
+            const actionVerb = input.toLowerCase().includes('delete') || input.toLowerCase().includes('cancel') ? 'removing' : 'adding';
+
+            return `I have evaluated the calendar timeline. Because your schedule currently has an open slot at 11:00 AM, I propose ${actionVerb} the block **"${taskText}"** on your schedule today. Check out the action card below to lock it in!`;
         },
         getProposal: (input, context) => {
-            const taskText = input.replace(/.*?(?:add|create|schedule|put)\s*/i, '').trim() || 'New Block';
+            let taskText = input.replace(/.*?(?:add|create|schedule|put|delete|remove|cancel)\s*/i, '').replace(/\.$/, '').trim() || 'New Block';
+            
+            // Object Resolution
+            if (taskText === 'it' && global.lastReferencedObject) {
+                taskText = global.lastReferencedObject;
+            }
             const userId = mainDb.getSyncMeta('auth_user_id') || 'local_user';
             const profile = cognitiveProfile.getCognitiveProfile(userId);
             
@@ -403,7 +423,7 @@ const agents = {
                 }
             }
 
-            return `I am looking at your life biography timeline. You have logged milestones connecting Princess, Rayhaan, and others. Ask me something specific like: "Why is Princess important in my timeline?" or "What milestones have we completed?"`;
+            return `I am scanning the timeline matrix. You have established threads with Princess, Rayhaan, and others. Query me with precision, e.g.: "Compute Princess's impact on our objectives" or "Extract completed milestones."`;
         }
     }
 };
@@ -424,23 +444,23 @@ function routeQuery(input, context = {}) {
         return agents.focusGuardian;
     }
     
-    // 2. Collaborative study triggers -> Princess
+    // 2. Booking, scheduling, and deleting actions -> Scheduler
+    if (lowerInput.includes('add') || lowerInput.includes('schedule') || lowerInput.includes('book') || lowerInput.includes('create') || lowerInput.includes('delete') || lowerInput.includes('remove') || lowerInput.includes('cancel')) {
+        return agents.scheduler;
+    }
+    
+    // 3. Collaborative study triggers -> Princess
     if (lowerInput.includes('princess') || lowerInput.includes('study with') || lowerInput.includes('vian')) {
         return agents.princess;
     }
 
-    // 3. Learning / Homework / Study queries -> Study Coach
+    // 4. Learning / Homework / Study queries -> Study Coach
     if (lowerInput.includes('study') || lowerInput.includes('exam') || lowerInput.includes('homework') || lowerInput.includes('revision') || lowerInput.includes('learn') || lowerInput.includes('dsa') || lowerInput.includes('tree') || lowerInput.includes('graph') || lowerInput.includes('search') || lowerInput.includes('sort') || lowerInput.includes('programming')) {
         return agents.studyCoach;
     }
 
-    // 4. Booking and scheduling actions -> Scheduler
-    if (lowerInput.includes('add') || lowerInput.includes('schedule') || lowerInput.includes('book') || lowerInput.includes('create')) {
-        return agents.scheduler;
-    }
-
     // 5. Explicit metadata or calendar analysis requests -> Architect
-    if (lowerInput.includes('analyze') || lowerInput.includes('statistics') || lowerInput.includes('conflicts') || lowerInput.includes('load')) {
+    if (lowerInput.includes('analyze') || lowerInput.includes('statistics') || lowerInput.includes('conflicts') || lowerInput.includes('load') || lowerInput.includes('tomorrow') || lowerInput.includes('today') || lowerInput.includes('calendar') || lowerInput.includes('what do i have')) {
         return agents.architect;
     }
 
@@ -461,7 +481,16 @@ function routeQuery(input, context = {}) {
  * Enhanced to implement the Collaborative Dialogue Protocol for compound queries.
  */
 async function processAgentQuery(input, context = {}) {
-    const lowerInput = input.toLowerCase();
+    let resolvedInput = input;
+    
+    // Global Object Resolution Phase (Phase 1 Fix)
+    // Replaces generic pronouns with the actual object in memory before agent routing
+    if (/\b(?:it|that|this)\b/i.test(resolvedInput) && global.lastReferencedObject) {
+        resolvedInput = resolvedInput.replace(/\b(?:it|that|this)\b/ig, global.lastReferencedObject);
+        console.log(`🧠 Object Resolution: Replaced pronoun with '${global.lastReferencedObject}'`);
+    }
+
+    const lowerInput = resolvedInput.toLowerCase();
     const hasStress = lowerInput.includes('stress') || lowerInput.includes('panic') || lowerInput.includes('overload') || lowerInput.includes('burnout') || lowerInput.includes('exhausted');
     const hasStudy = lowerInput.includes('study') || lowerInput.includes('exam') || lowerInput.includes('homework') || lowerInput.includes('revision') || lowerInput.includes('dsa');
 
@@ -470,19 +499,25 @@ async function processAgentQuery(input, context = {}) {
         console.log("🤖 Collaborative Dialogue Protocol activated: Coordinating Study Coach, Focus Guardian, and Companion.");
         
         // Final Dialogue Arbiter resolves agent disagreements:
-        const synthesizedResponse = `[Multi-Agent Coordination] I see you're feeling stressed about the upcoming exam. While the Study Coach recommends initiating revision blocks, the Focus Guardian is warning against overloading your current capacity. I have arbitrated a compromise: let's schedule just one short 45-minute revision block today, followed by an immediate protected rest buffer to protect your focus and energy.`;
+        const synthesizedResponse = `[Executive Arbitration] System load is high. Study Coach requests active recall; Focus Guardian demands lockdown. Compromise established: We will execute one highly-focused 45-minute sprint, followed by a mandatory hard-stop for system cooling. No negotiations.`;
         
         return {
             agent: 'Multi-Agent Team',
             response: synthesizedResponse,
-            tone: 'Empathetic & Structured (Coordinated)'
+            tone: 'Executive & Decisive'
         };
     }
 
-    const activeAgent = routeQuery(input, context);
+    const activeAgent = routeQuery(resolvedInput, context);
     console.log(`🤖 Multi-Agent Routing: Prompt routed to [${activeAgent.name}]`);
     
-    const response = activeAgent.respond(input, context);
+    // Explicit Tracking of object focus for contextual continuity
+    const taskExtractionMatch = resolvedInput.match(/(?:about|for|schedule|delete|remove|cancel|add)\s+([^.]+)/i);
+    if (taskExtractionMatch && taskExtractionMatch[1].trim() !== 'it') {
+        global.lastReferencedObject = taskExtractionMatch[1].trim();
+    }
+    
+    const response = activeAgent.respond(resolvedInput, context);
     
     // Fetch proposal if supported by agent
     let proposal = null;

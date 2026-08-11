@@ -1,4 +1,4 @@
-﻿const Database = require('better-sqlite3');
+const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const cloudDb = require('./cloudDb');
@@ -534,6 +534,56 @@ db.prepare(`
         shared_with TEXT DEFAULT '[]',
         importance_score INTEGER DEFAULT 5,
         impact_score INTEGER DEFAULT 5
+    )
+`).run();
+
+// ========================================
+// 🧠 KNOWLEDGE WORKSPACE SCHEMA
+// ========================================
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS workspace_notes (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted INTEGER DEFAULT 0,
+        synced INTEGER DEFAULT 0
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS workspace_blocks (
+        id TEXT PRIMARY KEY,
+        note_id TEXT NOT NULL,
+        type TEXT DEFAULT 'paragraph',
+        content TEXT,
+        order_index INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY(note_id) REFERENCES workspace_notes(id) ON DELETE CASCADE
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS workspace_links (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        target_type TEXT NOT NULL,
+        relationship TEXT DEFAULT 'reference',
+        created_at INTEGER NOT NULL
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS workspace_revisions (
+        id TEXT PRIMARY KEY,
+        note_id TEXT NOT NULL,
+        content_snapshot TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(note_id) REFERENCES workspace_notes(id) ON DELETE CASCADE
     )
 `).run();
 

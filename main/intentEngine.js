@@ -1,191 +1,92 @@
 const mainDb = require('./main_db');
-const calendarIntelligence = require('./calendarIntelligence');
+const emotionVocabulary = require('./emotionVocabulary');
 
 /**
- * 🎯 INTENT ENGINE
- * Parses user input for stress, overload, or explicit schedule restructuring intents.
- * Outputs actionable change proposals.
+ * 🎯 INTENT ENGINE - ADAPTIVE INTENT CLASSIFIER
+ * 
+ * Classifies user input into adaptive interaction modes based on what the user is trying to accomplish.
+ * Decouples emotional context from response mode: intent determines action, emotion modulates tone.
  */
 
+function detectInteractionMode(input, options = {}) {
+    const lower = (input || '').toLowerCase().trim();
+
+    // Always detect emotional vocabulary — emotion is a dimension of ANY interaction mode,
+    // not a separate mode. A debugging session can be angry. A philosophy discussion can be tender.
+    const emotion = emotionVocabulary.detect(input);
+
+    // 1. Critical Challenger / Debate
+    if (/\b(debate|challenge|disagree|test this|critique|disprove|argument)\b/i.test(lower)) {
+        const verifyChallengeNeeded = options.allowChallenge !== false && (lower.includes('debate') || lower.includes('critique') || lower.includes('test'));
+        if (verifyChallengeNeeded) {
+            return { mode: 'challenger', verifiedChallenge: true, description: 'Rigorously stress-test ideas when verified as appropriate.', emotion };
+        }
+    }
+
+    // 2. Technical Debugging / Troubleshooting (even if emotional/frustrated)
+    // NOTE: Personal-context keywords (router, ping, cortisol, etc.) are Founder Layer only
+    if (/\b(why is|not working|error|bug|fix|failed|crash|exception|traceback|issue|broken|doesn't work)\b/i.test(lower)) {
+        return { mode: 'troubleshooter', description: 'Technical diagnostic and troubleshooting assistance.', emotion };
+    }
+
+    // 3. Engineering / Coding Collaboration
+    if (/\b(build|code|implement|refactor|script|develop|endpoint|express|rest api)\b/i.test(lower)) {
+        return { mode: 'collaborator', description: 'Co-creative engineering and technical production.', emotion };
+    }
+
+    // 4. Structural Analyst / Mechanism Breakdown (e.g. coping mechanism, cause, pattern, pros/cons)
+    if (/\b(compare|versus|vs|difference between|pros and cons|trade-offs|architecture|benchmark|differ structurally|pattern across|what generates|coping mechanism|root cause)\b/i.test(lower)) {
+        return { mode: 'analyst', description: 'Objective comparative structural analysis.', emotion };
+    }
+
+    // 5. Thinking Partner (Deep System / Philosophical / Existential Exploration)
+    // NOTE: invulnerability, anchoring, yearning, loyalty — Founder Layer personal frameworks, not generic keywords
+    if (/\b(think through|explore|wonder|philosophy|meaning|why do|incentivize|analyze how|governance|faith|existential|conscience|responsibility|how do i remain|what does it mean)\b/i.test(lower)) {
+        return { mode: 'thinking_partner', description: 'Collaborative meta-cognitive exploration.', emotion };
+    }
+
+    // 6. Explicit Personal Support Request (Only when user is explicitly seeking emotional support/grounding)
+    if (/\b(really struggling|having a bad time|feeling miserable|need help coping|grief|heart|broke my|shattering|sad)\b/i.test(lower)) {
+        return { mode: 'supportive', emotionalFramingRequired: true, description: 'Contextual emotional support tailored to user need.', emotion };
+    }
+
+    // 7. Teacher / Explainer
+    if (/\b(explain|what is|how does|teach me|define|overview of|concept)\b/i.test(lower)) {
+        return { mode: 'teacher', description: 'Clear, concept-first educational explanation.', emotion };
+    }
+
+    // 8. Decision Support
+    if (/\b(should i|which one|recommend|choose|buy|select|decision|option|gcp|deploy)\b/i.test(lower)) {
+        return { mode: 'decision_support', description: 'Criteria-based neutral decision analysis.', emotion };
+    }
+
+    // 9. Interpreter (Message / Communication Subtext Analysis)
+    if (/\b(message|texted|interpret|subtext|text from|what did|what are the possible|reply)\b/i.test(lower)) {
+        return { mode: 'interpreter', description: 'Contextual message interpretation and evidence review.', emotion };
+    }
+
+    // 10. Pure Listening
+    if (/\b(just listen|let me vent|hear me out)\b/i.test(lower)) {
+        return { mode: 'listener', description: 'Unobtrusive, non-judgmental listening.', emotion };
+    }
+
+    // Default: Conversational / Natural Direct
+    return { mode: 'conversational', description: 'Direct, natural, grounded conversation.', emotion };
+}
+
 function parseIntent(input, dateKey) {
-    const lower = input.toLowerCase();
-    const db = mainDb.db;
-    const today = dateKey || new Date().toISOString().split('T')[0];
-
-    // Fetch active tasks for the target date
-    let activeTasks = [];
-    try {
-        activeTasks = db.prepare("SELECT * FROM tasks WHERE date = ? AND completed = 0 AND deleted = 0").all(today);
-    } catch (e) {
-        console.error("IntentEngine: Failed to query tasks:", e.message);
-    }
-
-    // 1. Detect stress & overwhelm (e.g. "exhausted", "burnout", "too much")
-    const isOverwhelmed = /\b(exhausted|stressed|burnout|too much|panic|tired|anxious|overload)\b/.test(lower);
-    if (isOverwhelmed && activeTasks.length > 0) {
-        // Construct shame-free restructuring proposal
-        const actions = [];
-        
-        // Move high-density tasks (like Study/Work) to tomorrow, shrink others, add focus rest block
-        const tomorrow = getRelativeDate(today, 1);
-        
-        // Propose to move up to 2 study or work tasks
-        let movedCount = 0;
-        activeTasks.forEach(task => {
-            const cal = (task.calendar || '').toLowerCase();
-            if ((cal === 'study' || cal === 'personal') && movedCount < 2) {
-                actions.push({
-                    type: 'move',
-                    taskId: task.id,
-                    text: task.text,
-                    originalDate: task.date,
-                    newDate: tomorrow
-                });
-                movedCount++;
-            } else if (task.duration_min > 60) {
-                // Shrink long tasks to reduce cognitive load
-                actions.push({
-                    type: 'shrink',
-                    taskId: task.id,
-                    text: task.text,
-                    originalDuration: task.duration_min,
-                    newDuration: Math.round(task.duration_min / 2)
-                });
-            }
-        });
-
-        // Add a protected Rest & Recovery focus block
-        actions.push({
-            type: 'add',
-            text: 'Protected Rest & Recovery',
-            date: today,
-            calendar: 'focus',
-            start_time: '19:00',
-            duration_min: 90
-        });
-
-        return {
-            hasProposal: true,
-            proposal: {
-                type: 'overwhelm_restructure',
-                confidence: 0.95,
-                reason: 'High task density coupled with explicit stress keywords in conversation history.',
-                explanation: "It sounds like you've hit a limit, which is completely okay. Let's offload your calendar: I propose moving study blocks to tomorrow, shortening today's remaining tasks, and carving out a dedicated Rest & Recovery block tonight.",
-                reasoning_bullets: [
-                    "Detected verbal stress vocabulary or high cognitive load cues",
-                    "Offloading demanding tasks to safeguard emotional stability",
-                    "Carving out structured recovery time to counter fatigue"
-                ],
-                actions
-            }
-        };
-    }
-
-    // 2. Detect Spaced Repetition Exam Prep Requests
-    // e.g. "physics exam on 2026-06-05" or "exam next week" or "exam on friday"
-    const examMatch = lower.match(/\b([a-zA-Z0-9\s]+?)\s+(?:exam|test)\s+(?:on|for)\s+([0-9-]{10}|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
-    if (examMatch) {
-        const subject = examMatch[1].trim();
-        const dateStr = examMatch[2].trim();
-        let targetDate = today;
-
-        if (dateStr === 'tomorrow') {
-            targetDate = getRelativeDate(today, 1);
-        } else if (dateStr !== 'today') {
-            targetDate = parseRelativeWeekday(dateStr, today);
-        }
-
-        const studyProposals = calendarIntelligence.generateSpacedStudyBlocks(subject, targetDate);
-        return {
-            hasProposal: true,
-            proposal: {
-                type: 'spaced_study_planning',
-                confidence: 0.90,
-                reason: 'Explicit exam prep scheduling command matching academic planning filters.',
-                explanation: `I've mapped out a cognitive study timeline leading up to your ${subject} Exam on ${targetDate}. This spaces study sessions over several days to leverage active recall and protect you from last-minute burnout.`,
-                reasoning_bullets: [
-                    "Leveraging spaced repetition study structures",
-                    "Prioritizing preparation buffers ahead of target exam dates",
-                    "Ensuring study blocks are balanced to maintain focus stability"
-                ],
-                actions: studyProposals
-            }
-        };
-    }
-
-    // 3. Detect task shifts (e.g. "move study to evenings", "postpone chemistry")
-    const shiftMatch = lower.match(/\b(move|shift|postpone|delay)\s+([a-zA-Z0-9\s]+?)(?:\s+(?:to|until)\s+([a-zA-Z0-9\s:-]+))?$/i);
-    if (shiftMatch) {
-        const taskKeyword = shiftMatch[2].trim();
-        const dest = shiftMatch[3] ? shiftMatch[3].trim().toLowerCase() : 'tomorrow';
-
-        // Find matches in active tasks
-        const matchingTask = activeTasks.find(t => t.text.toLowerCase().includes(taskKeyword));
-        if (matchingTask) {
-            let newDate = today;
-            let newStartTime = matchingTask.start_time;
-
-            if (dest.includes('tomorrow')) {
-                newDate = getRelativeDate(today, 1);
-            } else if (dest.includes('evening')) {
-                newStartTime = '19:00';
-            } else {
-                newDate = parseRelativeWeekday(dest, today);
-            }
-
-            const actions = [{
-                type: 'move',
-                taskId: matchingTask.id,
-                text: matchingTask.text,
-                originalDate: matchingTask.date,
-                newDate,
-                newStartTime
-            }];
-
-            return {
-                hasProposal: true,
-                proposal: {
-                    type: 'task_shift',
-                    confidence: 0.85,
-                    reason: 'Specific manual schedule adjustment command detected.',
-                    explanation: `Let's adjust that block. I can postpone "${matchingTask.text}" to help free up your bandwidth right now.`,
-                    reasoning_bullets: [
-                        "User explicitly requested to shift or delay a task",
-                        "Rearranging active queue to accommodate scheduling request"
-                    ],
-                    actions
-                }
-            };
-        }
-    }
-
-    return { hasProposal: false, proposal: null };
-}
-
-function getRelativeDate(dateStr, days) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
-}
-
-function parseRelativeWeekday(dayName, baseDate) {
-    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const targetIdx = daysOfWeek.indexOf(dayName.toLowerCase());
-    if (targetIdx === -1) {
-        // If not a weekday, return tomorrow as fallback or match date string
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dayName)) return dayName;
-        return getRelativeDate(baseDate, 1);
-    }
-    
-    const current = new Date(baseDate);
-    const currentIdx = current.getDay();
-    let diff = targetIdx - currentIdx;
-    if (diff <= 0) diff += 7; // Must be in future week
-
-    current.setDate(current.getDate() + diff);
-    return current.toISOString().split('T')[0];
+    const modeInfo = detectInteractionMode(input);
+    return {
+        mode: modeInfo.mode,
+        description: modeInfo.description,
+        hasProposal: false,
+        proposal: null,
+        // Emotional vocabulary dimension — labels, not behavioral prescriptions
+        emotion: modeInfo.emotion
+    };
 }
 
 module.exports = {
-    parseIntent
+    parseIntent,
+    detectInteractionMode
 };

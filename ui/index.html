@@ -228,6 +228,18 @@
                                 <h3>Branding & Cognition</h3>
 
                                  <div class="settingsSection">
+                                     <label class="settingLabel" for="appModeSelect">Application Mode</label>
+                                     <div class="settingInputWrapper">
+                                         <select id="appModeSelect" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 12px;">
+                                             <option value="public">🌍 Public Mode</option>
+                                             <option value="personal">👤 Personal Mode</option>
+                                             <option value="developer">🛠️ Developer Mode</option>
+                                         </select>
+                                     </div>
+                                     <p class="settingHelp">Developer mode enables diagnostics, debugging tools, and observatory metrics.</p>
+                                 </div>
+
+                                 <div class="settingsSection">
                                      <label class="settingLabel" for="appNameInput">Application Name</label>
                                      <div class="settingInputWrapper">
                                          <input type="text" id="appNameInput" placeholder="Chrono" />

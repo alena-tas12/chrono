@@ -51,16 +51,30 @@ const presence = require('./presenceEngine');
 const db = require('./main_db');
 const timeEngine = require('./timeEngine');
 const interactionAdaptation = require('./interactionAdaptation');
+
 const syncEngine = require('./syncEngine');
 const realtimeSync = require('./realtimeSync');
-const observatory = require('./observatory');
 
 // 🛡️ TRUST KILLER PREVENTION FRAMEWORK (Original Chrono Inner Circle)
 const dataIntegrity = require('./dataIntegrity');
-const trustKillerHandlers = require('./trustKillerHandlers');
-const healthCheck = require('./healthCheck');
-const backupManager = require('./backupManager');
-const syncReliabilityTest = require('./syncReliabilityTest');
+const cloudSyncService = require('./cloudSyncService');
+const serverDb = require('./cloudDb');
+const observatory = require('./observatory');
+const syncReliability = require('./syncReliabilityTest');
+const { DispatchEngine } = require('./dispatchEngine');
+const { StateManager } = require('./stateManager');
+const { ModuleRegistry } = require('./moduleRegistry');
+const { ExecutiveLayer } = require('./executiveLayer');
+const { ReasoningEngine } = require('./reasoningEngine');
+const { MemoryModule } = require('./memoryModule');
+
+// Instantiate the new Cognitive OS components
+const globalStateManager = new StateManager();
+const globalModuleRegistry = new ModuleRegistry();
+const globalDispatchEngine = new DispatchEngine({ stateManager: globalStateManager, registry: globalModuleRegistry });
+const globalExecutiveLayer = new ExecutiveLayer();
+const globalReasoningEngine = new ReasoningEngine();
+const globalMemoryModule = new MemoryModule();
 
 let win;
 let menuBarVisible = false;
@@ -328,6 +342,7 @@ app.whenReady().then(() => {
         console.log('[CHRONO] Data integrity monitoring initialized.');
         
         // Register trust killer handlers (IPC for visible results)
+        const trustKillerHandlers = require('./trustKillerHandlers');
         trustKillerHandlers.registerTrustKillerHandlers();
         console.log('[CHRONO] Trust killer handlers registered.');
         
@@ -409,62 +424,85 @@ app.whenReady().then(() => {
 // 🔥 ORCHESTRATED AI RESPONSE HANDLER
 // ========================================
 
+
 ipcMain.handle('ai-response', async (event, data) => {
-    // 🎯 Central orchestration point
-    // All response generation flows through here
+    // 🎯 Central orchestration point - Upgraded to Chrono Cognitive OS
     
     try {
-        const orchestratedResult = await orchestrator.generateOrchestratedResponse(
-            data.userInput || data.message || data.input,
-            {
-                currentTask: data.currentTask,
-                tasks: data.tasks,
-                idleTime: data.idleTime,
-                attention: data.attention,
-                selectedDate: data.selectedDate
-            }
-        );
+        const userInput = data.userInput || data.message || data.input;
+        
+        // 1. Plan Intent
+        const intentPlan = await globalDispatchEngine.planIntent({ 
+            input: userInput, 
+            session: { currentTopic: null } 
+        });
 
-        // 🛡️ Validate response against identity
-        const validation = identityStability.validateResponseAlignment(
-            orchestratedResult.response,
-            {
-                emotion: orchestratedResult.state.emotion,
-                attention: orchestratedResult.state.focus,
-                priority: orchestratedResult.state.priority
-            }
-        );
+        // 2. Retrieve State Iteratively using Structured Contracts
+        const retrievedState = await globalDispatchEngine.retrieve(intentPlan);
+        
+        // 3. Contradiction & Opportunity Detection
+        const contradictions = globalDispatchEngine.detectContradictions({
+            userInput: userInput,
+            ...retrievedState
+        });
+        const opportunities = globalDispatchEngine.detectOpportunities(retrievedState);
 
-        let finalResponse = orchestratedResult.response;
+        // 4. Executive Execution Pipeline (Observe -> Reason -> Simulate -> Recommend -> Act)
+        const pipelineResult = globalExecutiveLayer.executePipeline(intentPlan, retrievedState, contradictions, opportunities);
 
-        if (!validation.valid) {
-            // Apply identity correction if needed
-            finalResponse = identityStability.enforceIdentity(
-                validation.suggestion || orchestratedResult.response,
-                {
-                    emotion: orchestratedResult.state.emotion
-                }
-            );
-        }
+        // 5. LLM Synthesis (Reasoning Engine)
+        // Pass the full pipeline trace and recommendations to the LLM
+        const finalResponseText = await globalReasoningEngine.synthesizeResponse(userInput, pipelineResult);
+        
+        // 6. Memory Write Path (Post-Processing)
+        const memoryWriteResult = globalMemoryModule.processInteraction(userInput, finalResponseText);
 
+        // 7. Remove internal diagnostic leaks. Only return the true natural language response.
         return {
-            response: finalResponse,
-            state: orchestratedResult.state,
-            alignment: validation.score,
-            adaptation: orchestratedResult.state?.adaptation || interactionAdaptation.getAdaptationState()
+            response: finalResponseText,
+            state: { emotion: 'analytical', focus: 1.0, priority: 1 },
+            log: 'Success'
         };
-
-    } catch (error) {
-        console.error('🚨 Orchestration error:', error);
+    } catch (err) {
         return {
-            response: 'I\'m here. Let\'s start fresh.',
-            state: { emotion: 'neutral', focus: 'open' },
-            error: error.message
+            response: `Error in Dispatch Engine: ${err.message}`,
+            state: { emotion: 'error', focus: 0, priority: 0 },
+            log: err.message
         };
     }
 });
 
-// Safe save-chat handler to prevent IPC registration error
+ipcMain.handle('get-startup-greeting', async () => {
+    const hour = new Date().getHours();
+    let greeting = 'Good evening';
+    if (hour < 12) greeting = 'Good morning';
+    else if (hour < 18) greeting = 'Good afternoon';
+    
+    let name = 'Alen';
+    let eventCount = 0;
+    try {
+        const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+        const profile = db.getProfile ? db.getProfile(userId) : null;
+        if (profile && profile.display_name) name = profile.display_name;
+        
+        const today = new Date();
+        const dateStr = today.getDate().toString().padStart(2, '0') + '-' + (today.getMonth()+1).toString().padStart(2, '0') + '-' + today.getFullYear();
+        const events = db.getEventsByDate(dateStr);
+        if (events) eventCount = events.length;
+    } catch (e) {
+        console.error(e);
+    }
+    
+    let calendarContext = '';
+    if (eventCount === 0) {
+        calendarContext = 'Your schedule is currently clear for today.';
+    } else {
+        calendarContext = `I am tracking ${eventCount} active block${eventCount > 1 ? 's' : ''} in your timeline today.`;
+    }
+
+    return `${greeting}, ${name}. All core systems are initialized and I am online. ${calendarContext} How should we begin?`;
+});
+
 ipcMain.handle('save-chat', (event, message, response) => {
     return { saved: true };
 });
@@ -885,6 +923,16 @@ ipcMain.handle('get-cognitive-state', () => {
 
 ipcMain.handle('get-emotional-state', () => {
     return emotionalContinuity.getEmotionalState();
+});
+
+ipcMain.handle('detect-emotion-labels', (event, text) => {
+    const emotionVocabulary = require('./emotionVocabulary');
+    return emotionVocabulary.detect(text || '');
+});
+
+ipcMain.handle('get-emotion-vocabulary', () => {
+    const emotionVocabulary = require('./emotionVocabulary');
+    return emotionVocabulary.getVocabulary();
 });
 
 ipcMain.handle('get-identity-state', () => {

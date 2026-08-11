@@ -3,10 +3,11 @@
     --font-title: 'Outfit', sans-serif;
 
     /* Custom Color Palette (Sleek Dark Mode Default) */
-    --bg-app: #0f172a;
-    --bg-panel: #1e293b;
-    --bg-chat-box: #0f172a;
-    --border-color: #334155;
+    --bg-app: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+    --bg-panel: rgba(30, 41, 59, 0.7);
+    --bg-panel-border: rgba(255, 255, 255, 0.08);
+    --bg-chat-box: rgba(15, 23, 42, 0.75);
+    --border-color: rgba(255, 255, 255, 0.1);
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
 
@@ -52,16 +53,15 @@ body {
 
 /* LEFT NARROW RAIL */
 .sideBar {
-    width: 56px;
-    background: var(--bg-panel);
-    border-right: 1px solid var(--border-color);
+    width: 70px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--bg-panel-border);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 16px 0;
-    gap: 20px;
-    flex-shrink: 0;
-    z-index: 10;
+    padding-top: 20px;
+    z-index: 100;
 }
 
 .iconButton {
@@ -123,17 +123,16 @@ body {
 
 /* 1. Left Collapsible Sidebar Panel */
 .calendarLeftPanel {
-    width: 260px;
-    border-right: 1px solid var(--border-color);
-    padding: 24px 20px;
+    width: 250px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--bg-panel-border);
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    flex-shrink: 0;
-    background: var(--bg-panel);
     overflow-y: auto;
-    transition: all 0.3s var(--ease-smooth);
-    opacity: 1;
+    transition: width 0.3s var(--ease-smooth), opacity 0.3s;
 }
 
 .calendarLeftPanel.collapsed {
@@ -336,6 +335,20 @@ body {
     padding: 24px;
     gap: 20px;
     overflow: hidden;
+}
+
+.intelligencePanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    margin: 20px;
+    border-radius: 20px;
+    border: 1px solid var(--bg-panel-border);
+    overflow: hidden;
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
 }
 
 .calendarHeader {
@@ -979,19 +992,21 @@ body {
 
 .chatMessage.user {
     align-self: flex-end;
-    background: var(--cal-personal);
-    color: white;
+    background: linear-gradient(135deg, #3f75ff 0%, #8b5cf6 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 15px rgba(63, 117, 255, 0.3);
     border-bottom-right-radius: 4px;
-    box-shadow: 0 2px 8px rgba(63, 117, 255, 0.25);
 }
 
 .chatMessage.ai {
     align-self: flex-start;
-    background: var(--bg-panel);
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--bg-panel-border);
     color: var(--text-main);
-    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     border-bottom-left-radius: 4px;
-    box-shadow: var(--shadow-sm);
 }
 
 .chatSuggestions {
@@ -1980,6 +1995,24 @@ body.dark-theme .narrativeBox {
     font-style: italic;
 }
 
+.taskCard {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--bg-panel-border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 15px;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.taskCard:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
 .journalTextarea {
     width: 100%;
     min-height: 120px;
@@ -2478,17 +2511,35 @@ body.dark-theme .narrativeBox {
 .wsBtn {
     background: transparent;
     border: none;
-    font-size: 22px;
+    font-size: 24px;
     cursor: pointer;
-    padding: 10px;
-    border-radius: 10px;
-    transition: all 0.2s var(--ease-smooth);
+    padding: 12px;
+    border-radius: 12px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s, box-shadow 0.3s;
     outline: none;
-    opacity: 0.6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    opacity: 0.7;
+    position: relative;
+    overflow: hidden;
 }
+
+.wsBtn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+}
+
+.wsBtn:hover::after {
+    width: 150%;
+    height: 150%;
+}
+
 .wsBtn:hover {
     background: rgba(0, 0, 0, 0.05);
     opacity: 0.9;
