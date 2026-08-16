@@ -50,7 +50,7 @@ class ModelProvider {
                 name: 'Google Gemini',
                 configured: !!geminiKey,
                 key: geminiKey,
-                model: 'gemini-3.5-flash',
+                model: 'gemini-1.5-flash',
                 capabilities: ['text'],
                 healthy: !!geminiKey && now >= (this.cooldowns.gemini || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.gemini || 0) - now)
@@ -68,7 +68,7 @@ class ModelProvider {
                 name: 'OpenRouter API',
                 configured: !!openrouterKey,
                 key: openrouterKey,
-                model: 'openai/gpt-4o',
+                model: 'openai/gpt-4o-mini',
                 capabilities: ['text', 'vision'],
                 healthy: !!openrouterKey && now >= (this.cooldowns.openrouter || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.openrouter || 0) - now)
