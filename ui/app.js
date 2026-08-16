@@ -4418,7 +4418,11 @@ function switchWorkspace(ws) {
     const activeBtn = document.getElementById(activeMap[ws]);
     if (activeBtn) activeBtn.style.opacity = '1';
 
-    if (ws === 'knowledge') {
+    if (ws === 'spaces') {
+        openSpacesDrawer();
+    } else if (ws === 'comms') {
+        openDirectMessagesModal();
+    } else if (ws === 'knowledge') {
         renderKnowledgeWorkspaceUI().catch(() => {});
     } else if (ws === 'continuity') {
         updateLifeContinuityUI().catch(() => {});
@@ -5753,10 +5757,22 @@ async function removePersonAction(personId, personName) {
 // 👥 CHRONO SPACES DRAWER & ACTIONS
 // ========================================
 
+let currentActiveSpaceId = null;
+
 function openSpacesDrawer() {
     const drawer = document.getElementById('spacesDrawerModal') || document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
     if (drawer) {
         drawer.style.display = 'flex';
+        // Reset to directory view on open
+        const dirView = document.getElementById('spacesDirectoryView');
+        const hubView = document.getElementById('spaceDetailHubView');
+        if (dirView) dirView.style.display = 'flex';
+        if (hubView) hubView.style.display = 'none';
+        
+        document.querySelectorAll('.wsBtn').forEach(btn => btn.style.opacity = '0.5');
+        const btn = document.getElementById('wsBtnSpaces');
+        if (btn) btn.style.opacity = '1';
+        
         renderSpacesList();
     }
 }
@@ -5764,6 +5780,15 @@ function openSpacesDrawer() {
 function closeSpacesDrawer() {
     const drawer = document.getElementById('spacesDrawerModal') || document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
     if (drawer) drawer.style.display = 'none';
+}
+
+function backToSpacesDirectory() {
+    currentActiveSpaceId = null;
+    const dirView = document.getElementById('spacesDirectoryView');
+    const hubView = document.getElementById('spaceDetailHubView');
+    if (dirView) dirView.style.display = 'flex';
+    if (hubView) hubView.style.display = 'none';
+    renderSpacesList();
 }
 
 async function renderSpacesList() {
@@ -5790,16 +5815,16 @@ async function renderSpacesList() {
         }
 
         container.innerHTML = spaces.map(spc => `
-            <div style="padding: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="padding: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 22px;">${spc.icon || '🪐'}</span>
+                    <span style="font-size: 22px;">${spc.icon || '🚀'}</span>
                     <div>
                         <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">${escapeHtml(spc.name)}</div>
                         <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(spc.description || 'Shared collaboration space')}</div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 6px;">
-                    <button class="smallBtn primary" onclick="showToast('Space: ${escapeHtml(spc.name)} active', 'info')" style="padding: 4px 10px; font-size: 11px;">View Space</button>
+                    <button class="primary" onclick="viewSpaceDetail('${spc.id}')" style="padding: 6px 14px; font-size: 11px; font-weight: 700; border-radius: 8px; cursor: pointer;">VIEW SPACE →</button>
                 </div>
             </div>
         `).join('');
@@ -5819,6 +5844,244 @@ async function createNewSpaceAction() {
         if (input) input.value = '';
         showToast(`✓ Space "${name}" created`, 'success');
         renderSpacesList();
+    }
+}
+
+async function viewSpaceDetail(spaceId) {
+    currentActiveSpaceId = spaceId;
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+
+    try {
+        const details = await ipc.invoke('get-space-details', spaceId);
+        if (!details || !details.success) {
+            showToast(details && details.error ? details.error : "Failed to load space", "error");
+            return;
+        }
+
+        const spc = details.space;
+        const iconEl = document.getElementById('activeSpaceIcon');
+        const titleEl = document.getElementById('activeSpaceTitle');
+        const roleEl = document.getElementById('activeSpaceRoleBadge');
+        const descEl = document.getElementById('activeSpaceDesc');
+
+        if (iconEl) iconEl.innerText = spc.icon || '🚀';
+        if (titleEl) titleEl.innerText = spc.name || 'Space Details';
+        if (roleEl) roleEl.innerText = details.userRole || 'MEMBER';
+        if (descEl) descEl.innerText = spc.description || `${details.members ? details.members.length : 1} members active`;
+
+        // Switch to detail view
+        const dirView = document.getElementById('spacesDirectoryView');
+        const hubView = document.getElementById('spaceDetailHubView');
+        if (dirView) dirView.style.display = 'none';
+        if (hubView) hubView.style.display = 'flex';
+
+        // Pre-fill date on proposal form
+        const dateInput = document.getElementById('propEventDate');
+        if (dateInput && !dateInput.value) {
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const yyyy = today.getFullYear();
+            dateInput.value = `${dd}-${mm}-${yyyy}`;
+        }
+
+        renderSpaceProposals(details.proposals || []);
+        renderSpaceMembers(details.members || []);
+        switchSpaceDetailTab('proposals');
+
+    } catch (e) {
+        console.error("viewSpaceDetail error:", e);
+        showToast("Error loading space details", "error");
+    }
+}
+
+function switchSpaceDetailTab(tab) {
+    const propTabBtn = document.getElementById('spcTabProposalsBtn');
+    const newPropTabBtn = document.getElementById('spcTabNewPropBtn');
+    const membTabBtn = document.getElementById('spcTabMembersBtn');
+
+    const propView = document.getElementById('spcProposalsTabView');
+    const newPropView = document.getElementById('spcNewProposalTabView');
+    const membView = document.getElementById('spcMembersTabView');
+
+    if (propTabBtn) propTabBtn.classList.toggle('active', tab === 'proposals');
+    if (newPropTabBtn) newPropTabBtn.classList.toggle('active', tab === 'new-proposal');
+    if (membTabBtn) membTabBtn.classList.toggle('active', tab === 'members');
+
+    if (propView) propView.style.display = tab === 'proposals' ? 'flex' : 'none';
+    if (newPropView) newPropView.style.display = tab === 'new-proposal' ? 'flex' : 'none';
+    if (membView) membView.style.display = tab === 'members' ? 'flex' : 'none';
+}
+
+function renderSpaceProposals(proposals) {
+    const container = document.getElementById('spaceProposalsListContainer');
+    if (!container) return;
+
+    if (!proposals || proposals.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 12px; background: rgba(0,0,0,0.15); border-radius: 12px; border: 1px dashed var(--border-color);">
+                <span style="font-size: 24px; display: block; margin-bottom: 6px;">📋</span>
+                <strong style="color: var(--text-main); font-size: 13px;">No Pending Proposals (PRs)</strong>
+                <p style="margin: 4px 0 0 0; font-size: 11px;">Click <strong>➕ Propose Event</strong> above to propose a group workshop or calendar item with automated conflict detection.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = proposals.map(p => {
+        let payload = {};
+        try { payload = JSON.parse(p.proposed_data || '{}'); } catch(e) {}
+        const isClean = p.conflict_status === 'CLEAN';
+        const isMerged = p.status === 'MERGED';
+        const isRejected = p.status === 'REJECTED';
+
+        const statusBadge = isMerged 
+            ? `<span class="brand-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">✓ MERGED</span>`
+            : isRejected
+            ? `<span class="brand-badge" style="background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);">REJECTED</span>`
+            : isClean
+            ? `<span class="brand-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">✓ CLEAN (NO CONFLICTS)</span>`
+            : `<span class="brand-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3);">⚠️ CONFLICT DETECTED</span>`;
+
+        return `
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">${escapeHtml(payload.title || 'Event Proposal')}</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                            📅 ${payload.date || ''} • ⏰ ${payload.startTime || '09:00'} - ${payload.endTime || '10:00'} ${payload.location ? `• 📍 ${escapeHtml(payload.location)}` : ''}
+                        </div>
+                    </div>
+                    ${statusBadge}
+                </div>
+                <div style="font-size: 11px; color: var(--text-faint);">
+                    Proposed by <strong>${escapeHtml(p.proposer_name || 'Member')}</strong> • Status: <code>${p.status}</code>
+                </div>
+                ${!isMerged && !isRejected ? `
+                    <div style="display: flex; gap: 8px; margin-top: 6px;">
+                        <button class="primary" onclick="reviewSpaceProposalAction('${p.id}', 'ACCEPT')" style="padding: 6px 14px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer;">✓ Merge into Calendar</button>
+                        <button class="headerButton smallBtn" onclick="reviewSpaceProposalAction('${p.id}', 'REJECT')" style="padding: 6px 12px; font-size: 11px; color: #f87171; border-radius: 6px; cursor: pointer;">Reject</button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderSpaceMembers(members) {
+    const container = document.getElementById('spaceMembersListContainer');
+    if (!container) return;
+
+    if (!members || members.length === 0) {
+        container.innerHTML = `<div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 12px;">No members.</div>`;
+        return;
+    }
+
+    container.innerHTML = members.map(m => `
+        <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">👤</span>
+                <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">${escapeHtml(m.display_name || m.user_id)}</span>
+            </div>
+            <span class="brand-badge" style="font-size: 10px; padding: 2px 8px;">${m.role || 'MEMBER'}</span>
+        </div>
+    `).join('');
+}
+
+async function submitEventProposalAction() {
+    if (!currentActiveSpaceId) {
+        showToast("No active space selected", "error");
+        return;
+    }
+
+    const title = document.getElementById('propEventTitle').value.trim();
+    const date = document.getElementById('propEventDate').value.trim();
+    const startTime = document.getElementById('propEventStartTime').value.trim();
+    const endTime = document.getElementById('propEventEndTime').value.trim();
+    const location = document.getElementById('propEventLocation').value.trim();
+
+    if (!title || !date) {
+        showToast("Please enter event title and date", "error");
+        return;
+    }
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+
+    try {
+        const res = await ipc.invoke('create-event-proposal', {
+            spaceId: currentActiveSpaceId,
+            eventData: { title, date, startTime: startTime || '14:00', endTime: endTime || '15:00', location, description: '' }
+        });
+
+        if (res && res.success) {
+            showToast(`✓ Proposal created (${res.conflictStatus})`, 'success');
+            document.getElementById('propEventTitle').value = '';
+            await viewSpaceDetail(currentActiveSpaceId);
+            switchSpaceDetailTab('proposals');
+        } else {
+            showToast(`Failed: ${res && res.error ? res.error : 'Unknown'}`, 'error');
+        }
+    } catch(e) {
+        console.error("submitEventProposalAction error:", e);
+        showToast("Error creating proposal", "error");
+    }
+}
+
+async function reviewSpaceProposalAction(proposalId, action) {
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+
+    try {
+        const res = await ipc.invoke('review-space-proposal', { proposalId, action });
+        if (res && res.success) {
+            showToast(action === 'ACCEPT' ? '✓ Proposal merged into calendar!' : 'Proposal rejected', 'success');
+            if (typeof loadTasks === 'function') loadTasks();
+            if (typeof renderTimeline === 'function') renderTimeline();
+            if (currentActiveSpaceId) await viewSpaceDetail(currentActiveSpaceId);
+        } else {
+            showToast(`Failed: ${res && res.error ? res.error : 'Unknown'}`, 'error');
+        }
+    } catch(e) {
+        console.error("reviewSpaceProposalAction error:", e);
+        showToast("Error reviewing proposal", "error");
+    }
+}
+
+async function addSpaceMemberAction() {
+    if (!currentActiveSpaceId) return;
+    const input = document.getElementById('newMemberNameInput');
+    const roleSelect = document.getElementById('newMemberRoleSelect');
+    const targetUserId = input && input.value ? input.value.trim() : '';
+    const role = roleSelect ? roleSelect.value : 'CONTRIBUTOR';
+
+    if (!targetUserId) {
+        showToast("Please enter member name or ID", "error");
+        return;
+    }
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+
+    try {
+        const res = await ipc.invoke('add-space-member', {
+            spaceId: currentActiveSpaceId,
+            targetUserId,
+            displayName: targetUserId,
+            role
+        });
+
+        if (res && res.success) {
+            showToast(`✓ Added ${targetUserId} as ${role}`, 'success');
+            if (input) input.value = '';
+            if (currentActiveSpaceId) await viewSpaceDetail(currentActiveSpaceId);
+        } else {
+            showToast(`Failed: ${res && res.error ? res.error : 'Unknown'}`, 'error');
+        }
+    } catch(e) {
+        console.error("addSpaceMemberAction error:", e);
+        showToast("Error adding member", "error");
     }
 }
 
@@ -6105,7 +6368,13 @@ window.toggleCallVideo = toggleCallVideo;
 window.endActiveCall = endActiveCall;
 window.openSpacesDrawer = openSpacesDrawer;
 window.closeSpacesDrawer = closeSpacesDrawer;
+window.backToSpacesDirectory = backToSpacesDirectory;
+window.viewSpaceDetail = viewSpaceDetail;
+window.switchSpaceDetailTab = switchSpaceDetailTab;
 window.createNewSpaceAction = createNewSpaceAction;
+window.submitEventProposalAction = submitEventProposalAction;
+window.reviewSpaceProposalAction = reviewSpaceProposalAction;
+window.addSpaceMemberAction = addSpaceMemberAction;
 window.openDirectMessagesModal = openDirectMessagesModal;
 window.closeDirectMessagesModal = closeDirectMessagesModal;
 window.switchCommsTab = switchCommsTab;
