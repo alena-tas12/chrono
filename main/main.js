@@ -1870,7 +1870,7 @@ ipcMain.handle('clear-call-history', (event) => {
 ipcMain.handle('open-external-url', async (event, url) => {
     try {
         const { shell } = require('electron');
-        if (url && (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('facetime:') || url.startsWith('tel:'))) {
+        if (url && (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('facetime:') || url.startsWith('tel:') || url.startsWith('whatsapp:') || url.startsWith('mailto:'))) {
             await shell.openExternal(url);
             return { success: true };
         }

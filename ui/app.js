@@ -6023,7 +6023,7 @@ async function startExternalCall(service) {
             return;
         }
         const cleanPhone = rawPhone.replace(/^\+/, '');
-        url = `https://wa.me/${cleanPhone}`;
+        url = `whatsapp://send?phone=${cleanPhone}`;
         showToast(`Launching WhatsApp with ${activeCommsPeer.name}...`, 'info');
     } else if (service === 'facetime') {
         const target = rawPhone || activeCommsPeer.email;
