@@ -286,12 +286,12 @@ function getMemoryCards(userId) {
             monthlyGroups[monthKey].interactions++;
             // Check if chat represents a key conversation milestone
             const inputLower = c.user_input.toLowerCase();
-            if (inputLower.includes('princess') || inputLower.includes('exam') || inputLower.includes('study')) {
+            if (inputLower.includes('exam') || inputLower.includes('study') || inputLower.includes('project') || inputLower.includes('milestone')) {
                 if (monthlyGroups[monthKey].milestones.length < 3) {
                     let desc = '';
-                    if (inputLower.includes('princess')) desc = 'Conversation with Princess';
-                    else if (inputLower.includes('exam')) desc = `Prep for ${inputLower.match(/(\w+\s+exam|exam\s+\w+)/)?.[0] || 'Exam'}`;
-                    else desc = 'Study session scheduling';
+                    if (inputLower.includes('exam')) desc = `Prep for ${inputLower.match(/(\w+\s+exam|exam\s+\w+)/)?.[0] || 'Exam'}`;
+                    else if (inputLower.includes('project')) desc = `Work on ${inputLower.match(/(\w+\s+project|project\s+\w+)/)?.[0] || 'Project'}`;
+                    else desc = 'Study & focus session';
                     
                     if (!monthlyGroups[monthKey].milestones.includes(desc)) {
                         monthlyGroups[monthKey].milestones.push(desc);

@@ -45,7 +45,7 @@ class MemoryModule {
 
         // 2. Entity/Instance Extraction (Expanded Taxonomy)
         if (lowerInput.includes('friend') || lowerInput.includes('she') || lowerInput.includes('he')) {
-            // E.g. Concept: Friendship -> Instance: Tara
+            // E.g. Concept: Social Relationship -> Instance: Friend Node
             proposedObjects.push(createNode('Social Relationship', 'Concept', false, null, 0.6));
             proposedObjects.push(createNode('Friend', 'Person', true, 'Social Relationship', 0.8));
         }

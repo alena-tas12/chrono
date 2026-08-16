@@ -336,7 +336,7 @@ const agents = {
             const db = mainDb.db;
             const lowerInput = input.toLowerCase();
 
-            // 1. If asking about a specific peer (e.g. Princess, Rayhaan)
+            // 1. If asking about a specific peer from dynamic relationships
             let matchedPeer = null;
             try {
                 const peers = db.prepare("SELECT * FROM relationships").all();

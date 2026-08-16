@@ -5478,7 +5478,7 @@ async function rejectCurrentProposal() {
 let callTimerInterval = null;
 let callDurationSeconds = 0;
 
-function openWebrtcCallModal(peerName = 'Princess', callType = 'AUDIO', phoneNumber = '+91 98765 43210') {
+function openWebrtcCallModal(peerName = 'Contact', callType = 'AUDIO', phoneNumber = '') {
     const modal = document.getElementById('webrtcCallModal');
     const peerEl = document.getElementById('callPeerName');
     const phoneEl = document.getElementById('callPeerNumber');
