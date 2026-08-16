@@ -26,12 +26,16 @@
     <div class="appShell">
         <!-- LEFT NARROW RAIL -->
         <aside class="sideBar">
-            <button class="iconButton" id="menuToggle" aria-label="Menu">☰</button>
-            <div class="brandIcon" id="brandIcon" title="Chrono">C</div>
-            <div class="workspaceSwitcher" style="margin-top: 30px; display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%;">
-                <button class="wsBtn active" id="wsBtnOps" onclick="switchWorkspace('ops')" title="Daily Operations (Calendar & Tasks)" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 10px; border-radius: 10px; transition: all 0.2s; outline: none;">📅</button>
-                <button class="wsBtn" id="wsBtnContinuity" onclick="switchWorkspace('continuity')" title="Life Continuity (Timeline & Threads)" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 10px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.6;">📜</button>
-                <button class="wsBtn" id="wsBtnIntelligence" onclick="switchWorkspace('intelligence')" title="Intelligence Hub (AI & Telemetry)" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 10px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.6;">🧠</button>
+            <button class="iconButton" id="menuToggle" aria-label="Menu" title="Toggle Sidebar">☰</button>
+            <div class="brandIcon" id="brandIcon" title="Chrono OS">C</div>
+            <div class="workspaceSwitcher" style="margin-top: 20px; display: flex; flex-direction: column; gap: 14px; align-items: center; width: 100%;">
+                <button class="wsBtn active" id="wsBtnConverse" onclick="switchWorkspace('converse')" title="Converse (Natural Dialogue & Chat)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; outline: none;">💬</button>
+                <button class="wsBtn" id="wsBtnKnowledge" onclick="switchWorkspace('knowledge')" title="Knowledge OS (Notion + RemNote Workspace)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.7;">📚</button>
+                <button class="wsBtn" id="wsBtnOps" onclick="switchWorkspace('ops')" title="Operate (Calendar & Task Manager)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.7;">⚡</button>
+                <button class="wsBtn" id="wsBtnSpaces" onclick="openSpacesDrawer()" title="Chrono Spaces (Collaborative Calendar PRs)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.7;">👥</button>
+                <button class="wsBtn" id="wsBtnComms" onclick="openDirectMessagesModal()" title="Communication OS (DMs & Encrypted Calling)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.7;">📞</button>
+                <button class="wsBtn" id="wsBtnContinuity" onclick="switchWorkspace('continuity')" title="Life Continuity (Timeline & Threads)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.7;">📜</button>
+                <button class="wsBtn" id="wsBtnIntelligence" onclick="switchWorkspace('intelligence')" title="Intelligence Hub (AI Providers & Telemetry)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; outline: none; opacity: 0.7;">🧠</button>
             </div>
         </aside>
 
@@ -42,14 +46,18 @@
                 
                 <!-- 1. LEFT COLLAPSIBLE PANEL -->
                 <aside class="calendarLeftPanel" id="calendarLeftPanel">
-                    <h2 class="panelTitle">Calendar</h2>
+                    <h2 class="panelTitle">Chrono OS</h2>
                     <div class="userGreeting" id="userGreeting">Hello, Planner</div>
                     <nav class="sideNav">
-                        <button class="sideNavItem active" data-nav="today">Today</button>
-                        <button class="sideNavItem" data-nav="calendars">Calendars</button>
-                        <button class="sideNavItem" data-nav="routines">Routines</button>
-                        <button class="sideNavItem" data-nav="goals">Goals</button>
-                        <button class="sideNavItem" data-nav="settings">Settings</button>
+                        <button class="sideNavItem active" data-nav="today">📅 Today</button>
+                        <button class="sideNavItem" data-nav="converse" onclick="switchWorkspace('converse')">💬 Converse</button>
+                        <button class="sideNavItem" data-nav="knowledge" onclick="switchWorkspace('knowledge')">📚 Knowledge OS</button>
+                        <button class="sideNavItem" data-nav="spaces" onclick="openSpacesDrawer()">👥 Spaces (Collab)</button>
+                        <button class="sideNavItem" data-nav="comms" onclick="openDirectMessagesModal()">📞 Calls & DMs</button>
+                        <button class="sideNavItem" data-nav="calendars">🗓️ Calendars & Layers</button>
+                        <button class="sideNavItem" data-nav="routines">⚡ Routines & Focus</button>
+                        <button class="sideNavItem" data-nav="goals">🎯 Goals & Continuity</button>
+                        <button class="sideNavItem" data-nav="settings">⚙️ Settings</button>
                         <button class="sideNavItem" data-nav="cloud" id="cloudNavBtn">☁️ Cloud Account</button>
                     </nav>
 
@@ -102,13 +110,6 @@
 
                 <!-- 2. CENTRAL MAIN AREA -->
                 <div class="calendarMainArea">
-                    <!-- Context Resurrection Card -->
-                    <div id="contextResurrectionCard" class="resurrectionCard" style="display: none; background: linear-gradient(135deg, rgba(63,117,255,0.1), rgba(16,185,129,0.1)); border: 1.5px solid var(--cal-personal); border-radius: 12px; padding: 16px; margin: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; font-family: 'Plus Jakarta Sans', sans-serif;">
-                        <button onclick="document.getElementById('contextResurrectionCard').style.display='none'" style="position: absolute; right: 12px; top: 12px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px;">✕</button>
-                        <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">🌅 Context Resurrection</h3>
-                        <p id="contextResurrectionText" style="margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-main); white-space: pre-line;"></p>
-                    </div>
-
                     <div class="calendarHeader">
                         <div class="calendarNav">
                             <button id="prevMonth" class="navButton" aria-label="Previous month">←</button>
@@ -375,6 +376,80 @@
                                     <p class="settingHelp">Fine-tune companion intervention levels for each calendar domain independently.</p>
                                 </div>
                             </div>
+
+                            <!-- AI Model Providers & Multi-Cloud Routing Card -->
+                            <div class="settingsCard providerCard" style="grid-column: span 2; margin-top: 15px; background: rgba(15, 23, 42, 0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <div>
+                                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main);">🛰️ AI Model Providers & Router Settings</h3>
+                                        <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);">Configure cloud AI keys and local offline endpoints. Primary → Secondary → Tertiary → Local Ollama floor.</p>
+                                    </div>
+                                    <button class="primary" onclick="auditAndRefreshProviders()" style="padding: 6px 12px; font-size: 11px;">🔄 Audit All Providers</button>
+                                </div>
+
+                                <div class="providerGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 15px;">
+                                    <!-- OpenRouter API (Primary) -->
+                                    <div class="providerBox" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-weight: 700; font-size: 13px;">☁️ OpenRouter (Primary Cloud)</span>
+                                            <span class="statusPill" id="statusPillOpenrouter" style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: #dcfce7; color: #15803d;">LIVE</span>
+                                        </div>
+                                        <input type="password" id="uiOpenRouterKey" placeholder="sk-or-v1-... (OpenRouter Key)" style="width: 100%; padding: 8px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-family: monospace;" />
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                                            <span style="font-size: 10px; color: var(--text-muted);">openai/gpt-4o · claude-3.5-sonnet · llama-3.3-70b</span>
+                                            <button onclick="testSingleProvider('openrouter')" style="padding: 4px 10px; font-size: 10px; border-radius: 4px; cursor: pointer;">Test Ping</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Groq API (Secondary) -->
+                                    <div class="providerBox" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-weight: 700; font-size: 13px;">⚡ Groq API (Secondary Cloud)</span>
+                                            <span class="statusPill" id="statusPillGroq" style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: #dcfce7; color: #15803d;">LIVE</span>
+                                        </div>
+                                        <input type="password" id="uiGroqKey" placeholder="gsk_... (Groq API Key)" style="width: 100%; padding: 8px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-family: monospace;" />
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                                            <span style="font-size: 10px; color: var(--text-muted);">llama-3.3-70b-versatile · Whisper STT</span>
+                                            <button onclick="testSingleProvider('groq')" style="padding: 4px 10px; font-size: 10px; border-radius: 4px; cursor: pointer;">Test Ping</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Local Ollama Floor -->
+                                    <div class="providerBox" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-weight: 700; font-size: 13px;">📴 Local Ollama (Offline Floor)</span>
+                                            <span class="statusPill" id="statusPillOllama" style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: #e0f2fe; color: #0369a1;">LOCAL</span>
+                                        </div>
+                                        <input type="text" id="uiOllamaEndpoint" placeholder="http://localhost:11434" value="http://localhost:11434" style="width: 100%; padding: 8px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-family: monospace;" />
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                                            <span style="font-size: 10px; color: var(--text-muted);">granite3.1-dense:8b / llama3:latest</span>
+                                            <button onclick="testSingleProvider('ollama')" style="padding: 4px 10px; font-size: 10px; border-radius: 4px; cursor: pointer;">Test Ping</button>
+                                        </div>
+                                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 9px; color: var(--text-muted); font-family: monospace;">irm https://ollama.com/install.ps1 | iex</span>
+                                            <button onclick="copyOllamaInstallScript()" style="font-size: 9px; padding: 2px 6px; cursor: pointer;">📋 Copy Script</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Optional Extensible: Google Gemini -->
+                                    <div class="providerBox" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-weight: 700; font-size: 13px;">Google Gemini (Optional)</span>
+                                            <span class="statusPill" id="statusPillGemini" style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: #f3f4f6; color: #6b7280;">OPTIONAL</span>
+                                        </div>
+                                        <input type="password" id="uiGeminiKey" placeholder="AIzaSy... (Gemini API Key)" style="width: 100%; padding: 8px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-family: monospace;" />
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                                            <span style="font-size: 10px; color: var(--text-muted);">gemini-3.5-flash</span>
+                                            <button onclick="testSingleProvider('gemini')" style="padding: 4px 10px; font-size: 10px; border-radius: 4px; cursor: pointer;">Test Ping</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                                    <div id="providerTestFeedback" style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Ready to test AI providers.</div>
+                                    <button class="primary" onclick="saveAllProviderKeys()" style="padding: 8px 16px; font-size: 12px;">💾 Save Provider Keys</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -500,17 +575,7 @@
                                     <div class="obsRow"><span>Habit Streak:</span> <strong id="obsStreak">0 Days</strong></div>
                                 </div>
 
-                                <div class="obsSection" id="obsProfileSection">
-                                    <h4>🧠 Cognitive Profile</h4>
-                                    <div class="obsRow"><span>Best Focus:</span> <strong id="obsBestFocus">Loading...</strong></div>
-                                    <div class="obsRow"><span>Low Energy:</span> <strong id="obsLowEnergy">Loading...</strong></div>
-                                    <div class="obsRow"><span>Focus Session:</span> <strong id="obsFocusSession">Loading...</strong></div>
-                                    <div class="obsRow" style="flex-direction: column; align-items: flex-start; gap: 4px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
-                                        <span>Stress Triggers:</span>
-                                        <strong id="obsTriggers" style="font-size: 11px; font-weight: normal; color: var(--text-muted);">None</strong>
-                                    </div>
-                                    <button class="headerButton smallBtn" id="recalcProfileBtn" onclick="recalculateProfileUI()" style="margin-top: 10px; width: 100%; font-size: 11px; padding: 6px; border-radius: 8px;">Recalculate Profile</button>
-                                </div>
+
 
                                 <div class="obsSection" id="obsUpdateSection">
                                     <h4>🚀 Auto-Update Agent</h4>
@@ -535,6 +600,7 @@
                                             <option value="shared_group">👥 Share Group</option>
                                         </select>
                                         <div style="display: flex; gap: 6px;">
+                                            <button class="headerButton smallBtn" id="btnNoteHistory" onclick="viewNoteHistory()" style="display: none; padding: 6px 12px; font-size: 11px;">History</button>
                                             <button class="headerButton smallBtn" onclick="clearNoteEditor()" style="padding: 6px 12px; font-size: 11px;">Clear</button>
                                             <button class="primary" onclick="submitSaveNote()" style="padding: 6px 16px; font-size: 11px; border-radius: 6px;">Save Note</button>
                                         </div>
@@ -548,6 +614,10 @@
                                 </div>
                                 <div id="noteLinkedDetails" style="font-size: 11px; color: var(--cal-personal); font-weight: 500; display: none; padding-top: 4px; border-top: 1px dashed var(--border-color);">
                                     <!-- Auto linked markers populate here -->
+                                </div>
+                                <div id="noteHistoryContainer" style="display: none; padding-top: 8px; border-top: 1px dashed var(--border-color); max-height: 200px; overflow-y: auto;">
+                                    <span style="font-size: 11px; font-weight: 600;">Revision History</span>
+                                    <div id="noteHistoryList" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;"></div>
                                 </div>
                             </div>
 
@@ -600,39 +670,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Human Continuity Index & State Machine Card -->
-                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                            <h4 style="margin: 0; font-size: 13px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">📈 Human Continuity Index</h4>
-                                            <strong id="overallContinuityIndexBadge" style="font-size: 14px; color: var(--cal-personal); background: rgba(63,117,255,0.1); padding: 2px 8px; border-radius: 6px;">0/100</strong>
-                                        </div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px dashed var(--border-color); padding-bottom:8px;">
-                                            <span style="font-size:11px; color:var(--text-muted);">Current State:</span>
-                                            <span id="continuityStateBadge" style="font-size:11px; font-weight:700; text-transform:uppercase; padding:2px 6px; border-radius:4px; color:#10b981; background:rgba(16,185,129,0.1);">Maintaining</span>
-                                        </div>
-                                        <div style="font-size:11px; font-style:italic; color:var(--text-muted); margin-bottom:10px;" id="continuityStateExplanation">
-                                            Stable state.
-                                        </div>
-                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:10px;">
-                                            <div>Learning: <strong id="indexScoreLearning">50%</strong></div>
-                                            <div>Projects: <strong id="indexScoreProjects">50%</strong></div>
-                                            <div>Health: <strong id="indexScoreHealth">50%</strong></div>
-                                            <div>Relationships: <strong id="indexScoreRelationships">50%</strong></div>
-                                            <div>Reflection: <strong id="indexScoreReflection">50%</strong></div>
-                                            <div>Values: <strong id="indexScoreValues">50%</strong></div>
-                                        </div>
-                                    </div>
 
-                                    <!-- Personal Operating System Profile Card -->
-                                    <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
-                                        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px;">⚙️ Personal Operating Style</h4>
-                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11px;">
-                                            <div>Focus Style: <strong id="personalOSFocus" style="color:var(--cal-personal);">Deep Work</strong></div>
-                                            <div>Planning Style: <strong id="personalOSPlanning" style="color:var(--cal-personal);">Weekly</strong></div>
-                                            <div>Review Style: <strong id="personalOSReview" style="color:var(--cal-personal);">Monthly</strong></div>
-                                            <div>Peak Hours: <strong id="personalOSPeak" style="color:var(--cal-personal);">09:00-11:00</strong></div>
-                                        </div>
-                                    </div>
 
                                     <!-- Trust & Reliability Dashboard Card -->
                                     <div class="continuityCard" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
@@ -788,8 +826,8 @@
                                 <h4 style="margin: 0 0 6px 0; font-size: 12px; color: var(--cal-personal); font-weight: 700; display: flex; align-items: center; gap: 6px;">🔗 Connect External Peer</h4>
                                 <p style="font-size: 10px; color: var(--text-muted); margin: 0 0 8px 0;">Enter name, role, email and peer User ID to connect collaborative calendars.</p>
                                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                                    <input type="text" id="newPeerName" placeholder="Peer Name (e.g. Princess)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
-                                    <input type="email" id="newPeerEmail" placeholder="Peer Email (e.g. princess@chrono.app)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                    <input type="text" id="newPeerName" placeholder="Peer Name" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
+                                    <input type="email" id="newPeerEmail" placeholder="Peer Email" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
                                     <input type="text" id="newPeerUserId" placeholder="Peer User ID (e.g. u_xyz123)" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 11px;" />
                                     <select id="newPeerRole" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: #1e293b; color: var(--text-main); font-size: 11px; cursor: pointer;">
                                         <option value="Study Partner">Study Partner</option>
@@ -828,7 +866,7 @@
                             <!-- Detailed Peer view -->
                             <div class="peerDetailsContainer" id="peerDetailsContainer" style="display: none; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                    <h4 id="peerDetailsName" style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-main);">Princess Profile</h4>
+                                    <h4 id="peerDetailsName" style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-main);">Person Profile</h4>
                                     <button class="tinyLink" onclick="closePeerDetails()" style="font-size: 11px;">← Back to List</button>
                                 </div>
                                 
@@ -891,7 +929,7 @@
                     <!-- Peer Thread Detail View -->
                     <div class="threadDetailView" id="threadDetailView" style="display: none; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
                         <div class="threadDetailHeader" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h3 id="threadDetailName" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main);">Princess</h3>
+                            <h3 id="threadDetailName" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main);">Select a person</h3>
                             <button class="smallBtn" onclick="closeThreadDetail()" style="padding: 4px 8px; font-size: 11px;">← Back to list</button>
                         </div>
                         
@@ -967,7 +1005,7 @@
                     <div class="intelChatBox" id="intelChatBox"></div>
                     
                     <div class="intelSuggestions" style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-                        <button class="suggestionButton" onclick="sendIntelChat('Why is Princess important in my timeline?')">Why is Princess important in my timeline?</button>
+                        <button class="suggestionButton" onclick="sendIntelChat('Who have I spent the most time with recently?')">Who have I spent the most time with recently?</button>
                         <button class="suggestionButton" onclick="sendIntelChat('What changed between Semester 3 and Semester 5?')">What changed between Semester 3 and Semester 5?</button>
                         <button class="suggestionButton" onclick="sendIntelChat('Which goals actually mattered?')">Which goals actually mattered?</button>
                         <button class="suggestionButton" onclick="sendIntelChat('What milestones did we achieve?')">What milestones did we achieve?</button>
@@ -989,6 +1027,95 @@
                 </div>
             </section>
 
+            <!-- KNOWLEDGE OS WORKSPACE (Notion + RemNote Hybrid Subsystem) -->
+            <section class="workspaceContainer" id="knowledgeWorkspace" style="display: none; padding: 20px; gap: 20px; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden;">
+                <!-- 1. LEFT SIDEBAR NAVIGATION DRAWER -->
+                <div class="knowledgeSidebar" style="width: 260px; display: flex; flex-direction: column; gap: 15px; background: rgba(18, 24, 38, 0.75); backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px; box-sizing: border-box; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main);">📚 Knowledge OS</h3>
+                        <button class="headerButton smallBtn" onclick="createNewKnowledgePage()" style="padding: 4px 10px; font-size: 11px;">+ Page</button>
+                    </div>
+                    <input type="text" id="knowledgeSearchInput" placeholder="🔍 Search blocks & notes..." onkeyup="filterKnowledgePages()" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(0,0,0,0.2); color: var(--text-main); font-size: 12px;" />
+                    
+                    <div class="knowledgeNavSections" style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Workspace Views</div>
+                        <button class="headerButton smallBtn active" id="kNavAllPages" onclick="switchKnowledgeView('all')" style="text-align: left;">📝 All Notes & Pages</button>
+                        <button class="headerButton smallBtn" id="kNavPinned" onclick="switchKnowledgeView('pinned')" style="text-align: left;">📌 Pinned Pages</button>
+                        <button class="headerButton smallBtn" id="kNavTrash" onclick="switchKnowledgeView('trash')" style="text-align: left; color: #f87171;">🗑️ Trash & Recovery</button>
+                        <button class="headerButton smallBtn" id="kNavFlashcards" onclick="switchKnowledgeView('flashcards')" style="text-align: left;">🎴 Flashcard Decks</button>
+                        <button class="headerButton smallBtn" id="kNavResources" onclick="switchKnowledgeView('resources')" style="text-align: left;">📎 Managed Resources</button>
+                        <button class="headerButton smallBtn" id="kNavGraph" onclick="switchKnowledgeView('graph')" style="text-align: left;">🔗 Concept Links Graph</button>
+                    </div>
+
+                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 10px;">Pages Hierarchy</div>
+                    <div id="knowledgePagesTree" style="display: flex; flex-direction: column; gap: 4px; max-height: 250px; overflow-y: auto;">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- 2. CENTRAL OUTLINER BLOCK EDITOR -->
+                <div class="knowledgeEditorArea" style="flex: 1; display: flex; flex-direction: column; gap: 15px; background: rgba(18, 24, 38, 0.6); backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-radius: 14px; padding: 20px; box-sizing: border-box; overflow-y: auto;">
+                    <!-- PAGE HEADER -->
+                    <div class="pageHeaderArea" style="display: flex; flex-direction: column; gap: 10px; border-bottom: 1px dashed var(--border-color); padding-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span id="activePageIcon" style="font-size: 24px; cursor: pointer;" onclick="changePageIcon()">📝</span>
+                                <input type="text" id="activePageTitleInput" placeholder="Untitled Page" style="font-size: 20px; font-weight: 800; background: transparent; border: none; color: var(--text-main); outline: none; width: 350px;" onchange="saveActivePageTitle()" />
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="headerButton smallBtn" onclick="togglePinActivePage()" id="btnPinActivePage" title="Pin / Unpin this page">📌 Pin</button>
+                                <button class="headerButton smallBtn" onclick="duplicateActivePage()" title="Duplicate this note">📄 Duplicate</button>
+                                <button class="headerButton smallBtn" onclick="viewActivePageHistory()" title="View revision history">📜 History</button>
+                                <button class="headerButton smallBtn" onclick="deleteActivePage()" style="color: #ef4444;" title="Move to Trash">🗑️ Move to Trash</button>
+                            </div>
+                        </div>
+                        <div id="activePageSubHeader" style="font-size: 11px; color: var(--text-muted);">
+                            Type blocks below. Use <code style="color: var(--accent-primary);">[[Concept Name]]</code> to link pages or <code style="color: var(--accent-primary);">Front :: Back</code> to create flashcards.
+                        </div>
+                    </div>
+
+                    <!-- REMNOTE OUTLINER BLOCK CANVAS -->
+                    <div id="knowledgeBlockCanvas" style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 250px;">
+                        <!-- Dynamic outliner blocks -->
+                    </div>
+
+                    <!-- BLOCK ADD CONTROLS -->
+                    <div style="display: flex; gap: 8px; margin-top: 10px; align-items: center;">
+                        <button class="primary" onclick="addOutlinerBlock()" style="padding: 8px 16px; font-size: 12px; border-radius: 8px;">+ Add Block</button>
+                        <button class="headerButton smallBtn" onclick="indentSelectedBlock()" style="padding: 8px 12px;">Indent ➔</button>
+                        <button class="headerButton smallBtn" onclick="outdentSelectedBlock()" style="padding: 8px 12px;">⬅ Outdent</button>
+                        <span style="font-size: 11px; color: var(--text-muted); margin-left: auto;">Press Enter for new block</span>
+                    </div>
+                </div>
+
+                <!-- 3. RIGHT SIDECAR & PROVENANCE PANEL -->
+                <div class="knowledgeSidecarPanel" style="width: 280px; display: flex; flex-direction: column; gap: 15px; background: rgba(18, 24, 38, 0.75); backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px; box-sizing: border-box; overflow-y: auto;">
+                    <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-main);">📄 Grounded Source & Links</h3>
+                    
+                    <!-- Source Provenance Card -->
+                    <div id="provenanceCard" style="padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px; font-size: 12px;">
+                        <div style="font-weight: 700; color: var(--accent-primary); margin-bottom: 4px;">NotebookLM Source Provenance</div>
+                        <div id="provenanceDetails" style="font-size: 11px; color: var(--text-muted);">No source attached to this page.</div>
+                    </div>
+
+                    <!-- Bi-Directional Concept Links Graph -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Linked Concepts ([[Links]])</div>
+                        <div id="conceptLinksList" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+                            <div style="color: var(--text-muted); font-size: 11px;">No concept links extracted yet.</div>
+                        </div>
+                    </div>
+
+                    <!-- Revision History Snapshots -->
+                    <div id="pageRevisionsContainer" style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                        <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Revision Snapshots</div>
+                        <div id="pageRevisionsList" style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto;">
+                            <div style="font-size: 11px; color: var(--text-muted);">Current active revision</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
 
             <!-- VERTICAL SPLITTER FOR CHAT RESIZING -->
             <div class="splitter" id="splitter">
@@ -998,7 +1125,13 @@
             <!-- CHRONO AI CHAT WORKSPACE (BOTTOM PORTION) -->
             <section class="chatWorkspace">
                 <div class="chatHeader">
-                    <div class="chatTitle">Chrono AI</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="chatTitle">Chrono AI</div>
+                        <div id="headerAiStatusBadge" onclick="showAiStatusModal()" style="display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); cursor: pointer;" title="Click for AI Provider & System Health Status">
+                            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                            <span id="headerAiModelName">Gemini 3.5 Flash</span>
+                        </div>
+                    </div>
                     <div class="chatHeaderActions">
                         <button class="smallBtn" id="toggleDockBtn" onclick="toggleDock()">🔄 Dock</button>
                     </div>
@@ -1033,8 +1166,23 @@
                     <button class="suggestionButton" id="suggestionMoveStudy" onclick="setResponse('Move study to evenings')">Move study to evenings</button>
                 </div>
 
-                <div class="chatInputRow">
-                    <input id="chatInput" type="text" placeholder="Message Chrono..." />
+                <div class="chatInputRow" style="position: relative;">
+                    <button class="headerButton smallBtn" id="composerQuickAddBtn" onclick="toggleComposerQuickAddMenu()" title="Quick Add Menu" style="font-size: 16px; padding: 8px 12px; border-radius: 8px; font-weight: 800; cursor: pointer;">+</button>
+                    
+                    <!-- FLOATING COMPOSER QUICK-ADD MENU -->
+                    <div id="composerQuickAddMenu" style="display: none; position: absolute; bottom: 50px; left: 0; background: rgba(18, 24, 38, 0.95); backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px; flex-direction: column; gap: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 9999; min-width: 200px;">
+                        <button class="headerButton smallBtn" onclick="triggerFileUpload()" style="text-align: left; padding: 8px 12px; width: 100%;">📄 Upload File / Document</button>
+                        <button class="headerButton smallBtn" onclick="triggerPhotoScan()" style="text-align: left; padding: 8px 12px; width: 100%;">📸 Photo / Document Scan</button>
+                        <button class="headerButton smallBtn" onclick="triggerCreateNote()" style="text-align: left; padding: 8px 12px; width: 100%;">📝 Create Note / Page</button>
+                        <button class="headerButton smallBtn" onclick="triggerImportTimetable()" style="text-align: left; padding: 8px 12px; width: 100%;">📅 Import Timetable / Schedule</button>
+                        <button class="headerButton smallBtn" onclick="triggerQuickAddTask()" style="text-align: left; padding: 8px 12px; width: 100%;">⚡ Quick Add Task</button>
+                        <button class="headerButton smallBtn" onclick="triggerQuickAddEvent()" style="text-align: left; padding: 8px 12px; width: 100%;">📍 Quick Add Event</button>
+                    </div>
+
+                    <!-- Hidden file input for document & photo uploads -->
+                    <input type="file" id="composerFileInput" style="display: none;" onchange="handleComposerFileSelected(event)" />
+
+                    <input id="chatInput" type="text" placeholder="Message Chrono..." onkeypress="if(event.key === 'Enter') sendChat()" />
                     <button class="primary" onclick="sendChat()">Send</button>
                 </div>
             </section>
@@ -1097,7 +1245,8 @@
 
     <!-- ONBOARDING INITIALIZATION MODAL -->
     <div class="onboardingOverlay" id="onboardingOverlay" style="display: none;">
-        <div class="onboardingCard">
+        <div class="onboardingCard" style="position: relative;">
+            <button onclick="closeOnboardingModal()" style="position: absolute; right: 14px; top: 14px; background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; padding: 4px 10px; font-weight: 700; line-height: 1; z-index: 10;" title="Close">✕</button>
             <div class="onboardingHeader">
                 <div class="onboardingLogo" id="obLogo">C</div>
                 <h2>Initialize Your Workspace</h2>
@@ -1118,11 +1267,22 @@
                     </div>
                 </div>
 
-                <!-- Group A: Names & Email -->
+                <!-- Group A: Names, Phone & Email -->
                 <div class="onboardingSection">
                     <div class="inputGroup">
                         <label for="obUserNameInput">Your Name</label>
                         <input type="text" id="obUserNameInput" placeholder="Enter your name..." />
+                    </div>
+                    <div class="inputGroup" style="margin-top: 10px;">
+                        <label for="obUserPhoneInput">Phone Number (Global Identifier)</label>
+                        <input type="tel" id="obUserPhoneInput" placeholder="+91 98765 43210" />
+                        <span style="font-size: 10px; color: var(--text-muted); margin-top: 3px; display: block;">
+                            Phone verification unavailable. Your number is stored as your account contact identifier across the Chrono Network.
+                        </span>
+                    </div>
+                    <div class="inputGroup" style="margin-top: 10px;">
+                        <label for="obUserCountryInput">Country / Region</label>
+                        <input type="text" id="obUserCountryInput" placeholder="India (+91)" />
                     </div>
                     <div class="inputGroup" style="margin-top: 10px;">
                         <label for="obUserEmailInput">Email Address</label>
@@ -1206,7 +1366,8 @@
 
     <!-- WEEKLY CONTINUITY AUDIT MODAL -->
     <div class="onboardingOverlay" id="weeklyAuditOverlay" style="display: none; justify-content: center; align-items: center; z-index: 10000; background: rgba(0,0,0,0.6);">
-        <div class="onboardingCard" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div class="onboardingCard" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+            <button onclick="closeWeeklyAuditModal()" style="position: absolute; right: 14px; top: 14px; background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; padding: 4px 10px; font-weight: 700; line-height: 1; z-index: 10;" title="Close">✕</button>
             <div class="onboardingHeader">
                 <div class="onboardingLogo">📊</div>
                 <h2>Weekly Continuity Audit</h2>
@@ -1246,7 +1407,8 @@
 
     <!-- EVENT ACTION & FOCUS TIMER MODAL -->
     <div class="onboardingOverlay" id="eventActionModal" style="display: none; justify-content: center; align-items: center; z-index: 10000; background: rgba(0,0,0,0.6);">
-        <div class="onboardingCard" style="max-width: 440px; width: 90%;">
+        <div class="onboardingCard" style="max-width: 440px; width: 90%; position: relative;">
+            <button onclick="closeEventActionModal()" style="position: absolute; right: 14px; top: 14px; background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; padding: 4px 10px; font-weight: 700; line-height: 1; z-index: 10;" title="Close">✕</button>
             <div class="onboardingHeader">
                 <div class="onboardingLogo" id="eaLogo" style="background: var(--cal-personal);">📅</div>
                 <h2 id="eaTaskText" style="font-size: 20px; font-weight: 800; margin-top: 8px; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Event Action Center</h2>
@@ -1255,9 +1417,10 @@
             
             <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px; text-align: left;">
                 <!-- 1. Actions Row -->
-                <div style="display: flex; gap: 10px; width: 100%;">
-                    <button class="primary" id="eaCompleteBtn" onclick="actionCompleteTask()" style="flex: 1; padding: 10px; font-size: 12px; font-weight: 700; border-radius: 10px; background: #10b981; border: none; color: white; cursor: pointer;">Mark Completed</button>
-                    <button class="primary" id="eaDeleteBtn" onclick="actionDeleteTask()" style="flex: 1; padding: 10px; font-size: 12px; font-weight: 700; border-radius: 10px; background: #ef4444; border: none; color: white; cursor: pointer;">Delete Event</button>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                    <button class="primary" id="eaEditBtn" onclick="actionEditTask()" style="flex: 1; padding: 10px; font-size: 11px; font-weight: 700; border-radius: 10px; background: var(--cal-personal); border: none; color: white; cursor: pointer;">✏️ Edit Event</button>
+                    <button class="primary" id="eaCompleteBtn" onclick="actionCompleteTask()" style="flex: 1; padding: 10px; font-size: 11px; font-weight: 700; border-radius: 10px; background: #10b981; border: none; color: white; cursor: pointer;">✓ Complete</button>
+                    <button class="primary" id="eaDeleteBtn" onclick="actionDeleteTask()" style="flex: 1; padding: 10px; font-size: 11px; font-weight: 700; border-radius: 10px; background: #ef4444; border: none; color: white; cursor: pointer;">🗑️ Delete</button>
                 </div>
 
                 <!-- 2. Focus Timer Section -->
@@ -1301,6 +1464,285 @@
             <button class="headerButton" onclick="closeEventActionModal()" style="margin-top: 15px; width: 100%; padding: 10px; border-radius: 10px; font-weight: 600; cursor: pointer;">Close Action Center</button>
         </div>
     </div>
+
+    <!-- 🛰️ AI STATUS & DIAGNOSTICS MODAL -->
+    <div class="onboardingOverlay" id="aiStatusModal" style="display: none; justify-content: center; align-items: center; z-index: 10001; background: rgba(0,0,0,0.6);">
+        <div class="onboardingCard" style="max-width: 440px; width: 90%; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                    🛰️ Active Model & System Health
+                </h3>
+                <button onclick="closeAiStatusModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; font-weight:700;">×</button>
+            </div>
+            <div id="aiStatusModalBody" style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+                <div style="padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="color: var(--text-muted); font-size: 10px; text-transform: uppercase;">Active Reasoning Provider</div>
+                    <div id="statusProviderName" style="font-size: 14px; font-weight: 700; color: #10b981; margin-top: 2px;">Google Gemini</div>
+                    <div id="statusModelName" style="font-size: 11px; color: var(--text-main);">gemini-3.5-flash</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; border: 1px solid var(--border-color);">
+                        <div style="color: var(--text-muted); font-size: 10px;">COGNITIVE KERNEL</div>
+                        <div style="font-weight: 700; color: #10b981;">🟢 Online</div>
+                    </div>
+                    <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; border: 1px solid var(--border-color);">
+                        <div style="color: var(--text-muted); font-size: 10px;">FAILOVER CHAIN</div>
+                        <div style="font-weight: 700; color: var(--text-main);">Gemini → Groq → OpenRouter</div>
+                    </div>
+                </div>
+                <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted);">
+                    <strong>Boundary Notice:</strong> Memory, calendar permissions, and task actions remain strictly governed by Chrono OS. The cloud provider acts solely as the language reasoning generator.
+                </div>
+            </div>
+            <button class="headerButton" onclick="closeAiStatusModal()" style="margin-top: 14px; width: 100%; padding: 8px; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
+        </div>
+    </div>
+
+    <!-- TIMETABLE IMPORT & PREVIEW MODAL -->
+    <div class="onboardingOverlay" id="timetablePreviewOverlay" style="display: none; justify-content: center; align-items: center; z-index: 10000; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);">
+        <div class="onboardingCard" style="max-width: 750px; width: 92%; max-height: 90vh; overflow-y: auto; background: rgba(18, 24, 38, 0.95); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 14px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 18px; color: var(--text-main); font-weight: 800;">📅 Extracted Timetable & Schedule Preview</h2>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);">Review extracted class sessions before committing to Chrono Calendar & Tasks.</p>
+                </div>
+                <button class="headerButton smallBtn" onclick="closeTimetableModal()" style="font-size: 16px; padding: 4px 10px;">✕</button>
+            </div>
+
+            <!-- RAW TEXT / FILE INPUT ROW -->
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Paste Timetable Schedule / Syllabus Text</label>
+                <textarea id="rawTimetableInput" placeholder="Monday&#10;09:00 - 10:30 CS101 Networking Room 302&#10;11:00 - 12:30 Database Systems Lab 4&#10;&#10;Wednesday&#10;14:00 - 15:30 Operating Systems LH-1" style="width: 100%; height: 90px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.25); color: var(--text-main); font-family: monospace; font-size: 12px; box-sizing: border-box;"></textarea>
+                <button class="headerButton smallBtn" onclick="parseRawTimetableText()" style="align-self: flex-start; padding: 6px 14px; font-weight: 700;">⚡ Parse Timetable Text</button>
+            </div>
+
+            <!-- PREVIEW GRID -->
+            <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Extracted Schedule Sessions (<span id="parsedItemsCount">0</span>)</div>
+                <div id="timetablePreviewGrid" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px;">
+                    <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 20px;">No schedule parsed yet. Paste timetable text above or upload a document.</div>
+                </div>
+            </div>
+
+            <!-- ACTION BAR: COMMIT, EXPORT, PRINT, SHARE -->
+            <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; border-top: 1px dashed var(--border-color); padding-top: 15px; align-items: center;">
+                <button class="primary" onclick="commitTimetableSchedule()" style="padding: 10px 20px; font-size: 12px; font-weight: 700; border-radius: 8px; background: #10b981; border: none; cursor: pointer;">✅ Commit to Calendar & Tasks</button>
+                <button class="headerButton smallBtn" onclick="exportTimetableAction('ics')" style="padding: 8px 12px; cursor: pointer;">📥 Download .ICS</button>
+                <button class="headerButton smallBtn" onclick="exportTimetableAction('csv')" style="padding: 8px 12px; cursor: pointer;">📊 Download CSV</button>
+                <button class="headerButton smallBtn" onclick="printTimetableAction()" style="padding: 8px 12px; cursor: pointer;">🖨️ Print Schedule</button>
+                <button class="headerButton smallBtn" onclick="copyTimetableMarkdownAction()" style="padding: 8px 12px; cursor: pointer;">📋 Copy Text</button>
+                <button class="headerButton smallBtn" onclick="shareTimetableAction()" style="padding: 8px 12px; margin-left: auto; cursor: pointer;">👥 Share with Peers</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🚀 CHRONO SPACES DRAWER & COLLABORATION MODAL -->
+    <div class="onboardingOverlay" id="spacesDrawerModal" style="display: none; justify-content: center; align-items: center; z-index: 10001; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);">
+        <div class="onboardingCard" style="max-width: 650px; width: 92%; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">👥</span>
+                    <div>
+                        <h2 style="margin: 0; font-size: 17px; color: var(--text-main); font-weight: 800;">Chrono Spaces (GitHub-Style Collaboration)</h2>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-muted);">Collaborate on group calendars, propose events with conflict checks, and merge Pull Requests.</p>
+                    </div>
+                </div>
+                <button class="headerButton smallBtn" onclick="closeSpacesDrawer()" style="font-size: 16px; padding: 4px 10px; cursor: pointer;">✕</button>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <input type="text" id="newSpaceNameInput" placeholder="New Space Name (e.g. Study Circle, Project Alpha)..." style="flex: 1; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main);" />
+                <button class="primary" onclick="createNewSpaceAction()" style="padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer;">+ Create Space</button>
+            </div>
+
+            <div id="spacesListContainer" style="margin-top: 15px; max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">Loading active spaces...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ☎️ COMMUNICATION OS DIRECT MESSAGING & CALLING MODAL -->
+    <div class="onboardingOverlay" id="directMessagesModal" style="display: none; justify-content: center; align-items: center; z-index: 10001; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);">
+        <div class="onboardingCard" style="max-width: 720px; width: 94%; height: 540px; display: flex; flex-direction: column; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">☎️</span>
+                    <div>
+                        <h2 style="margin: 0; font-size: 17px; color: var(--text-main); font-weight: 800;">Communication OS</h2>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-muted);">Encrypted Direct Messaging & Calling across the Chrono Network</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="headerButton smallBtn" id="commsTabChatBtn" onclick="switchCommsTab('chat')" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">💬 Messages</button>
+                    <button class="headerButton smallBtn" id="commsTabHistoryBtn" onclick="switchCommsTab('history')" style="font-size: 11px; padding: 4px 10px;">📞 Call History</button>
+                    <button class="headerButton smallBtn" onclick="closeDirectMessagesModal()" style="font-size: 16px; padding: 4px 10px; cursor: pointer;">✕</button>
+                </div>
+            </div>
+
+            <!-- CHAT VIEW TAB -->
+            <div id="commsChatTabView" style="display: flex; flex: 1; margin-top: 14px; gap: 14px; overflow: hidden;">
+                <!-- Peer List -->
+                <div style="width: 220px; border-right: 1px solid var(--border-color); padding-right: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Direct Contacts</span>
+                        <button class="headerButton smallBtn" onclick="openAddPersonModal()" style="padding: 2px 6px; font-size: 10px; font-weight: 700;">+ Add</button>
+                    </div>
+                    <div id="commsPeerList" style="display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1;">
+                        <!-- Dynamically populated from database -->
+                    </div>
+                </div>
+
+                <!-- Chat & Call Panel -->
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
+                        <div>
+                            <div id="activeCommsPeerLabel" style="font-weight: 800; font-size: 14px; color: var(--text-main);">Select a Contact</div>
+                            <div id="activeCommsPeerPhone" style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">Chrono Network</div>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button class="headerButton smallBtn" onclick="startCallWithActivePeer('AUDIO')" style="padding: 5px 10px; font-size: 11px; cursor: pointer; font-weight: 700; background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4);" title="Direct Chrono WebRTC Audio Call">📞 Call</button>
+                            <button class="headerButton smallBtn" onclick="startCallWithActivePeer('VIDEO')" style="padding: 5px 10px; font-size: 11px; cursor: pointer;" title="Direct Chrono WebRTC Video Call">📹 Video</button>
+                            <button class="headerButton smallBtn" onclick="startExternalCall('whatsapp')" style="padding: 5px 10px; font-size: 11px; cursor: pointer; background: rgba(37, 211, 102, 0.15); border-color: rgba(37, 211, 102, 0.35); color: #4ade80;" title="Launch WhatsApp Call / Chat">💬 WhatsApp</button>
+                            <button class="headerButton smallBtn" onclick="startExternalCall('meet')" style="padding: 5px 10px; font-size: 11px; cursor: pointer; background: rgba(234, 67, 53, 0.15); border-color: rgba(234, 67, 53, 0.35); color: #f87171;" title="Create Google Meet Room">🌐 Meet</button>
+                            <button class="headerButton smallBtn" onclick="startExternalCall('facetime')" style="padding: 5px 10px; font-size: 11px; cursor: pointer; background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.35); color: #c084fc;" title="Launch FaceTime">🍏 FaceTime</button>
+                            <button class="headerButton smallBtn" onclick="editSelectedCommsPeer()" style="padding: 5px 8px; font-size: 11px; cursor: pointer;" title="Edit Contact">✏️</button>
+                        </div>
+                    </div>
+
+                    <div id="commsMessagesContainer" style="flex: 1; overflow-y: auto; padding: 12px 0; display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+                        <div style="padding: 20px; text-align: center; color: var(--text-muted);">Select a contact on the left to start encrypted communication.</div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                        <input type="text" id="commsMessageInput" placeholder="Type an encrypted message..." style="flex: 1; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main);" onkeydown="if(event.key==='Enter') sendCommsMessageAction()" />
+                        <button class="primary" onclick="sendCommsMessageAction()" style="padding: 8px 14px; font-size: 12px; cursor: pointer;">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALL HISTORY TAB -->
+            <div id="commsHistoryTabView" style="display: none; flex: 1; flex-direction: column; margin-top: 14px; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">Recent VoIP & WebRTC Sessions</span>
+                    <button class="headerButton smallBtn" onclick="clearCallHistoryAction()" style="font-size: 10px; padding: 4px 8px; color: #ef4444;">Clear Log</button>
+                </div>
+                <div id="commsCallHistoryList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🚀 CHRONO SPACE PROPOSAL REVIEW MODAL (CALENDAR PR) -->
+    <div class="onboardingOverlay" id="spaceProposalModal" style="display: none; justify-content: center; align-items: center; z-index: 10002; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);">
+        <div class="onboardingCard" style="max-width: 580px; width: 90%; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">🌿</span>
+                    <h2 style="margin: 0; font-size: 16px; color: var(--text-main); font-weight: 800;" id="proposalModalTitle">Review Collaborative Event Proposal</h2>
+                </div>
+                <button class="headerButton smallBtn" onclick="closeProposalModal()" style="font-size: 16px; padding: 4px 10px; cursor: pointer;">✕</button>
+            </div>
+            <div id="proposalModalBody" style="margin-top: 16px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                <!-- Dynamically populated -->
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="headerButton smallBtn" onclick="rejectCurrentProposal()" style="padding: 8px 16px; color: #ef4444; border-color: rgba(239,68,68,0.3); cursor: pointer;">✕ Reject Proposal</button>
+                <button class="primary" onclick="mergeCurrentProposal()" style="padding: 8px 18px; font-weight: 700; background: #10b981; border: none; border-radius: 8px; cursor: pointer;">✔ Merge to Calendar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📡 CALLING OVERLAY (Phone Number Calling Card) -->
+    <div class="onboardingOverlay" id="webrtcCallModal" style="display: none; justify-content: center; align-items: center; z-index: 10003; background: rgba(0,0,0,0.85); backdrop-filter: blur(16px);">
+        <div class="onboardingCard" style="max-width: 380px; width: 88%; text-align: center; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 24px; padding: 32px 24px; box-shadow: 0 30px 70px rgba(0,0,0,0.7); position: relative;">
+            <div style="position: absolute; top: 16px; right: 16px;">
+                <button class="headerButton smallBtn" onclick="closeWebrtcCallModal()" style="font-size: 14px; padding: 4px 8px; cursor: pointer;">✕</button>
+            </div>
+            <div id="callAvatar" style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); margin: 0 auto 16px auto; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);">
+                👤
+            </div>
+            <h3 id="callPeerName" style="margin: 0 0 4px 0; font-size: 20px; color: #f8fafc; font-weight: 800;">Contact</h3>
+            <div id="callPeerNumber" style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">+91 98765 43210</div>
+            <div id="callDurationTimer" style="font-size: 14px; font-weight: 700; color: #38bdf8; font-family: monospace; margin-bottom: 20px;">00:00</div>
+            
+            <p id="callStatusText" style="margin: 0 0 24px 0; font-size: 11px; color: #64748b;">Chrono VoIP / WebRTC Encrypted Channel</p>
+            
+            <div style="display: flex; justify-content: center; align-items: center; gap: 14px;">
+                <button class="headerButton" id="btnToggleMute" onclick="toggleCallMute()" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer;" title="Mute Microphone">🎙️</button>
+                <button class="headerButton" id="btnToggleVideo" onclick="toggleCallVideo()" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer;" title="Toggle Camera">📷</button>
+                <button onclick="endActiveCall()" style="width: 54px; height: 54px; border-radius: 50%; background: #ef4444; color: #fff; border: none; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);" title="End Call">📞</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 👤 PERSON / PEER ADD & EDIT MODAL -->
+    <div class="onboardingOverlay" id="personCrudModal" style="display: none; justify-content: center; align-items: center; z-index: 10004; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);">
+        <div class="onboardingCard" style="max-width: 440px; width: 90%; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="personCrudModalTitle" style="margin: 0; font-size: 16px; font-weight: 800; color: var(--text-main);">+ Add Person</h3>
+                <button onclick="closePersonCrudModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:18px; font-weight:700;">×</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="personCrudId" value="" />
+                <div class="inputGroup">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Full Name *</label>
+                    <input type="text" id="personCrudName" placeholder="e.g. Maya Chen" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); font-size: 13px;" />
+                </div>
+                <div class="inputGroup">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Phone Number *</label>
+                    <input type="tel" id="personCrudPhone" placeholder="+91 98765 43210" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); font-size: 13px;" />
+                </div>
+                <div class="inputGroup">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Role / Relationship</label>
+                    <input type="text" id="personCrudRole" placeholder="e.g. Study Partner, Colleague, Friend" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); font-size: 13px;" />
+                </div>
+                <div class="inputGroup">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Email Address (Optional)</label>
+                    <input type="email" id="personCrudEmail" placeholder="maya@university.edu" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); font-size: 13px;" />
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button class="headerButton smallBtn" onclick="closePersonCrudModal()" style="padding: 8px 16px;">Cancel</button>
+                <button class="primary smallBtn" onclick="savePersonCrudAction()" style="padding: 8px 20px; font-weight: 700;">Save Person</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🗑️ TRASH & RECOVERY MODAL FOR NOTES -->
+    <div class="onboardingOverlay" id="trashNotesModal" style="display: none; justify-content: center; align-items: center; z-index: 10004; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);">
+        <div class="onboardingCard" style="max-width: 580px; width: 92%; max-height: 80vh; display: flex; flex-direction: column; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #f87171;">🗑️ Notes Trash & Recovery</h3>
+                    <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-muted);">Manage deleted notes. Restore them to your knowledge workspace or delete permanently.</p>
+                </div>
+                <button onclick="closeTrashNotesModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:18px; font-weight:700;">×</button>
+            </div>
+            <div id="trashNotesList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 180px;">
+                <!-- Populated dynamically -->
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <button class="headerButton smallBtn" onclick="closeTrashNotesModal()" style="padding: 8px 16px;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚠️ REUSABLE CONFIRMATION DIALOG MODAL -->
+    <div class="onboardingOverlay" id="chronoConfirmModal" style="display: none; justify-content: center; align-items: center; z-index: 10005; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px);">
+        <div class="onboardingCard" style="max-width: 400px; width: 90%; text-align: center; background: rgba(15, 23, 42, 0.98); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 28px 24px; box-shadow: 0 30px 70px rgba(0,0,0,0.7);">
+            <div style="font-size: 36px; margin-bottom: 12px;" id="confirmModalIcon">⚠️</div>
+            <h3 id="confirmModalTitle" style="margin: 0 0 8px 0; font-size: 17px; font-weight: 800; color: #f8fafc;">Are you sure?</h3>
+            <p id="confirmModalMessage" style="margin: 0 0 24px 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">This action cannot be undone.</p>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <button class="headerButton smallBtn" id="confirmModalCancelBtn" onclick="closeChronoConfirmModal(false)" style="padding: 8px 20px; font-size: 12px;">Cancel</button>
+                <button class="primary smallBtn" id="confirmModalActionBtn" onclick="closeChronoConfirmModal(true)" style="padding: 8px 22px; font-size: 12px; background: #ef4444; border: none; font-weight: 700;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🍞 TOAST NOTIFICATION CONTAINER -->
+    <div id="chronoToastContainer"></div>
 
     <script src="app.js"></script>
     <script>

@@ -40,13 +40,13 @@ async function consolidateNarrativesToYearly(userId = 'local_user') {
                 subjectsCount[s.name] = (subjectsCount[s.name] || 0) + s.count;
             });
 
-            // Fetch peer study tasks
+            // Fetch peer study tasks dynamically
+            const activePeers = db.prepare("SELECT name FROM relationships").all().map(r => r.name.toLowerCase());
             const studyTasks = db.prepare("SELECT text FROM tasks WHERE completed = 1 AND date LIKE ? AND text LIKE '%Study%'").all(`${monthStr}%`);
             studyTasks.forEach(t => {
                 const text = t.text.toLowerCase();
-                const peers = ['princess', 'rayhaan', 'sana', 'tara', 'anwesha'];
-                peers.forEach(p => {
-                    if (text.includes(p)) {
+                activePeers.forEach(p => {
+                    if (p && text.includes(p)) {
                         peersCount[p] = (peersCount[p] || 0) + 1;
                     }
                 });

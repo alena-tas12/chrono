@@ -4,8 +4,8 @@ const path = require('path');
 // Load environment variables from root directory .env
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || "https://kimzqukobytxhzltytvx.supabase.co";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_Maxtwx2sM7XfpQKkx_uO3w_x8l5b6us";
 
 let supabase = null;
 

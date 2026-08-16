@@ -14,9 +14,10 @@ const mainDb = require('./main_db');
  * @param {number} limit Max blocks to return
  * @returns {Array} Array of formatted block objects with provenance
  */
-function retrieveExplicitKnowledge(query, limit = 5) {
-    const db = mainDb.db;
+function retrieveExplicitKnowledge(query, limit = 5, userId = null) {
+    const db = (typeof mainDb.getDb === 'function' ? mainDb.getDb() : mainDb.db);
     if (!db || !query) return [];
+    const activeUser = userId || mainDb.getActiveUserId() || 'local_user';
 
     try {
         // Simple keyword extraction for the search
@@ -30,7 +31,6 @@ function retrieveExplicitKnowledge(query, limit = 5) {
         const results = [];
         const seenBlocks = new Set();
 
-        // Very basic local search against blocks and note titles
         for (const word of keywords) {
             const param = `%${word}%`;
             const matches = db.prepare(`
@@ -43,19 +43,42 @@ function retrieveExplicitKnowledge(query, limit = 5) {
                 FROM workspace_blocks b
                 JOIN workspace_notes n ON b.note_id = n.id
                 WHERE (b.content LIKE ? OR n.title LIKE ?)
+                  AND (n.user_id = ? OR n.user_id IS NULL)
                   AND n.deleted = 0
                 LIMIT ?
-            `).all(param, param, limit);
+            `).all(param, param, activeUser, limit);
 
             for (const match of matches) {
                 if (!seenBlocks.has(match.block_id)) {
                     seenBlocks.add(match.block_id);
+                    
+                    // Fetch Linked Context
+                    const links = db.prepare(`
+                        SELECT target_id, target_type 
+                        FROM workspace_links 
+                        WHERE source_id = ?
+                    `).all(match.block_id);
+
+                    let linkedContext = [];
+                    for (const link of links) {
+                        if (link.target_type === 'note') {
+                            const linkedNote = db.prepare('SELECT title FROM workspace_notes WHERE id = ?').get(link.target_id);
+                            if (linkedNote) linkedContext.push(`Linked Note: [[${linkedNote.title}]]`);
+                        } else if (link.target_type === 'project') {
+                            const linkedProj = db.prepare('SELECT title FROM projects WHERE id = ?').get(link.target_id);
+                            if (linkedProj) linkedContext.push(`Linked Project: [[${linkedProj.title}]]`);
+                        }
+                    }
+
+                    if (linkedContext.length > 0) {
+                        match.block_content += `\n(Context Links: ${linkedContext.join(', ')})`;
+                    }
+
                     results.push(match);
                 }
             }
         }
 
-        // Sort roughly by how many times we found it, or just return top N
         return results.slice(0, limit);
 
     } catch (e) {

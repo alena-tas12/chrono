@@ -242,17 +242,22 @@ function addSharedActivity(peerId, activityType, targetId) {
     }
 }
 
+// Ensure schema columns
+try { db.prepare("ALTER TABLE relationships ADD COLUMN phone TEXT").run(); } catch(e) {}
+try { db.prepare("ALTER TABLE relationships ADD COLUMN avatar_url TEXT").run(); } catch(e) {}
+try { db.prepare("ALTER TABLE relationships ADD COLUMN country TEXT").run(); } catch(e) {}
+
 /**
- * Add a new continuity thread connection
+ * Add a new continuity thread connection (Peer / Person)
  */
-function addThread(userId, name, role, email, peerUserId) {
+function addThread(userId, name, role, email, peerUserId, phone = null, avatarUrl = null, country = null) {
     const id = mainDb.generateUUID();
     const now = Date.now();
     try {
         db.prepare(`
-            INSERT INTO relationships (id, user_id, name, role, created_at, updated_at, peer_user_id, peer_email)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(id, userId, name, role, now, now, peerUserId || null, email || null);
+            INSERT INTO relationships (id, user_id, name, role, created_at, updated_at, peer_user_id, peer_email, phone, avatar_url, country)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, userId, name, role, now, now, peerUserId || null, email || null, phone || null, avatarUrl || null, country || null);
         
         // Log first contact interaction
         logInteraction(id, 'conversation');
@@ -260,6 +265,45 @@ function addThread(userId, name, role, email, peerUserId) {
         return { success: true, id };
     } catch (e) {
         console.error("continuityThreads: Failed to add thread:", e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Edit an existing continuity thread (Peer / Person)
+ */
+function editThread(userId, personId, name, role, email, phone = null, avatarUrl = null, country = null) {
+    const now = Date.now();
+    try {
+        db.prepare(`
+            UPDATE relationships 
+            SET name = ?, role = ?, peer_email = ?, phone = ?, avatar_url = ?, country = ?, updated_at = ?
+            WHERE id = ? AND (user_id = ? OR user_id IS NULL)
+        `).run(name, role, email || null, phone || null, avatarUrl || null, country || null, now, personId, userId);
+        return { success: true };
+    } catch (e) {
+        console.error("continuityThreads: Failed to edit thread:", e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Remove a continuity thread (Peer / Person)
+ * Preserves message history and call records while removing relationship mapping
+ */
+function removeThread(userId, personId) {
+    try {
+        const transaction = db.transaction(() => {
+            db.prepare(`DELETE FROM shared_activities WHERE relationship_id = ?`).run(personId);
+            db.prepare(`DELETE FROM shared_milestones WHERE peer_id = ?`).run(personId);
+            db.prepare(`DELETE FROM relationship_interactions WHERE peer_id = ?`).run(personId);
+            db.prepare(`DELETE FROM continuity_metrics WHERE peer_id = ?`).run(personId);
+            db.prepare(`DELETE FROM relationships WHERE id = ? AND (user_id = ? OR user_id IS NULL)`).run(personId, userId);
+        });
+        transaction();
+        return { success: true };
+    } catch (e) {
+        console.error("continuityThreads: Failed to remove thread:", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -484,6 +528,8 @@ module.exports = {
     getThreadDetails,
     addSharedActivity,
     addThread,
+    editThread,
+    removeThread,
     logInteraction,
     getSharedMilestones,
     addSharedMilestone,

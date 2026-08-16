@@ -6,6 +6,7 @@
  */
 
 const { SemanticParser } = require('./semanticParser');
+const episodicReplay = require('./episodicReplay');
 
 class DispatchEngine {
     constructor({ stateManager, registry }) {
@@ -43,27 +44,106 @@ class DispatchEngine {
             intents.push('Retrieve');
         }
 
-        // 3. Context-Aware Module Selection based on Semantics
+        // 3. Context-Aware Module Selection based on Semantics (Phase 4 Progressive Retrieval)
         const relation = parsedSemantics.relationToConversation.value;
-        if (relation === 'continuation' || relation === 'return_to_topic') {
-            selectedModules.push('Projects');
-            selectedModules.push('MemoryGraph');
-        }
+        const lowerInput = input.toLowerCase();
         
-        if (intents.includes('Plan')) {
-            selectedModules.push('Calendar');
-        } else if (func === 'self_exploration') {
-            selectedModules.push('Sleep');
-            selectedModules.push('Health');
-            selectedModules.push('Memory'); // Pull past memories for reflection
-        } else if (target === 'user_data' || func === 'troubleshoot') {
-            selectedModules.push('KnowledgeBase');
-        } else if (func === 'social_inquiry') {
-            // Fast path: social inquiry doesn't strictly need a heavy retrieval phase
-        } else {
-            selectedModules.push('Calendar');
-            selectedModules.push('KnowledgeBase');
-            selectedModules.push('Memory'); // General memory fallback
+        let intervention = { permitted: true };
+        let context_retrieval = { permitted: true };
+        let action = { permitted: true };
+        let clarification_required = false;
+
+        // 3a. Contract 13: Check if Cognitive Pace Engine can resolve trajectory/thread before flagging clarification
+        const paceEngine = require('./cognitivePaceEngine').defaultPaceEngine;
+        const paceAnalysis = paceEngine.trackThoughtTrajectory(input, session.history || []);
+        if (paceAnalysis.isBacktrackQuery && (paceAnalysis.activeThread || paceAnalysis.threadStack.length > 0)) {
+            clarification_required = false;
+            intervention.permitted = true;
+            context_retrieval.permitted = true;
+            action.permitted = false;
+        } else if (func === 'ambiguous') {
+            clarification_required = true;
+            intervention.permitted = false;
+            context_retrieval.permitted = false;
+            action.permitted = false;
+            selectedModules = [];
+        } 
+        // 3b. Venting & Casual Talk -> ZERO intervention
+        else if (func === 'venting' || func === 'casual_reaction' || func === 'social_inquiry') {
+            intervention.permitted = false;
+            context_retrieval.permitted = false;
+            action.permitted = false;
+            selectedModules = [];
+        } 
+        // 3c. Casual Observation -> Converse/Remember, but NO background fetching or action
+        else if (func === 'casual_observation') {
+            intervention.permitted = true; // Allowed to speak/save to memory
+            context_retrieval.permitted = false;
+            action.permitted = false;
+            selectedModules = [];
+        }
+        // 3d. Correction -> Update Memory/Context vs Active Target Modification
+        else if (func === 'correction') {
+            const isActionModification = lowerInput.includes('put') || lowerInput.includes('schedule') || lowerInput.includes('move') || lowerInput.includes('change') || lowerInput.includes('set');
+            intervention.permitted = true;
+            context_retrieval.permitted = true;
+            action.permitted = isActionModification && !lowerInput.includes("don't") && !lowerInput.includes("forget");
+            selectedModules = ['Memory', 'KnowledgeBase']; 
+            if (isActionModification) {
+                selectedModules.push('Calendar');
+                selectedModules.push('Tasks');
+            }
+        }
+        // 3e. Explicit Action (Scheduling / Planning / Deletion) vs Queries
+        else {
+            const impliesScheduling = lowerInput.includes('tomorrow') || lowerInput.includes('today') || lowerInput.includes('organize') || lowerInput.includes('schedule') || lowerInput.includes('doing');
+            const hasVagueTarget = lowerInput.includes('schedule it') || lowerInput.includes('put that on') || 
+                                   lowerInput.includes('maybe we should') || lowerInput.includes('delete it') || 
+                                   lowerInput.includes('remove it') || lowerInput.includes('cancel it') || 
+                                   lowerInput.includes('delete that') || lowerInput.includes('remove that') || 
+                                   lowerInput === 'delete' || lowerInput === 'remove' || lowerInput === 'cancel' || 
+                                   (lowerInput.includes('schedule') && lowerInput.split(' ').length <= 4);
+
+            const isScheduleQuery = lowerInput.includes('what do i have') || lowerInput.includes('what have i planned') || 
+                                    lowerInput.includes("what's on my schedule") || lowerInput.includes("what is on my calendar") || 
+                                    lowerInput.includes("review my week") || lowerInput.includes("what's planned");
+
+            if ((func === 'schedule_action' || func === 'correction' || (intents.includes('Plan') && impliesScheduling))) {
+                if (hasVagueTarget && !session.currentTopic) {
+                    clarification_required = true;
+                    action.permitted = false;
+                    intervention.permitted = true;
+                    context_retrieval.permitted = false;
+                    selectedModules = [];
+                } else {
+                    selectedModules.push('Calendar');
+                    selectedModules.push('Tasks');
+                    action.permitted = !isScheduleQuery;
+                }
+            } else if (intents.includes('Plan')) {
+                selectedModules.push('Projects');
+                action.permitted = false;
+            }
+
+            if (lowerInput.includes('project')) {
+                selectedModules.push('Projects');
+            }
+
+            if (func === 'self_exploration') {
+                selectedModules.push('Sleep');
+                selectedModules.push('Health');
+                selectedModules.push('Memory');
+                action.permitted = false;
+            } 
+            
+            if ((target === 'user_data' && func !== 'schedule_action') || func === 'troubleshoot') {
+                selectedModules.push('KnowledgeBase');
+                if (impliesScheduling) selectedModules.push('Tasks');
+                action.permitted = false;
+            } else if (func === 'explain' || target === 'general_knowledge') {
+                selectedModules.push('KnowledgeBase');
+                action.permitted = false;
+            } 
         }
 
         // 4. Determine if Simulation is needed (expensive execution mode)
@@ -71,12 +151,18 @@ class DispatchEngine {
 
         return {
             userInput: input,
-            parsedSemantics, // Expose the parsed object for the rest of the pipeline
+            parsedSemantics, 
             intents,
             selectedModules,
             activeContext,
             requiresSimulation,
-            retrievalContract: this._generateRetrievalContract(intents, selectedModules)
+            retrievalContract: this._generateRetrievalContract(intents, selectedModules),
+            
+            // Phase 5 Behavioral Permissions
+            intervention,
+            context_retrieval,
+            action,
+            clarification_required
         };
     }
 
@@ -88,7 +174,7 @@ class DispatchEngine {
         };
 
         if (intents.includes('Plan')) {
-            contract.requiredFields.push('calendar');
+            contract.requiredFields.push('calendar', 'tasks');
             contract.minimumConfidence = 0.9;
         }
         if (intents.includes('Reflect')) {
@@ -138,6 +224,13 @@ class DispatchEngine {
         
         compiledState._retrievalValidation = this.validateRetrieval(plan, compiledState);
 
+        // Episodic Replay Pillar — always injected so the LLM knows what was recently completed
+        try {
+            compiledState.episodicReplay = episodicReplay.getEpisodeSummary(8);
+        } catch (e) {
+            compiledState.episodicReplay = [];
+        }
+
         return compiledState;
     }
 
@@ -175,6 +268,9 @@ class DispatchEngine {
         if (intentPlan.intents.includes('Plan')) {
             if (!retrievedState.calendar || retrievedState.calendar.length === 0) {
                 missing.push({ field: "calendar", reason: "NO_CALENDAR_EVENTS_FOUND" });
+            }
+            if (!retrievedState.tasks || retrievedState.tasks.length === 0) {
+                missing.push({ field: "tasks", reason: "NO_TASKS_FOUND" });
             }
             if (!retrievedState.projects || retrievedState.projects.length === 0) {
                 missing.push({ field: "projects", reason: "NO_ACTIVE_PROJECTS" });

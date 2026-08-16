@@ -16,6 +16,10 @@ This plan documents the design and execution steps for transforming Chrono into 
 
 - *Are there any additional specific students or peer accounts besides Princess, Rayhaan, Sana, Tara, and Anwesha that we should seed?* (We will default to seeding these five).
 - *Should shared events/notes be automatically visible to all people in the relationships list, or selectively shared with specific peers?* (We propose selective peer sharing via a dropdown).
+- **Subsystem 3: Notes / Knowledge Base** | **COMPLETED (Phase 3)** | Upgraded into standalone Notion + RemNote outliner editor (`wsBtnKnowledge` / `#knowledgeWorkspace`), 12 block types, `[[Concept Links]]`, `::` flashcard decks, versioned revision snapshots, and managed resource sidecar. Verified by `test_phase3_standalone_knowledge_subsystem.js` (18/18 PASSED).
+- **Subsystem 4: Resource Ingestion & Timetable Parser** | **COMPLETED (Phase 4)** | Built document ingestion engine, timetable schedule parser, preview modal, SQLite commitment to Calendar & Tasks, multi-format exporter (.ICS, .CSV, .JSON), print stylesheet, copy markdown, and multi-user permission sharing & revocation (`ACCESS DENIED`). Verified by `test_phase4_timetable_resource_ingestion.js` (19/19 PASSED).
+- **Subsystem 5: Production UI Polish & Composer Quick-Add Menu** | **COMPLETED (Phase 5)** | Added `+` Quick-Add menu to composer input (`Upload File`, `Photo Scan`, `Create Note`, `Import Timetable`, `Quick Add Task`, `Quick Add Event`) and response card action bar buttons (📋 Copy, 🔄 Retry, 🖨️ Print, 📥 Download, 👥 Share). Verified by `test_phase5_ui_composer_quickadd.js` (17/17 PASSED).
+- **Subsystem 6: Full Human Acceptance & Executable Packaging** | **COMPLETED (Phase 6)** | Built fresh compiled binary `dist/Chrono Setup 2.2.0.exe` (118 MB) and `dist/win-unpacked/Chrono.exe`. Verified native ABI loading, clean startup without crashes, restart persistence, and 15/15 master regression tests.
 
 ---
 

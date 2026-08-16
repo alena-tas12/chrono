@@ -1,11 +1,52 @@
 const mainDb = require('./main_db');
-const db = mainDb.db;
+
+function getDb() {
+    const db = (typeof mainDb.getDb === 'function' ? mainDb.getDb() : mainDb.db);
+    try {
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS relationships (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT,
+                peer_user_id TEXT,
+                peer_email TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS shared_activities (
+                id TEXT PRIMARY KEY,
+                relationship_id TEXT NOT NULL,
+                activity_type TEXT NOT NULL,
+                target_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS shared_milestones (
+                id TEXT PRIMARY KEY,
+                peer_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                target_date TEXT,
+                completed INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+    } catch(e) {}
+    return db;
+}
 
 /**
  * Fetch all peer profiles
  */
 function getRelationships(userId) {
     try {
+        const db = getDb();
         return db.prepare("SELECT * FROM relationships WHERE user_id = ?").all(userId);
     } catch (e) {
         console.error("relationshipOS: Failed to fetch relationships:", e.message);
@@ -18,6 +59,7 @@ function getRelationships(userId) {
  * compiling all shared events, goals, projects, and notes.
  */
 function getRelationshipDetails(userId, relationshipId) {
+    const db = getDb();
     const details = {
         peer: null,
         sharedEvents: [],
@@ -123,16 +165,9 @@ function getRelationshipDetails(userId, relationshipId) {
 
         // Fallback to defaults if empty
         if (details.milestones.length === 0) {
-            if (relationshipId === 'rel_princess') {
-                details.milestones = [
-                    { title: 'Passed Calculus Midterm', date: 'April 2026', description: 'Hard study session', sharedMeaning: { local_user: 'Key checkpoint', peer: 'Cal milestone' } },
-                    { title: 'Launched Chrono OS Collaborative Calendar', date: 'May 2026', description: 'Collaborative milestone', sharedMeaning: { local_user: 'MVP Release', peer: 'Beta Launch' } }
-                ];
-            } else {
-                details.milestones = [
-                    { title: 'Project Kickoff', date: 'May 2026', description: 'Initial setup' }
-                ];
-            }
+            details.milestones = [
+                { title: 'Project Kickoff', date: 'May 2026', description: 'Initial setup' }
+            ];
         }
 
     } catch (e) {
@@ -146,6 +181,7 @@ function getRelationshipDetails(userId, relationshipId) {
  * Add a shared activity mapping
  */
 function addSharedActivity(relationshipId, activityType, targetId) {
+    const db = getDb();
     const id = mainDb.generateUUID();
     const now = Date.now();
     try {
@@ -164,6 +200,7 @@ function addSharedActivity(relationshipId, activityType, targetId) {
  * Add a new peer relationship connection
  */
 function addRelationship(userId, name, role, email, peerUserId) {
+    const db = getDb();
     const id = mainDb.generateUUID();
     const now = Date.now();
     try {
@@ -183,6 +220,7 @@ function addRelationship(userId, name, role, email, peerUserId) {
  * Automatically flags event as 'shared' visibility and links to peer.
  */
 async function scheduleJointSession(relationshipId, title, date, startTime, durationMin) {
+    const db = getDb();
     const taskUuid = mainDb.generateUUID();
     const seedTime = Date.now();
     const deviceId = mainDb.getDeviceId();

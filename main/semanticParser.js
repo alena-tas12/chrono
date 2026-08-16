@@ -33,24 +33,46 @@ class SemanticParser {
     }
 
     async _parseWithLLM(input, history) {
-        // Implementation of actual OpenAI structured JSON output call
-        const prompt = `
+        const systemPrompt = `
 Analyze the user's message and determine the conversational semantics.
 Output JSON strictly adhering to this schema:
 {
     "target": { "value": "chrono|user|user_data|system|general_knowledge", "confidence": 0.0-1.0 },
-    "function": { "value": "social_inquiry|self_exploration|troubleshoot|explain|casual_reaction|correction|topic_shift|return_to_topic|ambiguous|...", "confidence": 0.0-1.0 },
+    "function": { "value": "social_inquiry|self_exploration|troubleshoot|explain|casual_reaction|correction|venting|ambiguous|casual_observation|schedule_action", "confidence": 0.0-1.0 },
     "domain": { "value": "string or null", "confidence": 0.0-1.0 },
     "emotion": { "labels": ["list", "of", "emotions"], "confidence": 0.0-1.0 },
     "relationToConversation": { "value": "new|continuation|correction|revision|topic_shift|return_to_topic", "confidence": 0.0-1.0 }
 }
+User input: "${input}"
+History: ${JSON.stringify(history)}
 `;
-        // Stub for actual fetch call
-        console.log("[SemanticParser] LLM Parse called with prompt:", prompt);
+
+        try {
+            const modelProvider = require('./modelProvider');
+            const res = await modelProvider.generateResponse([
+                { role: 'system', content: systemPrompt }
+            ]);
+
+            if (res && res.text) {
+                // Strip markdown code fences if LLM wrapped JSON in ```json ... ```
+                const cleanText = res.text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+                const parsed = JSON.parse(cleanText);
+                return this._normalizeLLMOutput(parsed);
+            }
+            return this._simulateLLMParsing(input, history);
+        } catch (error) {
+            console.warn(`[SemanticParser] LLM parsing failed (${error.message}). Falling back to deterministic parser.`);
+            return this._simulateLLMParsing(input, history);
+        }
+    }
+
+    _normalizeLLMOutput(parsed) {
         return {
-            target: { value: 'unknown', confidence: 0 },
-            function: { value: 'ambiguous', confidence: 0 },
-            relationToConversation: { value: 'new', confidence: 1.0 }
+            target: parsed.target || { value: 'unknown', confidence: 0.5 },
+            function: parsed.function || { value: 'ambiguous', confidence: 0.5 },
+            domain: parsed.domain || undefined,
+            emotion: parsed.emotion || undefined,
+            relationToConversation: parsed.relationToConversation || { value: 'new', confidence: 0.8 }
         };
     }
 
@@ -70,89 +92,71 @@ Output JSON strictly adhering to this schema:
         // 1. Analyze Conversational Relation
         if (history.length > 0) {
             relation.value = 'continuation';
-            
-            if (lower.startsWith('no,') || lower.includes('not what i meant')) {
+            if (lower.startsWith('no,') || lower.includes('not what i meant') || lower.startsWith('actually')) {
                 relation.value = 'correction';
-                target.value = 'chrono';
+                target.value = 'system';
                 func.value = 'correction';
-            } else if (lower.startsWith('actually')) {
-                if (lower.includes('forget that')) {
-                    relation.value = 'correction';
-                    func.value = 'topic_abandonment';
-                    target.value = 'system';
-                    return { target, function: func, relationToConversation: relation };
-                } else {
-                    relation.value = 'continuation';
-                }
-            } else if (lower.startsWith('anyway,')) {
-                if (lower.includes('back to')) {
-                    relation.value = 'return_to_topic';
-                } else {
-                    relation.value = 'topic_shift';
-                }
             }
         }
 
-        // 2. Emotion Context (using the existing vocabulary layer as a dimension)
+        // 2. Emotion Context
         const emotionContext = emotionVocabulary.summarize(input);
         let emotion = undefined;
-        let isFrustrated = lower.includes('stupid') || lower.includes('insane') || lower.includes('frustrated');
-        let isSad = lower.includes('sad') || lower.includes('angry');
-        
-        if (isFrustrated) {
-            emotion = { labels: ['frustration'], confidence: 0.9 };
-        } else if (isSad) {
-            if (lower.includes('angry')) emotion = { labels: ['anger'], confidence: 0.9 };
-            else emotion = { labels: ['sadness'], confidence: 0.9 };
-        }
 
-        // 3. Structural Semantic Analysis
-        const isQuestion = lower.endsWith('?');
-        const addressesAI = lower.includes('are you') || lower.includes('do you');
-        const addressesSelf = lower.includes('am i') || lower.includes('do i') || lower.includes('i don\'t understand') || lower.includes('i\'m feeling');
-        const isTechnical = lower.includes('code') || lower.includes('router') || lower.includes('tcp');
-        const isShort = lower.split(' ').length <= 3;
+        // 3. Phase 5 & Multi-Turn Behavioral Mappings
+        const isVenting = lower.includes('just venting') || lower.includes("don't give me solutions") || 
+                          lower.includes("exhausted") || lower.includes("is killing me") || 
+                          lower.includes("so much work") || lower.includes("going to suck") || 
+                          lower.includes("get through this") || lower.includes("just listen") || 
+                          lower.includes('stressing me out') || lower.includes("dying of embarrassment") || 
+                          lower.includes("can't keep going") || lower.includes("barely slept");
+
+        const isAmbiguous = lower.includes('put that on my calendar') || lower.includes('deal with that tomorrow') || lower.includes('maybe put that somewhere');
         
-        if (addressesAI && isQuestion) {
-            target.value = 'chrono';
-            if (lower.includes('how are you') || lower.includes('what are you up to')) {
-                func.value = 'social_inquiry';
-            } else if (lower.includes('work') || lower.includes('remember')) {
-                func.value = 'meta_inquiry';
-            }
-        } else if (addressesSelf) {
-            target.value = 'user';
-            func.value = 'self_exploration';
-        } else if (isTechnical) {
-            if (lower.startsWith('explain')) {
-                target.value = 'general_knowledge';
-                func.value = 'explain';
-                domain = { value: 'networking', confidence: 0.9 };
-            } else {
-                target.value = 'user_data';
-                func.value = 'troubleshoot';
-                if (lower.includes('router')) domain = { value: 'networking', confidence: 0.9 };
-                if (lower.includes('code')) domain = { value: 'programming', confidence: 0.9 };
-            }
-        } else if (isShort && !isQuestion) {
-            if (lower === 'lol' || lower.includes('😂')) {
-                func.value = 'casual_reaction';
-                target.value = 'chrono';
-            } else if (lower === 'i\'m not sure.' || lower === 'what now?') {
-                func.value = 'ambiguous';
-            }
-        }
+        const isCasualReaction = lower === 'lol' || lower === 'hmm' || lower === 'yeah' || lower === 'hey' || lower === 'hi' ||
+                                 lower === 'thanks' || lower === 'okay' || lower === 'never mind' || 
+                                 lower.includes('good morning') || lower.includes("what's up") || 
+                                 lower.includes('dying laughing') || lower.includes('watching an anime');
+
+        const isAction = lower.includes('remind me') || lower.includes("don't let me forget") || 
+                         lower.includes("help me plan") || lower.includes("plan tomorrow") || 
+                         lower.includes("put ") || lower.includes("schedule");
+        const isCorrection = lower.startsWith('no,') || lower.includes('not what i meant') || lower.startsWith('actually') || lower.includes('wait no') || lower.includes('i mean');
         
-        // Handle topic return logic for the multi-turn test
-        if ((relation.value === 'return_to_topic' || relation.value === 'topic_shift') && isTechnical) {
-            func.value = 'troubleshoot';
+        const isObservation = lower.includes('i should') || lower.includes("i'll do it after") || 
+                              lower.includes("i have an assignment") || lower.includes("deadline is") || 
+                              lower.includes("i really need") || lower.includes("i've been feeling") || 
+                              lower.includes("i feel like") || (lower.includes("i need to") && !lower.includes("what do i have"));
+
+        const isScheduleQuery = lower.includes('what do i have') || lower.includes("what's on my schedule") || 
+                                lower.includes("what is on my calendar") || lower.includes("what have i planned") || 
+                                lower.includes("what's planned") || lower.includes("review my week");
+        const isKnowledgeQuery = lower.includes('what did i write') || lower.includes('write down') || lower.includes('explain') || lower.includes('remember about') || lower.includes('my project') || lower.includes('note') || lower.includes('architecture');
+
+        if (isCorrection) {
+            target.value = 'system';
+            func.value = 'correction';
+        } else if (isScheduleQuery) {
             target.value = 'user_data';
-            if (lower.includes('router')) domain = { value: 'networking', confidence: 0.9 };
-            if (lower.includes('code')) domain = { value: 'programming', confidence: 0.9 };
-        }
-
-        if (lower === 'what now?') {
+            func.value = 'schedule_action';
+        } else if (isVenting) {
+            target.value = 'user';
+            func.value = 'venting';
+        } else if (isCasualReaction) {
+            target.value = 'chrono';
+            func.value = 'casual_reaction';
+        } else if (isAmbiguous) {
+            target.value = 'system';
             func.value = 'ambiguous';
+        } else if (isAction) {
+            target.value = 'system';
+            func.value = 'schedule_action';
+        } else if (isKnowledgeQuery) {
+            target.value = 'user_data';
+            func.value = 'explain';
+        } else if (isObservation) {
+            target.value = 'user_data';
+            func.value = 'casual_observation';
         }
 
         const result = {

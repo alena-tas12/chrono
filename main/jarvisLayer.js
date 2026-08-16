@@ -193,57 +193,42 @@ function getProactiveSuggestions(userId = 'local_user') {
             }
         });
 
-        // 4. Peer check-ins (Princess study gaps)
-        const lastPrincessStudy = db.prepare(`
-            SELECT date FROM tasks 
-            WHERE text LIKE '%Princess%' AND completed = 1 AND deleted = 0 
-            ORDER BY date DESC LIMIT 1
-        `).get();
+        // 4. Peer check-ins (Dynamic relationship check)
+        try {
+            const peers = db.prepare("SELECT id, name FROM relationships LIMIT 5").all();
+            peers.forEach(peer => {
+                const lastStudy = db.prepare(`
+                    SELECT date FROM tasks 
+                    WHERE text LIKE ? AND completed = 1 AND deleted = 0 
+                    ORDER BY date DESC LIMIT 1
+                `).get(`%${peer.name}%`);
 
-        if (lastPrincessStudy) {
-            const diffDays = Math.round((now - new Date(lastPrincessStudy.date).getTime()) / 86400000);
-            if (diffDays >= 5) {
-                const normalText = `You haven't studied with Princess in ${diffDays} days. Let's schedule a joint study session!`;
-                const observerText = `Peer correlation: no collaborative tasks with Princess in ${diffDays} days (Social continuity pattern).`;
+                if (lastStudy) {
+                    const diffDays = Math.round((now - new Date(lastStudy.date).getTime()) / 86400000);
+                    if (diffDays >= 5) {
+                        const normalText = `You haven't scheduled activities with ${peer.name} in ${diffDays} days.`;
+                        const observerText = `Peer correlation: no collaborative tasks with ${peer.name} in ${diffDays} days.`;
 
-                suggestions.push({
-                    type: 'peer_checkin',
-                    text: isObserverMode ? observerText : normalText,
-                    priority: 'medium',
-                    peerId: 'rel_princess',
-                    peerName: 'Princess',
-                    confidence_score: 0.8,
-                    importance_score: 7,
-                    score: 5.6,
-                    explanation_details: {
-                        triggerCondition: `No shared activities with peer Princess in ${diffDays} days.`,
-                        lastEventDate: lastPrincessStudy.date,
-                        upcomingDeadline: "N/A",
-                        recommendation: isObserverMode ? "N/A (Observation Mode active)" : "Propose a shared study slot on the collaborative calendar."
+                        suggestions.push({
+                            type: 'peer_checkin',
+                            text: isObserverMode ? observerText : normalText,
+                            priority: 'medium',
+                            peerId: peer.id,
+                            peerName: peer.name,
+                            confidence_score: 0.8,
+                            importance_score: 7,
+                            score: 5.6,
+                            explanation_details: {
+                                triggerCondition: `No shared activities with peer ${peer.name} in ${diffDays} days.`,
+                                lastEventDate: lastStudy.date,
+                                upcomingDeadline: "N/A",
+                                recommendation: isObserverMode ? "N/A (Observation Mode active)" : "Propose a shared study slot."
+                            }
+                        });
                     }
-                });
-            }
-        } else {
-            const normalText = "Princess is online. Let's schedule a study block together!";
-            const observerText = "Collaborative peer Princess is active (No shared sessions in database records).";
-
-            suggestions.push({
-                type: 'peer_checkin',
-                text: isObserverMode ? observerText : normalText,
-                priority: 'medium',
-                peerId: 'rel_princess',
-                peerName: 'Princess',
-                confidence_score: 0.8,
-                importance_score: 7,
-                score: 5.6,
-                explanation_details: {
-                    triggerCondition: "No shared sessions found in historical records.",
-                    lastEventDate: 'Never',
-                    upcomingDeadline: "N/A",
-                    recommendation: isObserverMode ? "N/A (Observation Mode active)" : "Send an invitation for a Calculus co-working session."
                 }
             });
-        }
+        } catch (e) {}
 
         // Apply Continuity State Machine modifications to suggestions in non-observer mode
         if (!isObserverMode) {

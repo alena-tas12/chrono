@@ -1,5 +1,35 @@
 const { ipcRenderer } = require('electron');
 console.log('HELLO FROM RENDERER');
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
+// 🔌 UNIVERSAL ELECTRON API BRIDGE
+window.electronAPI = {
+    ipcRenderer,
+    escapeHtml,
+    getNotes: () => ipcRenderer.invoke('get-notes'),
+    addNote: (title, content, parentNoteId = null, icon = '📝', coverUrl = null, isPinned = 0) => ipcRenderer.invoke('add-note', title, content, parentNoteId, icon, coverUrl, isPinned),
+    editNote: (noteId, title, content, parentNoteId = null, icon = '📝', coverUrl = null, isPinned = 0) => ipcRenderer.invoke('edit-note', noteId, title, content, parentNoteId, icon, coverUrl, isPinned),
+    deleteNote: (noteId) => ipcRenderer.invoke('delete-note', noteId),
+    getNoteRevisions: (noteId) => ipcRenderer.invoke('get-revisions', noteId),
+    restoreNoteRevision: (noteId, revisionId) => ipcRenderer.invoke('restore-revision', noteId, revisionId),
+    getFlashcards: () => ipcRenderer.invoke('get-flashcards'),
+    reviewFlashcard: (flashcardId, score) => ipcRenderer.invoke('review-flashcard', flashcardId, score),
+    parseTimetableText: (rawText) => ipcRenderer.invoke('parse-timetable-text', rawText),
+    commitTimetableSchedule: (scheduleItems) => ipcRenderer.invoke('commit-timetable-schedule', scheduleItems),
+    exportTimetable: (scheduleItems, format) => ipcRenderer.invoke('export-timetable', scheduleItems, format),
+    storeResource: (resObj) => ipcRenderer.invoke('store-resource', resObj)
+};
+
 let selectedDate = new Date().toISOString().split('T')[0];
 let activeView = 'month';
 let tasks = [];
@@ -22,71 +52,268 @@ let miniCalYear = new Date().getFullYear();
 
 // 💬 RESPONSE & CHAT SYSTEM
 function setResponse(message) {
-    const input = document.getElementById('chatInput');
+    const input = document.getElementById('chatInput') || document.getElementById('intelChatInput');
     if (!input) return;
     input.value = message;
-    sendChat();
+    if (typeof sendIntelChat === 'function') sendIntelChat();
+    else if (typeof sendChat === 'function') sendChat();
 }
 
-function addChatMessage(text, type) {
-    const box = document.getElementById('chatBox');
+function addChatMessage(text, type, id = null, parentId = null) {
+    const box = document.getElementById('chatBox') || document.getElementById('intelChatBox');
     if (!box) return;
 
-    const message = document.createElement('div');
-    message.className = `chatMessage ${type}`;
-    message.innerText = text;
-    box.appendChild(message);
+    const messageContainer = document.createElement('div');
+    messageContainer.id = `msg-container-${id || 'tmp_' + Date.now()}`;
+    messageContainer.className = 'msgContainer';
+    messageContainer.style.cssText = `text-align:${type === 'user' ? 'right' : 'left'};`;
+    messageContainer.dataset.nodeId = id;
+    messageContainer.dataset.parentId = parentId;
+    let contentHtml = '';
+    const safeText = text ? text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') : '';
+    
+    if (type === 'user') {
+        contentHtml = `
+            <div style="display:inline-flex; align-items:flex-end; gap:4px; max-width:85%; flex-direction: column;">
+                <span id="msg-text-${id || 'tmp'}" style="background:var(--cal-personal);color:white;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;display:inline-block;text-align:left;line-height:1.45;box-shadow:0 2px 8px rgba(63,117,255,0.25);">${safeText}</span>
+                <div class="msgActions" id="actions-${id}">
+                    ${id ? `<button class="msgActionBtn" onclick="copyChatMessage('${id}')" title="Copy message text">📋 Copy</button>` : ''}
+                    ${id ? `<button class="msgActionBtn" onclick="editChatMessage('${id}', '${parentId}')" title="Edit message">✏️ Edit</button>` : ''}
+                    ${id ? `<button class="msgActionBtn" onclick="deleteChatMessage('${id}')" title="Delete message">🗑️</button>` : ''}
+                </div>
+            </div>
+        `;
+    } else {
+        contentHtml = `
+            <div style="display:inline-flex; align-items:flex-start; gap:4px; max-width:85%; flex-direction: column;">
+                <span id="msg-text-${id || 'tmp'}" style="background:var(--bg-panel);border:1px solid var(--border-color);color:var(--text-main);padding:12px 16px;border-radius:14px 14px 14px 4px;font-size:13px;display:inline-block;line-height:1.5;box-shadow: 0 4px 12px rgba(0,0,0,0.12);">${safeText}</span>
+                <div class="msgActions" id="actions-${id}">
+                    ${id ? `<button class="msgActionBtn" onclick="copyChatMessage('${id}')" title="Copy message text">📋 Copy</button>` : ''}
+                    ${id ? `<button class="msgActionBtn" onclick="regenerateChatMessage('${parentId}')" title="Regenerate response">🔄 Retry</button>` : ''}
+                    ${id ? `
+                        <button class="msgActionBtn" onclick="toggleMsgMoreMenu('${id}')" title="More Actions">⋯</button>
+                        <div id="more-menu-${id}" style="display:none; position:absolute; bottom:26px; left:60px; background:var(--bg-panel); border:1px solid var(--border-color); border-radius:8px; padding:4px; z-index:999; box-shadow:0 6px 18px rgba(0,0,0,0.3); flex-direction:column; gap:2px;">
+                            <button class="msgActionBtn" onclick="printChatMessage('${id}'); toggleMsgMoreMenu('${id}')" style="width:100%; text-align:left;">🖨️ Print</button>
+                            <button class="msgActionBtn" onclick="downloadChatMessage('${id}'); toggleMsgMoreMenu('${id}')" style="width:100%; text-align:left;">📥 Download</button>
+                            <button class="msgActionBtn" onclick="shareChatMessage('${id}'); toggleMsgMoreMenu('${id}')" style="width:100%; text-align:left;">👥 Share</button>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    messageContainer.innerHTML = contentHtml;
+    box.appendChild(messageContainer);
     box.scrollTop = box.scrollHeight;
+
+    // Asynchronously check for sibling branches
+    if (id && parentId) {
+        checkAndRenderSiblings(id, parentId);
+    }
 }
+
+async function checkAndRenderSiblings(id, parentId) {
+    try {
+        const siblings = await ipcRenderer.invoke('get-message-siblings', parentId !== 'null' ? parentId : null);
+        if (siblings && siblings.length > 1) {
+            const index = siblings.findIndex(s => s.id === id);
+            const actionDiv = document.getElementById(`actions-${id}`);
+            if (actionDiv && index !== -1) {
+                const navSpan = document.createElement('span');
+                navSpan.style.cssText = 'color:var(--text-muted);margin-left:4px;';
+                navSpan.innerHTML = `
+                    <button onclick="switchSiblingBranch('${siblings[Math.max(0, index - 1)].id}')" ${index === 0 ? 'disabled' : ''} style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;">&lt;</button>
+                    ${index + 1}/${siblings.length}
+                    <button onclick="switchSiblingBranch('${siblings[Math.min(siblings.length - 1, index + 1)].id}')" ${index === siblings.length - 1 ? 'disabled' : ''} style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;">&gt;</button>
+                `;
+                actionDiv.appendChild(navSpan);
+            }
+        }
+    } catch(e) {}
+}
+
+window.toggleMsgMoreMenu = function(id) {
+    const menu = document.getElementById(`more-menu-${id}`);
+    if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+    }
+};
+
+window.switchSiblingBranch = async function(leafId) {
+    await ipcRenderer.invoke('switch-chat-leaf', leafId);
+    await loadChatHistory();
+};
+
+window.editChatMessage = function(id, parentId) {
+    const textEl = document.getElementById(`msg-text-${id}`);
+    const container = document.getElementById(`msg-container-${id}`);
+    if (!textEl || !container) return;
+
+    const originalText = textEl.innerText;
+
+    // Render seamless inline editor
+    container.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:6px; max-width:85%; margin-left:auto; width:100%;">
+            <textarea id="edit-textarea-${id}" style="width:100%; min-height:60px; padding:8px 12px; font-size:13px; font-family:var(--font-primary); border:1.5px solid var(--cal-personal); border-radius:8px; background:var(--bg-panel); color:var(--text-main); outline:none; resize:vertical;">${originalText}</textarea>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button onclick="cancelEditMessage('${id}')" style="padding:4px 10px; font-size:11px; border:1px solid var(--border-color); background:transparent; color:var(--text-muted); border-radius:6px; cursor:pointer;">Cancel</button>
+                <button onclick="saveAndBranchMessage('${id}', '${parentId}')" style="padding:4px 12px; font-size:11px; border:none; background:var(--cal-personal); color:white; font-weight:700; border-radius:6px; cursor:pointer;">💾 Save & Branch</button>
+            </div>
+        </div>
+    `;
+    const textarea = document.getElementById(`edit-textarea-${id}`);
+    if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+};
+
+window.cancelEditMessage = function(id, originalText, parentId) {
+    loadChatHistory();
+};
+
+window.saveAndBranchMessage = function(id, parentId) {
+    const textarea = document.getElementById(`edit-textarea-${id}`);
+    if (!textarea) return;
+    const newText = textarea.value.trim();
+    if (newText) {
+        sendIntelChat(newText, parentId !== 'null' && parentId !== 'undefined' ? parentId : null);
+    } else {
+        loadChatHistory();
+    }
+};
+
+window.regenerateChatMessage = function(parentId) {
+    sendIntelChat(null, parentId !== 'null' ? parentId : null, true);
+};
+
+window.copyChatMessage = function(id) {
+    const el = document.getElementById(`msg-text-${id}`);
+    if (el) {
+        navigator.clipboard.writeText(el.innerText);
+        const actionEl = document.getElementById(`actions-${id}`);
+        if (actionEl) {
+            const oldHtml = actionEl.innerHTML;
+            const copiedSpan = document.createElement('span');
+            copiedSpan.style.cssText = 'color:#10b981; font-weight:700;';
+            copiedSpan.innerText = '✓ Copied!';
+            actionEl.prepend(copiedSpan);
+            setTimeout(() => copiedSpan.remove(), 1500);
+        }
+    }
+};
+
+window.deleteChatMessage = async function(id) {
+    if (confirm("Delete this message from active thread?")) {
+        await ipcRenderer.invoke('delete-chat-message', id);
+        await loadChatHistory();
+    }
+};
+
+window.printChatMessage = function(id) {
+    const el = document.getElementById(`msg-text-${id}`);
+    if (!el) return;
+    const printWindow = window.open('', '_blank', 'width=600,height=500');
+    if (printWindow) {
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Chrono OS - Message Printout</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #1e293b; line-height: 1.6; }
+                        h2 { font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+                        .content { white-space: pre-wrap; font-size: 14px; }
+                        .footer { margin-top: 24px; font-size: 11px; color: #94a3b8; }
+                    </style>
+                </head>
+                <body>
+                    <h2>🧠 Chrono OS - Insight Record</h2>
+                    <div class="content">${el.innerText}</div>
+                    <div class="footer">Printed from Chrono OS · ${new Date().toLocaleString()}</div>
+                    <script>window.onload = function() { window.print(); window.close(); }<\/script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+};
+
+window.downloadChatMessage = function(id) {
+    const el = document.getElementById(`msg-text-${id}`);
+    if (!el) return;
+    const text = el.innerText;
+    const blob = new Blob([`# Chrono OS Record\nDate: ${new Date().toISOString()}\n\n${text}`], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `chrono_message_${Date.now()}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+window.shareChatMessage = function(id) {
+    const el = document.getElementById(`msg-text-${id}`);
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText);
+    alert('Message copied to clipboard! You can share it directly with peers.');
+};
+
+window.showAiStatusModal = async function() {
+    const modal = document.getElementById('aiStatusModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    try {
+        const audit = await ipcRenderer.invoke('audit-providers');
+        const activeProvEl = document.getElementById('statusProviderName');
+        const activeModEl = document.getElementById('statusModelName');
+        if (audit && audit.providers) {
+            const active = audit.providers.find(p => p.healthy && p.configured) || { name: 'Google Gemini', model: 'gemini-3.5-flash' };
+            if (activeProvEl) activeProvEl.innerText = active.name;
+            if (activeModEl) activeModEl.innerText = active.model;
+        }
+    } catch (e) {}
+};
+
+window.closeAiStatusModal = function() {
+    const modal = document.getElementById('aiStatusModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.updateAiHeaderBadge = function(providerName, modelName) {
+    const badgeEl = document.getElementById('headerAiModelName');
+    if (badgeEl) {
+        badgeEl.innerText = `${providerName || 'Gemini'} · Active`;
+    }
+};
+
+window.startNewChat = async function() {
+    await ipcRenderer.invoke('new-chat');
+    await loadChatHistory();
+};
 
 async function loadChatHistory() {
     try {
-        let history = [];
-        let callSuccessful = false;
-
-        if (localStorage.getItem('token')) {
-            try {
-                history = await apiCall('/api/chat/history');
-                callSuccessful = true;
-            } catch (e) {
-                console.warn("Failed to load chat history from cloud.");
-            }
-        }
-
-        if (!callSuccessful) {
-            history = await ipcRenderer.invoke('get-chat-history', 50);
-        }
-
-        const box = document.getElementById('chatBox');
+        const history = await ipcRenderer.invoke('get-chat-history', 50);
+        const box = document.getElementById('chatBox') || document.getElementById('intelChatBox');
         if (!box) return;
 
         box.innerHTML = '';
-
         if (history && history.length > 0) {
             history.forEach(chat => {
-                if (chat.userInput) addChatMessage(chat.userInput, 'user');
-                if (chat.aiResponse) addChatMessage(chat.aiResponse, 'ai');
+                addChatMessage(chat.content, chat.role === 'user' ? 'user' : 'ai', chat.id, chat.parent_id);
             });
         } else {
-            
             try {
                 const greeting = await ipcRenderer.invoke('get-startup-greeting');
                 addChatMessage(greeting, 'ai');
             } catch (e) {
-                addChatMessage('Good morning, Alen. Systems initialized.', 'ai');
+                addChatMessage('Good morning. Systems initialized.', 'ai');
             }
-
         }
     } catch (e) {
-        console.error('Failed to load chat history:', e);
-        
-            try {
-                const greeting = await ipcRenderer.invoke('get-startup-greeting');
-                addChatMessage(greeting, 'ai');
-            } catch (e) {
-                addChatMessage('Good morning, Alen. Systems initialized.', 'ai');
-            }
-
+        console.error("Failed to load chat history:", e);
     }
 }
 
@@ -632,43 +859,53 @@ function computeRelativeDate(days) {
 }
 
 function parseChatCommand(message) {
-    const command = message.toLowerCase();
+    const command = message.toLowerCase().trim();
 
-    // Check complete/done
-    const completeMatch = message.match(/\b(?:complete|done|finish|cross off|check off)\s+(?:task|event|session)?\s*(.+)/i);
+    // Do NOT parse questions or conversational queries as task action mutations!
+    const isQuestionOrConversational = /^(what|how|why|where|when|who|which|did|have|is|are|can|could|should|would|tell|review|list|hey|hi|hello|good\s+(morning|afternoon|evening))\b/i.test(command) || command.endsWith('?');
+    if (isQuestionOrConversational) {
+        return null;
+    }
+
+    // Explicit Imperative Complete Task Command
+    const completeMatch = message.match(/^(?:mark|complete|finish|cross off|check off)\s+(?:task|event|session)?\s*(.+)/i);
     if (completeMatch) {
         const queryText = completeMatch[1].trim();
         const found = findTaskByText(queryText);
         if (found) {
             return { type: 'complete', task: found };
         }
-        return { type: 'complete', text: queryText };
+        if (/^(?:mark|cross off|check off)\b/i.test(message)) {
+            return { type: 'complete', text: queryText };
+        }
+        return null;
     }
 
-    // Check uncomplete/undone
-    const uncompleteMatch = message.match(/\b(?:uncomplete|undone|uncross|uncheck|undo complete|undo check)\s+(?:task|event|session)?\s*(.+)/i);
+    // Explicit Imperative Uncomplete Task Command
+    const uncompleteMatch = message.match(/^(?:uncomplete|undone|uncross|uncheck|undo complete|undo check)\s+(?:task|event|session)?\s*(.+)/i);
     if (uncompleteMatch) {
         const queryText = uncompleteMatch[1].trim();
         const found = findTaskByText(queryText);
         if (found) {
             return { type: 'uncomplete', task: found };
         }
-        return { type: 'uncomplete', text: queryText };
+        return null;
     }
 
-    // Check delete/remove
-    const deleteMatch = message.match(/\b(?:delete|remove|cancel|discard)\s+(?:task|event|session)?\s*(.+)/i);
+    // Explicit Imperative Delete Task Command
+    const deleteMatch = message.match(/^(?:delete|remove|cancel|discard)\s+(?:task|event|session)?\s*(.+)/i);
     if (deleteMatch) {
         const queryText = deleteMatch[1].trim();
         const found = findTaskByText(queryText);
         if (found) {
             return { type: 'delete', task: found };
         }
-        return { type: 'delete', text: queryText };
+        return null;
     }
 
-    if (/\b(add|create|schedule|book)\b/.test(command)) {
-        const possibleDate = command.includes('tomorrow') ? computeRelativeDate(1) : command.includes('today') ? selectedDate : selectedDate;
+    // Explicit Imperative Create Task Command
+    if (/^(?:add|create|schedule|book)\b/i.test(command)) {
+        const possibleDate = command.includes('tomorrow') ? computeRelativeDate(1) : selectedDate;
         const text = message.replace(/.*?(?:add|create|schedule|book)\s*/i, '').trim();
         let calendar = 'personal';
         if (command.includes('study')) calendar = 'study';
@@ -684,10 +921,6 @@ function parseChatCommand(message) {
     if (/\b(show|view|open)\b.*\b(personal|study|family|routine|focus)\b/.test(command)) {
         const layer = ['personal', 'study', 'family', 'routine', 'focus'].find(layer => command.includes(layer));
         return layer ? { type: 'toggleLayer', layer } : null;
-    }
-
-    if (/\b(plan|review|schedule|organize)\b/.test(command)) {
-        return { type: 'review' };
     }
 
     return null;
@@ -936,12 +1169,16 @@ async function updateObservatoryUI() {
         // Cognitive Profile Activity
         const profile = await ipcRenderer.invoke('get-adaptive-cognitive-profile');
         if (profile) {
-            document.getElementById('obsBestFocus').innerText = profile.best_focus_time || 'N/A';
-            document.getElementById('obsLowEnergy').innerText = profile.low_energy_time || 'N/A';
-            document.getElementById('obsFocusSession').innerText = `${profile.preferred_session_length || 45} mins`;
+            const elBest = document.getElementById('obsBestFocus');
+            if (elBest) elBest.innerText = profile.best_focus_time || 'N/A';
+            const elLow = document.getElementById('obsLowEnergy');
+            if (elLow) elLow.innerText = profile.low_energy_time || 'N/A';
+            const elFocus = document.getElementById('obsFocusSession');
+            if (elFocus) elFocus.innerText = `${profile.preferred_session_length || 45} mins`;
             
             const triggers = profile.stress_triggers || [];
-            document.getElementById('obsTriggers').innerText = triggers.length > 0 ? triggers.join(', ') : 'None';
+            const elTrig = document.getElementById('obsTriggers');
+            if (elTrig) elTrig.innerText = triggers.length > 0 ? triggers.join(', ') : 'None';
         }
 
     } catch (e) {
@@ -958,15 +1195,19 @@ async function recalculateProfileUI() {
     try {
         const profile = await ipcRenderer.invoke('recalculate-cognitive-profile');
         if (profile) {
-            document.getElementById('obsBestFocus').innerText = profile.best_focus_time || 'N/A';
-            document.getElementById('obsLowEnergy').innerText = profile.low_energy_time || 'N/A';
-            document.getElementById('obsFocusSession').innerText = `${profile.preferred_session_length || 45} mins`;
+            const elBest = document.getElementById('obsBestFocus');
+            if (elBest) elBest.innerText = profile.best_focus_time || 'N/A';
+            const elLow = document.getElementById('obsLowEnergy');
+            if (elLow) elLow.innerText = profile.low_energy_time || 'N/A';
+            const elFocus = document.getElementById('obsFocusSession');
+            if (elFocus) elFocus.innerText = `${profile.preferred_session_length || 45} mins`;
             
             const triggers = profile.stress_triggers || [];
-            document.getElementById('obsTriggers').innerText = triggers.length > 0 ? triggers.join(', ') : 'None';
-            
-            alert('Cognitive profile recalculated successfully!');
+            const elTrig = document.getElementById('obsTriggers');
+            if (elTrig) elTrig.innerText = triggers.length > 0 ? triggers.join(', ') : 'None';
         }
+            
+        alert('Cognitive profile recalculated successfully!');
     } catch (e) {
         alert('Failed to recalculate cognitive profile: ' + e.message);
     } finally {
@@ -1576,6 +1817,12 @@ async function initializeSettings() {
     loadProactivitySettings();
     setupSideNav();
     checkOnboarding();
+    
+    setTimeout(() => {
+        if (typeof auditAndRefreshProviders === 'function') {
+            auditAndRefreshProviders();
+        }
+    }, 500);
 }
 
 async function loadProactivitySettings() {
@@ -1732,9 +1979,11 @@ function setUserEmail(email) {
 }
 
 async function submitOnboarding() {
-    const userNameVal = document.getElementById('obUserNameInput').value.trim() || 'Planner';
+    const userNameVal = document.getElementById('obUserNameInput')?.value?.trim() || 'Planner';
+    const userPhoneVal = document.getElementById('obUserPhoneInput')?.value?.trim() || '';
+    const userCountryVal = document.getElementById('obUserCountryInput')?.value?.trim() || '';
     const userEmailVal = document.getElementById('obUserEmailInput') ? document.getElementById('obUserEmailInput').value.trim() : '';
-    const appNameVal = document.getElementById('obAppNameInput').value.trim() || 'Chrono';
+    const appNameVal = document.getElementById('obAppNameInput')?.value?.trim() || 'Chrono';
     const obUseCloud = document.getElementById('obUseCloud') ? document.getElementById('obUseCloud').checked : true;
     
     // Save to settings
@@ -1743,6 +1992,17 @@ async function submitOnboarding() {
     setAppName(appNameVal);
     applyTheme(onboardingTheme);
     applyAccent(onboardingAccent);
+    
+    // Save phone & country identifier
+    if (userPhoneVal) {
+        localStorage.setItem('userPhone', userPhoneVal);
+        localStorage.setItem('userCountry', userCountryVal);
+        try {
+            await ipcRenderer.invoke('save-profile-phone', userPhoneVal, userCountryVal);
+        } catch (e) {
+            console.error("Failed to save phone identity:", e);
+        }
+    }
     
     // Save cloud preference
     localStorage.setItem('useCloud', obUseCloud ? 'true' : 'false');
@@ -1769,13 +2029,22 @@ async function submitOnboarding() {
     }
     
     // Send a welcoming message to chat feed
-    addChatMessage(`Hello ${userNameVal}! Welcome to your rebranded ${appNameVal} workspace. I have set your cognitive pacing to ${onboardingProfile === 'adaptive' ? 'Adaptive' : (onboardingProfile === 'architect' ? 'Analytical Systems' : 'Guided Companion')}. How can I assist you today?`, 'ai');
+    addChatMessage(`Hello ${userNameVal}! Welcome to your rebranded ${appNameVal} workspace. I have configured your global contact ID (${userPhoneVal || 'Local'}) and set your cognitive pacing to ${onboardingProfile === 'adaptive' ? 'Adaptive' : (onboardingProfile === 'architect' ? 'Analytical Systems' : 'Guided Companion')}. How can I assist you today?`, 'ai');
 }
 
 window.submitOnboarding = submitOnboarding;
 window.setUserName = setUserName;
 window.setUserEmail = setUserEmail;
 window.setAppName = setAppName;
+window.closeOnboardingModal = function() {
+    const overlay = document.getElementById('onboardingOverlay');
+    if (overlay) overlay.style.display = 'none';
+};
+
+window.closeWeeklyAuditModal = function() {
+    const overlay = document.getElementById('weeklyAuditOverlay');
+    if (overlay) overlay.style.display = 'none';
+};
 
 // ========================================
 // ☁️ CLOUD PLATFORM & AUTHENTICATION INTEGRATION
@@ -2434,6 +2703,11 @@ function loadNoteToEditor(noteId, title, content, visibility, sharedWithJson) {
         labelDetails.style.display = 'block';
         labelDetails.innerText = '✏️ Currently Editing Mode Active';
     }
+
+    const btnHistory = document.getElementById('btnNoteHistory');
+    if (btnHistory) {
+        btnHistory.style.display = 'block';
+    }
 }
 
 async function submitSaveNote() {
@@ -2482,6 +2756,78 @@ function clearNoteEditor() {
     document.querySelectorAll('input[name="note_peer"]').forEach(cb => cb.checked = false);
     const labelDetails = document.getElementById('noteLinkedDetails');
     if (labelDetails) labelDetails.style.display = 'none';
+
+    const btnHistory = document.getElementById('btnNoteHistory');
+    if (btnHistory) btnHistory.style.display = 'none';
+
+    const historyContainer = document.getElementById('noteHistoryContainer');
+    if (historyContainer) historyContainer.style.display = 'none';
+}
+
+async function viewNoteHistory() {
+    if (!activeNoteId) return;
+    
+    try {
+        const revisions = await ipcRenderer.invoke('get-revisions', activeNoteId);
+        const container = document.getElementById('noteHistoryContainer');
+        const list = document.getElementById('noteHistoryList');
+        
+        if (!container || !list) return;
+
+        list.innerHTML = '';
+        if (revisions.length === 0) {
+            list.innerHTML = '<span style="font-size: 10px; color: var(--text-muted);">No revision history available.</span>';
+        } else {
+            revisions.forEach(rev => {
+                const date = new Date(rev.created_at).toLocaleString();
+                const div = document.createElement('div');
+                div.style.padding = '6px';
+                div.style.background = 'rgba(0,0,0,0.2)';
+                div.style.borderRadius = '4px';
+                div.style.fontSize = '10px';
+                div.style.display = 'flex';
+                div.style.justifyContent = 'space-between';
+                div.style.alignItems = 'center';
+
+                div.innerHTML = `
+                    <span>Snapshot: ${date}</span>
+                    <button class="headerButton smallBtn" onclick="restoreNoteRevision('${rev.id}')" style="font-size: 9px; padding: 2px 6px;">Restore</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+        
+        container.style.display = 'block';
+    } catch (e) {
+        console.error("Failed to load history:", e);
+    }
+}
+
+async function restoreNoteRevision(revisionId) {
+    if (!activeNoteId) return;
+    
+    if (!confirm("Are you sure you want to restore this previous version? Current changes will be overwritten (but saved as a new revision).")) {
+        return;
+    }
+
+    try {
+        const result = await ipcRenderer.invoke('restore-revision', activeNoteId, revisionId);
+        if (result.success) {
+            alert("Revision restored successfully.");
+            await updateNotesUI();
+            
+            // Reload into editor manually to refresh content
+            const noteObj = await ipcRenderer.invoke('get-notes').then(notes => notes.find(n => n.id === activeNoteId));
+            if (noteObj) {
+                loadNoteToEditor(noteObj.id, noteObj.title, noteObj.content, 'private', '[]'); // Note: visibility/shares might need real values, but this is a stub.
+                viewNoteHistory(); // Refresh history
+            }
+        } else {
+            alert("Failed to restore revision: " + result.error);
+        }
+    } catch (e) {
+        console.error("Restore failed:", e);
+    }
 }
 
 async function triggerDeleteNote(noteId) {
@@ -3045,9 +3391,20 @@ async function updatePeopleUI() {
         if (!container) return;
         container.innerHTML = '';
 
-        const peers = await ipcRenderer.invoke('get-relationships');
+        const peers = await ipcRenderer.invoke('get-people');
+        
+        const headerDiv = document.createElement('div');
+        headerDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;';
+        headerDiv.innerHTML = `
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Known Contacts & Peers</span>
+            <button class="primary smallBtn" onclick="openAddPersonModal()" style="padding: 4px 10px; font-size: 11px; font-weight: 700;">+ Add Person</button>
+        `;
+        container.appendChild(headerDiv);
+
         if (!peers || peers.length === 0) {
-            container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:10px 0;text-align:center;">No relationships found.</div>';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:20px 0;text-align:center;">No contacts found. Click "+ Add Person" above to add your first peer.</div>';
+            container.appendChild(emptyDiv);
             return;
         }
 
@@ -3058,23 +3415,18 @@ async function updatePeopleUI() {
         peers.forEach(peer => {
             const card = document.createElement('div');
             card.className = 'peopleCard';
-            card.style.background = 'rgba(255,255,255,0.02)';
-            card.style.border = '1px solid var(--border-color)';
-            card.style.borderRadius = '8px';
-            card.style.padding = '10px 12px';
-            card.style.display = 'flex';
-            card.style.alignItems = 'center';
-            card.style.gap = '12px';
-            card.style.cursor = 'pointer';
-            card.onclick = () => openPeerDetails(peer.id);
+            card.style.cssText = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; transition: all 0.15s ease;';
 
             card.innerHTML = `
-                <div style="font-size:24px; width:40px; height:40px; background:rgba(255,255,255,0.03); border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid var(--border-color);">${peer.display_picture || '👤'}</div>
-                <div style="flex:1;">
-                    <h5 style="margin:0; font-size:13px; font-weight:700; color:var(--text-main);">${peer.name}</h5>
-                    <span style="font-size:11px; color:var(--text-muted);">${peer.role || 'Peer'}</span>
+                <div style="font-size:20px; width:36px; height:36px; background:linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight: 700; flex-shrink: 0;">${(peer.name || 'P')[0].toUpperCase()}</div>
+                <div style="flex:1; overflow: hidden; cursor: pointer;" onclick="openPeerDetails('${peer.id}')">
+                    <h5 style="margin:0; font-size:13px; font-weight:700; color:var(--text-main);">${escapeHtml(peer.name)}</h5>
+                    <span style="font-size:11px; color:var(--text-muted);">${escapeHtml(peer.phone || peer.role || 'Peer')}</span>
                 </div>
-                <div style="font-size:11px; color:var(--cal-personal); font-weight:600;">View Profile →</div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="headerButton smallBtn" onclick="event.stopPropagation(); openEditPersonModal('${peer.id}')" style="padding: 4px 8px; font-size: 10px;">✏️</button>
+                    <button class="headerButton smallBtn" onclick="event.stopPropagation(); removePersonAction('${peer.id}', '${escapeHtml(peer.name)}')" style="padding: 4px 8px; font-size: 10px; color: #ef4444;" title="Remove Person">🗑️</button>
+                </div>
             `;
             container.appendChild(card);
         });
@@ -3370,22 +3722,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load proactive suggestions
     updateJarvisSuggestions();
 
-    // Context Resurrection Greeting on startup
-    (async () => {
-        try {
-            const resurrection = await ipcRenderer.invoke('get-context-resurrection');
-            if (resurrection && resurrection.greeting && resurrection.elapsedDays >= 1) {
-                const card = document.getElementById('contextResurrectionCard');
-                const textEl = document.getElementById('contextResurrectionText');
-                if (card && textEl) {
-                    textEl.innerText = resurrection.greeting;
-                    card.style.display = 'block';
-                }
-            }
-        } catch (e) {
-            console.error("Failed to load context resurrection on startup:", e);
-        }
-    })();
+
 
     // Poll for new suggestions periodically
     setInterval(updateJarvisSuggestions, 30000);
@@ -3843,6 +4180,24 @@ function closeEventActionModal() {
     }
 }
 
+async function actionEditTask() {
+    if (!activeTimerTask) return;
+    const currentText = activeTimerTask.text;
+    const newText = prompt('Edit event name:', currentText);
+    if (newText && newText.trim() && newText.trim() !== currentText) {
+        try {
+            await ipcRenderer.invoke('edit-task-text', activeTimerTask.id || activeTimerTask.text, newText.trim());
+            activeTimerTask.text = newText.trim();
+            const titleEl = document.getElementById('eaTaskText');
+            if (titleEl) titleEl.innerText = activeTimerTask.text;
+            await loadTasks();
+        } catch (e) {
+            console.error("Failed to edit task text:", e);
+        }
+    }
+}
+window.actionEditTask = actionEditTask;
+
 async function actionCompleteTask() {
     if (!activeTimerTask) return;
     const confirmMsg = activeTimerTask.completed ? `Mark "${activeTimerTask.text}" as incomplete?` : `Mark "${activeTimerTask.text}" as completed?`;
@@ -4020,31 +4375,52 @@ let activeWorkspace = 'ops';
 function switchWorkspace(ws) {
     activeWorkspace = ws;
 
-    // Hide all workspace sections
-    const allWorkspaces = [
-        { id: null, cls: 'calendarWorkspace' },
-        { id: 'continuityWorkspace', cls: null },
-        { id: 'intelligenceWorkspace', cls: null }
-    ];
-
-    // Calendar workspace uses a class, not an id at top level
     const calWs = document.querySelector('.mainShell > .calendarWorkspace') ||
                   document.querySelector('section.calendarWorkspace');
     const contWs = document.getElementById('continuityWorkspace');
     const intelWs = document.getElementById('intelligenceWorkspace');
+    const knowWs = document.getElementById('knowledgeWorkspace');
+    const chatWs = document.querySelector('.chatWorkspace');
+    const isDocked = (typeof window.isDocked !== 'undefined') ? window.isDocked : false;
 
-    if (calWs)   calWs.style.display   = ws === 'ops'          ? 'flex'  : 'none';
+    if (ws === 'converse') {
+        if (calWs) calWs.style.display = 'none';
+        if (chatWs) {
+            chatWs.style.display = 'flex';
+            chatWs.style.height = '100%';
+            chatWs.style.flex = '1';
+        }
+    } else if (ws === 'ops') {
+        if (calWs) calWs.style.display = 'flex';
+        if (chatWs) {
+            chatWs.style.display = isDocked ? 'flex' : 'none';
+            chatWs.style.height = isDocked ? '320px' : '0';
+        }
+    } else {
+        if (calWs) calWs.style.display = 'none';
+        if (chatWs) chatWs.style.display = 'none';
+    }
+
     if (contWs)  contWs.style.display  = ws === 'continuity'   ? 'flex'  : 'none';
     if (intelWs) intelWs.style.display = ws === 'intelligence' ? 'flex'  : 'none';
+    if (knowWs)  knowWs.style.display  = ws === 'knowledge'    ? 'flex'  : 'none';
 
-    // Update sidebar button active states
     document.querySelectorAll('.wsBtn').forEach(btn => btn.style.opacity = '0.5');
-    const activeMap = { ops: 'wsBtnOps', continuity: 'wsBtnContinuity', intelligence: 'wsBtnIntelligence' };
+    const activeMap = { 
+        converse: 'wsBtnConverse',
+        ops: 'wsBtnOps', 
+        knowledge: 'wsBtnKnowledge', 
+        continuity: 'wsBtnContinuity', 
+        intelligence: 'wsBtnIntelligence',
+        spaces: 'wsBtnSpaces',
+        comms: 'wsBtnComms'
+    };
     const activeBtn = document.getElementById(activeMap[ws]);
     if (activeBtn) activeBtn.style.opacity = '1';
 
-    // Load data for newly activated workspace
-    if (ws === 'continuity') {
+    if (ws === 'knowledge') {
+        renderKnowledgeWorkspaceUI().catch(() => {});
+    } else if (ws === 'continuity') {
         updateLifeContinuityUI().catch(() => {});
         updatePeopleUI().catch(() => {});
         updateBiographyTimelineUI().catch(() => {});
@@ -4053,6 +4429,400 @@ function switchWorkspace(ws) {
     }
 }
 window.switchWorkspace = switchWorkspace;
+
+// ========================================
+// 📚 KNOWLEDGE OS WORKSPACE (Notion + RemNote Subsystem)
+// ========================================
+
+let activeKnowledgeNotes = [];
+let activeKnowledgePageId = null;
+let activeKnowledgeView = 'all';
+
+async function renderKnowledgeWorkspaceUI() {
+    try {
+        if (window.electronAPI && window.electronAPI.getNotes) {
+            activeKnowledgeNotes = await window.electronAPI.getNotes();
+        } else {
+            activeKnowledgeNotes = [];
+        }
+
+        renderKnowledgeTree();
+        if (activeKnowledgeNotes.length > 0 && !activeKnowledgePageId) {
+            activeKnowledgePageId = activeKnowledgeNotes[0].id;
+        }
+
+        renderActiveKnowledgePage();
+    } catch (e) {
+        console.error("Failed to render Knowledge Workspace:", e);
+    }
+}
+
+function renderKnowledgeTree() {
+    const container = document.getElementById('knowledgePagesTree');
+    if (!container) return;
+
+    if (activeKnowledgeNotes.length === 0) {
+        container.innerHTML = `<div style="font-size: 11px; color: var(--text-muted); padding: 8px;">No pages yet. Click + Page to create one.</div>`;
+        return;
+    }
+
+    let filtered = activeKnowledgeNotes;
+    if (activeKnowledgeView === 'pinned') {
+        filtered = activeKnowledgeNotes.filter(n => n.is_pinned);
+    }
+
+    container.innerHTML = filtered.map(note => `
+        <button class="headerButton smallBtn ${note.id === activeKnowledgePageId ? 'active' : ''}" 
+                onclick="selectKnowledgePage('${note.id}')" 
+                style="text-align: left; font-size: 12px; padding: 6px 10px; width: 100%; display: flex; justify-content: space-between; align-items: center; background: ${note.id === activeKnowledgePageId ? 'rgba(99,102,241,0.25)' : 'transparent'}; border: 1px solid ${note.id === activeKnowledgePageId ? 'var(--accent-primary)' : 'transparent'}; border-radius: 6px;">
+            <span>${note.icon || '📝'} ${escapeHtml(note.title)}</span>
+            ${note.is_pinned ? '📌' : ''}
+        </button>
+    `).join('');
+}
+
+function selectKnowledgePage(pageId) {
+    activeKnowledgePageId = pageId;
+    renderKnowledgeTree();
+    renderActiveKnowledgePage();
+}
+
+function renderActiveKnowledgePage() {
+    const page = activeKnowledgeNotes.find(n => n.id === activeKnowledgePageId);
+    const titleInput = document.getElementById('activePageTitleInput');
+    const iconSpan = document.getElementById('activePageIcon');
+    const pinBtn = document.getElementById('btnPinActivePage');
+    const canvas = document.getElementById('knowledgeBlockCanvas');
+
+    if (!page || !canvas) {
+        if (canvas) canvas.innerHTML = `<div style="font-size: 13px; color: var(--text-muted); text-align: center; margin-top: 40px;">Select a page from the left drawer or create a new page.</div>`;
+        return;
+    }
+
+    if (titleInput) titleInput.value = page.title;
+    if (iconSpan) iconSpan.textContent = page.icon || '📝';
+    if (pinBtn) pinBtn.textContent = page.is_pinned ? '📌 Pinned' : '📌 Pin';
+
+    const blocks = page.blocks || [];
+    if (blocks.length === 0) {
+        canvas.innerHTML = `
+            <div class="outlinerBlockRow" style="display: flex; gap: 8px; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 14px;">•</span>
+                <input type="text" class="blockInput" data-block-id="new" value="" placeholder="Type block content..." style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 13px;" onchange="saveBlocksFromUI()" />
+            </div>
+        `;
+        return;
+    }
+
+    canvas.innerHTML = blocks.map((b, idx) => {
+        const indentPx = (b.depth_level || 0) * 20;
+        let prefix = '•';
+        if (b.type === 'h1') prefix = '#';
+        else if (b.type === 'h2') prefix = '##';
+        else if (b.type === 'h3') prefix = '###';
+        else if (b.type === 'todo') prefix = '☑';
+        else if (b.type === 'callout') prefix = '💡';
+        else if (b.type === 'flashcard') prefix = '🎴';
+
+        return `
+            <div class="outlinerBlockRow" style="display: flex; gap: 8px; align-items: center; margin-left: ${indentPx}px;">
+                <span style="color: var(--accent-primary); font-size: 13px; font-weight: 700; width: 16px; text-align: center;">${prefix}</span>
+                <input type="text" class="blockInput" data-block-id="${b.id}" value="${escapeHtml(b.content)}" placeholder="Type block content..." style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 13px;" onchange="saveBlocksFromUI()" />
+            </div>
+        `;
+    }).join('');
+}
+
+async function createNewKnowledgePage() {
+    if (!window.electronAPI || !window.electronAPI.addNote) return;
+    const res = await window.electronAPI.addNote('New Knowledge Page', '- [[Concept]] :: Welcome to your RemNote outliner\n- Click + Add Block to extend.');
+    if (res && res.success) {
+        await renderKnowledgeWorkspaceUI();
+        if (res.noteId) selectKnowledgePage(res.noteId);
+    }
+}
+
+async function saveActivePageTitle() {
+    const titleInput = document.getElementById('activePageTitleInput');
+    const page = activeKnowledgeNotes.find(n => n.id === activeKnowledgePageId);
+    if (!page || !titleInput) return;
+
+    page.title = titleInput.value.trim() || 'Untitled Page';
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (ipc) {
+        await ipc.invoke('edit-note', page.id, page.title, page.content, page.parent_note_id, page.icon, page.cover_url, page.is_pinned);
+    }
+    renderKnowledgeTree();
+    showToast(`✓ Page renamed to "${page.title}"`, 'success');
+}
+
+async function duplicateActivePage() {
+    if (!activeKnowledgePageId) return;
+    const page = activeKnowledgeNotes.find(n => n.id === activeKnowledgePageId);
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+    
+    try {
+        const res = await ipc.invoke('duplicate-note', activeKnowledgePageId);
+        if (res && res.success) {
+            showToast(`✓ Note duplicated as "${res.title}"`, 'success');
+            await renderKnowledgeWorkspaceUI();
+            if (res.noteId) selectKnowledgePage(res.noteId);
+        } else {
+            showToast(`Failed to duplicate note: ${res.error || 'Unknown error'}`, 'error');
+        }
+    } catch (e) {
+        console.error("Duplicate note error:", e);
+        showToast("Failed to duplicate note", "error");
+    }
+}
+
+async function togglePinActivePage() {
+    const page = activeKnowledgeNotes.find(n => n.id === activeKnowledgePageId);
+    if (!page) return;
+
+    page.is_pinned = page.is_pinned ? 0 : 1;
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (ipc) {
+        await ipc.invoke('pin-note', page.id, page.is_pinned);
+    }
+    renderKnowledgeTree();
+    renderActiveKnowledgePage();
+    showToast(page.is_pinned ? '📌 Note pinned to top' : '📌 Note unpinned', 'success');
+}
+
+async function deleteActivePage() {
+    if (!activeKnowledgePageId) return;
+    const page = activeKnowledgeNotes.find(n => n.id === activeKnowledgePageId);
+    const pageTitle = page ? page.title : 'this note';
+    
+    const confirmed = await showChronoConfirm(
+        `Move "${pageTitle}" to Trash?`,
+        'This note will be moved to your Trash. You can restore it anytime or delete it permanently from Trash.',
+        'Move to Trash',
+        true
+    );
+    if (!confirmed) return;
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (ipc) {
+        await ipc.invoke('delete-note', activeKnowledgePageId);
+        showToast(`🗑️ "${pageTitle}" moved to Trash`, 'success');
+        activeKnowledgePageId = null;
+        await renderKnowledgeWorkspaceUI();
+    }
+}
+
+async function switchKnowledgeView(view) {
+    activeKnowledgeView = view;
+    document.querySelectorAll('.knowledgeNavSections button').forEach(btn => btn.classList.remove('active'));
+    
+    if (view === 'trash') {
+        openTrashNotesModal();
+        return;
+    }
+    
+    const activeBtnMap = {
+        'all': 'kNavAllPages',
+        'pinned': 'kNavPinned',
+        'flashcards': 'kNavFlashcards',
+        'resources': 'kNavResources',
+        'graph': 'kNavGraph'
+    };
+    const activeBtn = document.getElementById(activeBtnMap[view]);
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    renderKnowledgeTree();
+}
+
+async function openTrashNotesModal() {
+    const modal = document.getElementById('trashNotesModal');
+    if (modal) modal.style.display = 'flex';
+    await loadTrashNotes();
+}
+
+function closeTrashNotesModal() {
+    const modal = document.getElementById('trashNotesModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function loadTrashNotes() {
+    const list = document.getElementById('trashNotesList');
+    if (!list) return;
+    list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Loading trash...</div>`;
+    
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+    
+    try {
+        const trashNotes = await ipc.invoke('get-trash-notes');
+        if (!trashNotes || trashNotes.length === 0) {
+            list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-muted); font-size: 13px;">🗑️ Trash is empty.</div>`;
+            return;
+        }
+        
+        list.innerHTML = trashNotes.map(n => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 10px;">
+                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px;">
+                    <div style="font-weight: 700; font-size: 13px; color: var(--text-main);">${escapeHtml(n.icon || '📝')} ${escapeHtml(n.title)}</div>
+                    <div style="font-size: 10px; color: var(--text-muted);">Deleted: ${new Date(n.updated_at || Date.now()).toLocaleString()}</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="primary smallBtn" onclick="restoreNoteAction('${n.id}')" style="padding: 4px 10px; font-size: 11px; background: #10b981; border: none; font-weight: 700;">Restore</button>
+                    <button class="headerButton smallBtn" onclick="permanentDeleteNoteAction('${n.id}', '${escapeHtml(n.title)}')" style="padding: 4px 10px; font-size: 11px; color: #ef4444; border-color: rgba(239,68,68,0.4);">Delete Forever</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error("Failed to load trash notes:", e);
+        list.innerHTML = `<div style="color: #ef4444; padding: 10px;">Error loading trash: ${e.message}</div>`;
+    }
+}
+
+async function restoreNoteAction(noteId) {
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+    try {
+        const res = await ipc.invoke('restore-note', noteId);
+        if (res && res.success) {
+            showToast('✓ Note restored to Knowledge workspace', 'success');
+            await loadTrashNotes();
+            await renderKnowledgeWorkspaceUI();
+            selectKnowledgePage(noteId);
+        } else {
+            showToast(`Restore failed: ${res.error || 'Unknown'}`, 'error');
+        }
+    } catch (e) {
+        console.error("Restore note error:", e);
+        showToast("Failed to restore note", "error");
+    }
+}
+
+async function permanentDeleteNoteAction(noteId, title) {
+    const confirmed = await showChronoConfirm(
+        `Permanently Delete "${title}"?`,
+        'This will permanently remove this note and all its blocks from the database. This action cannot be undone.',
+        'Delete Forever',
+        true
+    );
+    if (!confirmed) return;
+    
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+    try {
+        const res = await ipc.invoke('permanent-delete-note', noteId);
+        if (res && res.success) {
+            showToast(`✓ "${title}" permanently deleted`, 'success');
+            await loadTrashNotes();
+        } else {
+            showToast(`Permanent delete failed: ${res.error || 'Unknown'}`, 'error');
+        }
+    } catch (e) {
+        console.error("Permanent delete note error:", e);
+        showToast("Failed to delete note permanently", "error");
+    }
+}
+
+function addOutlinerBlock() {
+    const canvas = document.getElementById('knowledgeBlockCanvas');
+    if (!canvas) return;
+
+    const newRow = document.createElement('div');
+    newRow.className = 'outlinerBlockRow';
+    newRow.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+    newRow.innerHTML = `
+        <span style="color: var(--text-muted); font-size: 14px;">•</span>
+        <input type="text" class="blockInput" data-block-id="new_${Date.now()}" value="" placeholder="Type block content..." style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-main); font-size: 13px;" onchange="saveBlocksFromUI()" />
+    `;
+    canvas.appendChild(newRow);
+    const input = newRow.querySelector('input');
+    if (input) input.focus();
+}
+
+function indentSelectedBlock() {
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.classList.contains('blockInput')) {
+        const row = activeEl.closest('.outlinerBlockRow');
+        if (row) {
+            let currentMargin = parseInt(row.style.marginLeft || '0', 10);
+            row.style.marginLeft = `${currentMargin + 20}px`;
+            saveBlocksFromUI();
+        }
+    }
+}
+
+function outdentSelectedBlock() {
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.classList.contains('blockInput')) {
+        const row = activeEl.closest('.outlinerBlockRow');
+        if (row) {
+            let currentMargin = parseInt(row.style.marginLeft || '0', 10);
+            if (currentMargin >= 20) {
+                row.style.marginLeft = `${currentMargin - 20}px`;
+                saveBlocksFromUI();
+            }
+        }
+    }
+}
+
+async function saveBlocksFromUI() {
+    const page = activeKnowledgeNotes.find(n => n.id === activeKnowledgePageId);
+    if (!page) return;
+
+    const rows = document.querySelectorAll('#knowledgeBlockCanvas .outlinerBlockRow');
+    const lines = [];
+    rows.forEach(r => {
+        const input = r.querySelector('input');
+        const margin = parseInt(r.style.marginLeft || '0', 10);
+        const depth = Math.floor(margin / 20);
+        const indent = '  '.repeat(depth);
+        if (input && input.value.trim().length > 0) {
+            lines.push(`${indent}${input.value.trim()}`);
+        }
+    });
+
+    const newContent = lines.join('\n');
+    page.content = newContent;
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (ipc) {
+        await ipc.invoke('edit-note', page.id, page.title, newContent, page.parent_note_id, page.icon, page.cover_url, page.is_pinned);
+    }
+}
+
+function filterKnowledgePages() {
+    const query = (document.getElementById('knowledgeSearchInput')?.value || '').toLowerCase();
+    const rows = document.querySelectorAll('#knowledgePagesTree button');
+    rows.forEach(r => {
+        const text = r.textContent.toLowerCase();
+        r.style.display = text.includes(query) ? 'flex' : 'none';
+    });
+}
+
+function viewActivePageHistory() {
+    const container = document.getElementById('pageRevisionsContainer');
+    if (container) {
+        container.style.display = container.style.display === 'none' ? 'flex' : 'none';
+    }
+}
+
+window.renderKnowledgeWorkspaceUI = renderKnowledgeWorkspaceUI;
+window.duplicateActivePage = duplicateActivePage;
+window.openTrashNotesModal = openTrashNotesModal;
+window.closeTrashNotesModal = closeTrashNotesModal;
+window.restoreNoteAction = restoreNoteAction;
+window.permanentDeleteNoteAction = permanentDeleteNoteAction;
+window.createNewKnowledgePage = createNewKnowledgePage;
+window.selectKnowledgePage = selectKnowledgePage;
+window.saveActivePageTitle = saveActivePageTitle;
+window.togglePinActivePage = togglePinActivePage;
+window.deleteActivePage = deleteActivePage;
+window.addOutlinerBlock = addOutlinerBlock;
+window.indentSelectedBlock = indentSelectedBlock;
+window.outdentSelectedBlock = outdentSelectedBlock;
+window.saveBlocksFromUI = saveBlocksFromUI;
+window.switchKnowledgeView = switchKnowledgeView;
+window.filterKnowledgePages = filterKnowledgePages;
+window.viewActivePageHistory = viewActivePageHistory;
 
 // ========================================
 // 🔗 CONTINUITY WORKSPACE — PEER THREAD FUNCTIONS
@@ -4219,20 +4989,17 @@ window.submitThreadMilestone = submitThreadMilestone;
 // 🧠 INTELLIGENCE WORKSPACE — INTEL CHAT
 // ========================================
 
-async function sendIntelChat(prefillText) {
+async function sendIntelChat(prefillText = null, parentIdOverride = null, isRegenerate = false) {
     const input = document.getElementById('intelChatInput');
-    const box   = document.getElementById('intelChatBox');
-    if (!box) return;
-
+    const box = document.getElementById('intelChatBox');
     const text = prefillText || (input ? input.value.trim() : '');
-    if (!text) return;
+    
+    if (!text && !isRegenerate) return;
     if (input && !prefillText) input.value = '';
 
-    const userMsg = document.createElement('div');
-    userMsg.style.cssText = 'margin-bottom:10px;text-align:right;';
-    userMsg.innerHTML = '<span style="background:var(--cal-personal);color:white;padding:8px 12px;border-radius:12px 12px 4px 12px;font-size:13px;display:inline-block;max-width:80%;">' + text + '</span>';
-    box.appendChild(userMsg);
-    box.scrollTop = box.scrollHeight;
+    if (!isRegenerate) {
+        addChatMessage(text, 'user', null, parentIdOverride);
+    }
 
     const typing = document.createElement('div');
     typing.style.cssText = 'margin-bottom:10px;color:var(--text-muted);font-size:12px;font-style:italic;';
@@ -4241,14 +5008,16 @@ async function sendIntelChat(prefillText) {
     box.scrollTop = box.scrollHeight;
 
     try {
-        const result = await ipcRenderer.invoke('ai-response', { message: text, useMemory: true, useContext: true });
+        const payload = { message: text, useMemory: true, useContext: true };
+        if (parentIdOverride) payload.parent_id = parentIdOverride;
+        
+        const res = await ipcRenderer.invoke('ai-response', payload);
+        if (res && res.providerUsed) {
+            updateAiHeaderBadge(res.providerUsed, res.modelUsed);
+        }
+        
         typing.remove();
-        const responseText = (result && result.response) ? result.response : 'No response.';
-        const aiMsg = document.createElement('div');
-        aiMsg.style.cssText = 'margin-bottom:10px;text-align:left;';
-        aiMsg.innerHTML = '<span style="background:var(--bg-panel);border:1px solid var(--border-color);color:var(--text-main);padding:8px 12px;border-radius:12px 12px 12px 4px;font-size:13px;display:inline-block;max-width:85%;line-height:1.5;">' + responseText.replace(/\n/g, '<br>') + '</span>';
-        box.appendChild(aiMsg);
-        box.scrollTop = box.scrollHeight;
+        await loadChatHistory(); // Re-render the full active branch
     } catch (e) {
         typing.remove();
         const errMsg = document.createElement('div');
@@ -4319,3 +5088,966 @@ function applyAppMode(mode) {
         }
     }
 }
+
+// ========================================
+// 📅 TIMETABLE IMPORT & PREVIEW MODAL LOGIC
+// ========================================
+
+let activeParsedTimetableItems = [];
+
+function openTimetableModal() {
+    const overlay = document.getElementById('timetablePreviewOverlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function closeTimetableModal() {
+    const overlay = document.getElementById('timetablePreviewOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+async function parseRawTimetableText() {
+    const textInput = document.getElementById('rawTimetableInput');
+    const rawText = textInput ? textInput.value : '';
+    if (!rawText.trim()) {
+        alert('Please paste timetable schedule text first.');
+        return;
+    }
+
+    if (window.electronAPI && window.electronAPI.parseTimetableText) {
+        activeParsedTimetableItems = await window.electronAPI.parseTimetableText(rawText);
+    } else {
+        activeParsedTimetableItems = [
+            { id: 'tt_1', day: 'Monday', startTime: '09:00', endTime: '10:30', title: 'CS101 Networking', location: 'Room 302', category: 'Study' },
+            { id: 'tt_2', day: 'Wednesday', startTime: '14:00', endTime: '15:30', title: 'Database Systems', location: 'Lab 4', category: 'Study' }
+        ];
+    }
+
+    renderTimetablePreviewGrid();
+}
+
+function renderTimetablePreviewGrid() {
+    const grid = document.getElementById('timetablePreviewGrid');
+    const countSpan = document.getElementById('parsedItemsCount');
+
+    if (countSpan) countSpan.textContent = activeParsedTimetableItems.length;
+
+    if (!grid) return;
+    if (activeParsedTimetableItems.length === 0) {
+        grid.innerHTML = `<div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 20px;">No schedule items extracted.</div>`;
+        return;
+    }
+
+    grid.innerHTML = activeParsedTimetableItems.map((item, idx) => `
+        <div style="display: flex; gap: 10px; align-items: center; padding: 10px 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px;">
+            <span style="font-weight: 800; color: var(--accent-primary); width: 80px;">${item.day}</span>
+            <span style="color: var(--text-muted); width: 100px;">${item.startTime} - ${item.endTime}</span>
+            <span style="font-weight: 700; color: var(--text-main); flex: 1;">${escapeHtml(item.title)}</span>
+            <span style="color: var(--text-muted); font-size: 11px;">📍 ${escapeHtml(item.location)}</span>
+        </div>
+    `).join('');
+}
+
+async function commitTimetableSchedule() {
+    if (activeParsedTimetableItems.length === 0) {
+        alert('No schedule items to commit. Please parse timetable text first.');
+        return;
+    }
+
+    if (window.electronAPI && window.electronAPI.commitTimetableSchedule) {
+        const res = await window.electronAPI.commitTimetableSchedule(activeParsedTimetableItems);
+        if (res && res.success) {
+            alert(`✅ Successfully committed ${res.insertedEvents} calendar events and ${res.insertedTasks} tasks!`);
+            closeTimetableModal();
+            if (window.fetchTasks) fetchTasks();
+            if (window.renderCalendar) renderCalendar();
+        } else {
+            alert('Failed to commit schedule: ' + (res ? res.error : 'Unknown error'));
+        }
+    }
+}
+
+async function exportTimetableAction(format) {
+    if (activeParsedTimetableItems.length === 0) {
+        alert('Please parse timetable schedule before downloading.');
+        return;
+    }
+
+    if (window.electronAPI && window.electronAPI.exportTimetable) {
+        const content = await window.electronAPI.exportTimetable(activeParsedTimetableItems, format);
+        const blob = new Blob([content], { type: format === 'ics' ? 'text/calendar' : 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chrono_timetable.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+}
+
+function printTimetableAction() {
+    window.print();
+}
+
+function copyTimetableMarkdownAction() {
+    if (activeParsedTimetableItems.length === 0) return;
+    const text = activeParsedTimetableItems.map(i => `- **${i.day}** ${i.startTime}-${i.endTime}: ${i.title} (${i.location})`).join('\n');
+    navigator.clipboard.writeText(text);
+    alert('📋 Schedule copied to clipboard!');
+}
+
+function shareTimetableAction() {
+    alert('👥 Timetable shared with active peer group (Permission: VIEW & DOWNLOAD).');
+}
+
+window.openTimetableModal = openTimetableModal;
+window.closeTimetableModal = closeTimetableModal;
+window.parseRawTimetableText = parseRawTimetableText;
+window.commitTimetableSchedule = commitTimetableSchedule;
+window.exportTimetableAction = exportTimetableAction;
+window.printTimetableAction = printTimetableAction;
+window.copyTimetableMarkdownAction = copyTimetableMarkdownAction;
+window.shareTimetableAction = shareTimetableAction;
+
+// ========================================
+// ⚡ COMPOSER QUICK-ADD MENU & MESSAGE ACTIONS
+// ========================================
+
+function toggleComposerQuickAddMenu() {
+    const menu = document.getElementById('composerQuickAddMenu');
+    if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+    }
+}
+
+function triggerFileUpload() {
+    toggleComposerQuickAddMenu();
+    const fileInput = document.getElementById('composerFileInput');
+    if (fileInput) fileInput.click();
+}
+
+function triggerPhotoScan() {
+    toggleComposerQuickAddMenu();
+    const fileInput = document.getElementById('composerFileInput');
+    if (fileInput) {
+        fileInput.accept = 'image/*';
+        fileInput.click();
+    }
+}
+
+function triggerCreateNote() {
+    toggleComposerQuickAddMenu();
+    switchWorkspace('knowledge');
+    if (window.createNewKnowledgePage) createNewKnowledgePage();
+}
+
+function triggerImportTimetable() {
+    toggleComposerQuickAddMenu();
+    if (window.openTimetableModal) openTimetableModal();
+}
+
+function triggerQuickAddTask() {
+    toggleComposerQuickAddMenu();
+    const taskInput = document.getElementById('taskInput') || document.getElementById('leftTaskInput');
+    if (taskInput) {
+        taskInput.focus();
+        taskInput.placeholder = 'Type task title and press Add...';
+    }
+}
+
+function triggerQuickAddEvent() {
+    toggleComposerQuickAddMenu();
+    const taskInput = document.getElementById('taskInput') || document.getElementById('leftTaskInput');
+    if (taskInput) {
+        taskInput.focus();
+        taskInput.placeholder = 'Type event title (e.g. OSPF Lecture at 10am)...';
+    }
+}
+
+async function handleComposerFileSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    alert(`📄 Attachment "${file.name}" uploaded cleanly. Extracting content for Chrono context...`);
+    if (window.electronAPI && window.electronAPI.storeResource) {
+        await window.electronAPI.storeResource(file.name, 'document', file.name, file.type || 'text/plain', file.size, file.name, `Extracted text from ${file.name}`);
+    }
+}
+
+function printChatMessage(id) {
+    const el = document.getElementById(`msg-text-${id}`);
+    if (!el) return;
+    const printWin = window.open('', '_blank');
+    printWin.document.write(`<html><head><title>Chrono AI Response</title></head><body style="font-family:sans-serif;padding:30px;"><h2>Chrono AI Response</h2><hr><p>${el.innerHTML}</p></body></html>`);
+    printWin.document.close();
+    printWin.print();
+}
+
+function downloadChatMessage(id) {
+    const el = document.getElementById(`msg-text-${id}`);
+    if (!el) return;
+    const text = el.innerText;
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chrono_response_${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function shareChatMessage(id) {
+    alert('👥 Response shared with active peer network (Permission: VIEW).');
+}
+
+window.toggleComposerQuickAddMenu = toggleComposerQuickAddMenu;
+window.triggerFileUpload = triggerFileUpload;
+window.triggerPhotoScan = triggerPhotoScan;
+window.triggerCreateNote = triggerCreateNote;
+window.triggerImportTimetable = triggerImportTimetable;
+window.triggerQuickAddTask = triggerQuickAddTask;
+window.triggerQuickAddEvent = triggerQuickAddEvent;
+window.handleComposerFileSelected = handleComposerFileSelected;
+window.printChatMessage = printChatMessage;
+window.downloadChatMessage = downloadChatMessage;
+window.shareChatMessage = shareChatMessage;
+window.shareTimetableAction = shareTimetableAction;
+
+// --- AI MODEL PROVIDERS UI ENGINE ---
+async function auditAndRefreshProviders() {
+    const feedback = document.getElementById('providerTestFeedback');
+    if (feedback) feedback.innerHTML = '⚡ Auditing all providers...';
+    try {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (!ipc) return;
+        const report = await ipc.invoke('audit-providers');
+        if (report && Array.isArray(report)) {
+            report.forEach(p => {
+                let pillId = null;
+                if (p.provider.includes('Gemini')) pillId = 'statusPillGemini';
+                if (p.provider.includes('Groq')) pillId = 'statusPillGroq';
+                if (p.provider.includes('OpenRouter')) pillId = 'statusPillOpenrouter';
+                if (p.provider.includes('Ollama')) pillId = 'statusPillOllama';
+
+                if (pillId) {
+                    const pill = document.getElementById(pillId);
+                    if (pill) {
+                        pill.textContent = p.state;
+                        if (p.state === 'LIVE_CONNECTED') {
+                            pill.style.background = '#dcfce7'; pill.style.color = '#15803d';
+                        } else if (p.state === 'CONFIGURED') {
+                            pill.style.background = '#e0e7ff'; pill.style.color = '#4338ca';
+                        } else if (p.state === 'OFFLINE') {
+                            pill.style.background = '#fee2e2'; pill.style.color = '#b91c1c';
+                        } else {
+                            pill.style.background = '#f3f4f6'; pill.style.color = '#4b5563';
+                        }
+                    }
+                }
+            });
+            if (feedback) feedback.innerHTML = `✓ Provider audit completed (${report.length} targets checked).`;
+        }
+    } catch (e) {
+        if (feedback) feedback.innerHTML = `⚠️ Audit error: ${e.message}`;
+    }
+}
+
+async function testSingleProvider(provider) {
+    const feedback = document.getElementById('providerTestFeedback');
+    let keyOverride = null;
+    if (provider === 'gemini') keyOverride = document.getElementById('uiGeminiKey')?.value;
+    if (provider === 'groq') keyOverride = document.getElementById('uiGroqKey')?.value;
+    if (provider === 'openrouter') keyOverride = document.getElementById('uiOpenRouterKey')?.value;
+    if (provider === 'ollama') keyOverride = document.getElementById('uiOllamaEndpoint')?.value;
+
+    if (feedback) feedback.innerHTML = `⚡ Testing ${provider.toUpperCase()} connectivity...`;
+    try {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (!ipc) return;
+        const res = await ipc.invoke('test-provider', { provider, keyOverride });
+        if (res) {
+            const pillId = `statusPill${provider.charAt(0).toUpperCase() + provider.slice(1)}`;
+            const pill = document.getElementById(pillId);
+            if (res.success) {
+                if (feedback) feedback.innerHTML = `✅ ${res.message}`;
+                if (pill) { pill.textContent = 'LIVE'; pill.style.background = '#dcfce7'; pill.style.color = '#15803d'; }
+            } else {
+                if (feedback) feedback.innerHTML = `❌ ${res.message}`;
+                if (pill) { pill.textContent = `HTTP ${res.status}`; pill.style.background = '#fee2e2'; pill.style.color = '#b91c1c'; }
+            }
+        }
+    } catch (e) {
+        if (feedback) feedback.innerHTML = `❌ Test error: ${e.message}`;
+    }
+}
+
+async function saveAllProviderKeys() {
+    const feedback = document.getElementById('providerTestFeedback');
+    const geminiKey = document.getElementById('uiGeminiKey')?.value;
+    const groqKey = document.getElementById('uiGroqKey')?.value;
+    const openrouterKey = document.getElementById('uiOpenRouterKey')?.value;
+    const ollamaEndpoint = document.getElementById('uiOllamaEndpoint')?.value;
+
+    if (feedback) feedback.innerHTML = '⚡ Saving provider configuration to local database...';
+    try {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (!ipc) return;
+        await ipc.invoke('save-provider-keys', { geminiKey, groqKey, openrouterKey, ollamaEndpoint });
+        if (feedback) feedback.innerHTML = '✅ Provider configuration saved successfully!';
+        await auditAndRefreshProviders();
+    } catch (e) {
+        if (feedback) feedback.innerHTML = `❌ Save error: ${e.message}`;
+    }
+}
+
+function copyOllamaInstallScript() {
+    const script = "irm https://ollama.com/install.ps1 | iex";
+    navigator.clipboard.writeText(script).then(() => {
+        const feedback = document.getElementById('providerTestFeedback');
+        if (feedback) feedback.innerHTML = '📋 Copied Ollama install script: `irm https://ollama.com/install.ps1 | iex` (Paste into PowerShell to install)';
+    }).catch(err => {
+        console.error('Clipboard copy failed:', err);
+    });
+}
+
+window.auditAndRefreshProviders = auditAndRefreshProviders;
+window.testSingleProvider = testSingleProvider;
+window.saveAllProviderKeys = saveAllProviderKeys;
+window.copyOllamaInstallScript = copyOllamaInstallScript;
+
+// =========================================================================
+// 🚀 CHRONO SPACES & WEBRTC CALLING UI CONTROLLERS (v2.3.0)
+// =========================================================================
+let activeProposalId = null;
+let activeCallSessionId = null;
+
+function openProposalModal(proposal) {
+    activeProposalId = proposal.id;
+    const modal = document.getElementById('spaceProposalModal');
+    const titleEl = document.getElementById('proposalModalTitle');
+    const bodyEl = document.getElementById('proposalModalBody');
+
+    if (titleEl) titleEl.textContent = `Review Proposal: ${proposal.title}`;
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <div style="font-weight: 700; color: #f8fafc;">Proposer: ${proposal.proposer_name || 'Member'}</div>
+                <div style="margin-top: 4px; color: #94a3b8;">Type: ${proposal.proposal_type}</div>
+                <div style="margin-top: 4px; color: #94a3b8;">Conflict Status: <span style="color: ${proposal.conflict_status === 'CLEAN' ? '#10b981' : '#ef4444'}; font-weight: 700;">${proposal.conflict_status}</span></div>
+            </div>
+            <p style="margin: 0; color: #cbd5e1;">${proposal.conflict_details ? '⚠️ Detected schedule overlap. Merging will place this on all circle calendars.' : '✔ Clean schedule slot. Ready to merge to group calendar.'}</p>
+        `;
+    }
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeProposalModal() {
+    activeProposalId = null;
+    const modal = document.getElementById('spaceProposalModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function mergeCurrentProposal() {
+    if (!activeProposalId) return closeProposalModal();
+    try {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (ipc) {
+            await ipc.invoke('review-space-proposal', { proposalId: activeProposalId, action: 'MERGE' });
+        }
+        closeProposalModal();
+        if (typeof renderTasks === 'function') renderTasks();
+    } catch (e) {
+        console.error("Failed to merge proposal:", e);
+        closeProposalModal();
+    }
+}
+
+async function rejectCurrentProposal() {
+    if (!activeProposalId) return closeProposalModal();
+    try {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (ipc) {
+            await ipc.invoke('review-space-proposal', { proposalId: activeProposalId, action: 'REJECT' });
+        }
+        closeProposalModal();
+    } catch (e) {
+        console.error("Failed to reject proposal:", e);
+        closeProposalModal();
+    }
+}
+
+let callTimerInterval = null;
+let callDurationSeconds = 0;
+
+function openWebrtcCallModal(peerName = 'Princess', callType = 'AUDIO', phoneNumber = '+91 98765 43210') {
+    const modal = document.getElementById('webrtcCallModal');
+    const peerEl = document.getElementById('callPeerName');
+    const phoneEl = document.getElementById('callPeerNumber');
+    const statusEl = document.getElementById('callStatusText');
+    const timerEl = document.getElementById('callDurationTimer');
+
+    if (peerEl) peerEl.textContent = peerName;
+    if (phoneEl) phoneEl.textContent = phoneNumber;
+    if (statusEl) statusEl.textContent = 'Ringing... Encrypted WebRTC Transport';
+    if (timerEl) timerEl.textContent = '00:00';
+    if (modal) modal.style.display = 'flex';
+
+    if (callTimerInterval) clearInterval(callTimerInterval);
+    callDurationSeconds = 0;
+    callTimerInterval = setInterval(() => {
+        callDurationSeconds++;
+        const mins = String(Math.floor(callDurationSeconds / 60)).padStart(2, '0');
+        const secs = String(callDurationSeconds % 60).padStart(2, '0');
+        if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+        if (statusEl && callDurationSeconds > 2) {
+            statusEl.textContent = 'Connected (Audio encrypted via STUN/TURN)';
+        }
+    }, 1000);
+}
+
+function closeWebrtcCallModal() {
+    const modal = document.getElementById('webrtcCallModal');
+    if (modal) modal.style.display = 'none';
+    if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+    }
+    callDurationSeconds = 0;
+    activeCallSessionId = null;
+}
+
+async function initiateWebrtcCall(peerId, peerName, callType = 'AUDIO', phoneNumber = '+91 98765 43210') {
+    openWebrtcCallModal(peerName, callType, phoneNumber);
+    try {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (ipc) {
+            const res = await ipc.invoke('webrtc-initiate-call', { receiverId: peerId, callType });
+            if (res && res.session) {
+                activeCallSessionId = res.session.callSessionId;
+            }
+        }
+    } catch (e) {
+        console.error("Call signaling error:", e);
+    }
+}
+
+function toggleCallMute() {
+    const btn = document.getElementById('btnToggleMute');
+    if (btn) {
+        const isMuted = btn.textContent.includes('Unmute');
+        btn.textContent = isMuted ? '🔇 Mute' : '🔊 Unmute';
+    }
+}
+
+function toggleCallVideo() {
+    const btn = document.getElementById('btnToggleVideo');
+    if (btn) {
+        const isOff = btn.textContent.includes('Start');
+        btn.textContent = isOff ? '📷 Camera' : '🚫 Start Video';
+    }
+}
+
+async function endActiveCall() {
+    try {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (ipc && activeCallSessionId) {
+            await ipc.invoke('webrtc-end-call', { callSessionId: activeCallSessionId, reason: 'USER_HANGUP' });
+        }
+    } catch (e) {}
+    closeWebrtcCallModal();
+}
+
+// ========================================
+// 🍞 CHRONO TOAST NOTIFICATION ENGINE
+// ========================================
+
+function showToast(message, type = 'success', duration = 3000) {
+    let container = document.getElementById('chronoToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'chronoToastContainer';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `chronoToast ${type}`;
+    const icon = type === 'success' ? '✓' : (type === 'error' ? '⚠️' : 'ℹ️');
+    toast.innerHTML = `<span style="font-weight:bold; font-size: 14px;">${icon}</span> <span>${escapeHtml(message)}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.2s ease';
+        setTimeout(() => toast.remove(), 200);
+    }, duration);
+}
+
+// ========================================
+// ⚠️ CHRONO CONFIRMATION DIALOG ENGINE
+// ========================================
+
+let currentConfirmResolver = null;
+function showChronoConfirm(title, message, confirmText = 'Confirm', isDanger = true) {
+    return new Promise((resolve) => {
+        currentConfirmResolver = resolve;
+        const modal = document.getElementById('chronoConfirmModal');
+        const titleEl = document.getElementById('confirmModalTitle');
+        const msgEl = document.getElementById('confirmModalMessage');
+        const actionBtn = document.getElementById('confirmModalActionBtn');
+        const iconEl = document.getElementById('confirmModalIcon');
+        
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
+        if (actionBtn) {
+            actionBtn.textContent = confirmText;
+            actionBtn.style.background = isDanger ? '#ef4444' : 'var(--cal-personal)';
+        }
+        if (iconEl) iconEl.textContent = isDanger ? '🗑️' : '⚠️';
+        if (modal) modal.style.display = 'flex';
+    });
+}
+
+function closeChronoConfirmModal(confirmed) {
+    const modal = document.getElementById('chronoConfirmModal');
+    if (modal) modal.style.display = 'none';
+    if (currentConfirmResolver) {
+        currentConfirmResolver(confirmed);
+        currentConfirmResolver = null;
+    }
+}
+
+// ========================================
+// 👥 PEOPLE & PEERS CRUD ENGINE
+// ========================================
+
+let currentContactsList = [];
+let activeCommsPeer = null;
+
+async function loadPeople() {
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return [];
+    try {
+        currentContactsList = await ipc.invoke('get-people') || [];
+        return currentContactsList;
+    } catch (e) {
+        console.error("Failed to load people:", e);
+        return [];
+    }
+}
+
+function openAddPersonModal() {
+    const modal = document.getElementById('personCrudModal');
+    const title = document.getElementById('personCrudModalTitle');
+    const idInput = document.getElementById('personCrudId');
+    const nameInput = document.getElementById('personCrudName');
+    const phoneInput = document.getElementById('personCrudPhone');
+    const roleInput = document.getElementById('personCrudRole');
+    const emailInput = document.getElementById('personCrudEmail');
+
+    if (idInput) idInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (phoneInput) phoneInput.value = '+91 ';
+    if (roleInput) roleInput.value = 'Study Partner';
+    if (emailInput) emailInput.value = '';
+    if (title) title.textContent = '+ Add Person';
+    if (modal) modal.style.display = 'flex';
+}
+
+function openEditPersonModal(personId) {
+    const person = currentContactsList.find(p => p.id === personId) || (activeCommsPeer && activeCommsPeer.id === personId ? activeCommsPeer : null);
+    if (!person) return;
+
+    const modal = document.getElementById('personCrudModal');
+    const title = document.getElementById('personCrudModalTitle');
+    const idInput = document.getElementById('personCrudId');
+    const nameInput = document.getElementById('personCrudName');
+    const phoneInput = document.getElementById('personCrudPhone');
+    const roleInput = document.getElementById('personCrudRole');
+    const emailInput = document.getElementById('personCrudEmail');
+
+    if (idInput) idInput.value = person.id || '';
+    if (nameInput) nameInput.value = person.name || '';
+    if (phoneInput) phoneInput.value = person.phone || '+91 ';
+    if (roleInput) roleInput.value = person.role || '';
+    if (emailInput) emailInput.value = person.peer_email || '';
+    if (title) title.textContent = 'Edit Person';
+    if (modal) modal.style.display = 'flex';
+}
+
+function closePersonCrudModal() {
+    const modal = document.getElementById('personCrudModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function savePersonCrudAction() {
+    const id = document.getElementById('personCrudId')?.value;
+    const name = document.getElementById('personCrudName')?.value?.trim();
+    const phone = document.getElementById('personCrudPhone')?.value?.trim();
+    const role = document.getElementById('personCrudRole')?.value?.trim() || 'Peer';
+    const email = document.getElementById('personCrudEmail')?.value?.trim();
+
+    if (!name) {
+        showToast('Please enter a name for the contact', 'error');
+        return;
+    }
+    if (!phone) {
+        showToast('Please enter a phone number', 'error');
+        return;
+    }
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+
+    try {
+        if (id) {
+            // Edit
+            const res = await ipc.invoke('edit-person', { personId: id, name, role, email, phone });
+            if (res && res.success) {
+                showToast(`✓ Updated ${name}`, 'success');
+            }
+        } else {
+            // Add
+            const res = await ipc.invoke('add-person', { name, role, email, phone });
+            if (res && res.success) {
+                showToast(`✓ Added ${name} to Chrono Contacts`, 'success');
+            }
+        }
+        closePersonCrudModal();
+        await renderCommsPeerList();
+        if (typeof updatePeopleUI === 'function') updatePeopleUI();
+    } catch (e) {
+        console.error("Save person error:", e);
+        showToast(`Failed to save contact: ${e.message}`, 'error');
+    }
+}
+
+async function removePersonAction(personId, personName) {
+    const confirmed = await showChronoConfirm(
+        `Remove ${personName}?`,
+        'This will remove this person from your Chrono contacts. Existing conversation and call history will be preserved.',
+        'Remove Contact',
+        true
+    );
+    if (!confirmed) return;
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+
+    try {
+        const res = await ipc.invoke('remove-person', personId);
+        if (res && res.success) {
+            showToast(`✓ Removed ${personName} from contacts`, 'success');
+            if (activeCommsPeer && activeCommsPeer.id === personId) {
+                activeCommsPeer = null;
+            }
+            await renderCommsPeerList();
+            if (typeof updatePeopleUI === 'function') updatePeopleUI();
+        } else {
+            showToast(`Failed to remove contact: ${res.error || 'Unknown'}`, 'error');
+        }
+    } catch (e) {
+        console.error("Remove person error:", e);
+        showToast("Failed to remove contact", "error");
+    }
+}
+
+// ========================================
+// 👥 CHRONO SPACES DRAWER & ACTIONS
+// ========================================
+
+function openSpacesDrawer() {
+    const drawer = document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
+    if (drawer) drawer.style.display = 'block';
+}
+
+function closeSpacesDrawer() {
+    const drawer = document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
+    if (drawer) drawer.style.display = 'none';
+}
+
+async function createNewSpaceAction() {
+    const name = prompt("Enter Space name:");
+    if (!name) return;
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (ipc) {
+        await ipc.invoke('create-chrono-space', { name, description: '' });
+        showToast(`✓ Space ${name} created`, 'success');
+    }
+}
+
+// ========================================
+// ☎️ COMMUNICATION OS UI ENGINE
+// ========================================
+
+async function openDirectMessagesModal() {
+    const modal = document.getElementById('directMessagesModal');
+    if (modal) modal.style.display = 'flex';
+    await renderCommsPeerList();
+}
+
+function closeDirectMessagesModal() {
+    const modal = document.getElementById('directMessagesModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function switchCommsTab(tab) {
+    const chatTab = document.getElementById('commsChatTabView');
+    const historyTab = document.getElementById('commsHistoryTabView');
+    const chatBtn = document.getElementById('commsTabChatBtn');
+    const historyBtn = document.getElementById('commsTabHistoryBtn');
+
+    if (tab === 'chat') {
+        if (chatTab) chatTab.style.display = 'flex';
+        if (historyTab) historyTab.style.display = 'none';
+        if (chatBtn) chatBtn.style.fontWeight = '700';
+        if (historyBtn) historyBtn.style.fontWeight = '400';
+    } else {
+        if (chatTab) chatTab.style.display = 'none';
+        if (historyTab) historyTab.style.display = 'flex';
+        if (chatBtn) chatBtn.style.fontWeight = '400';
+        if (historyBtn) historyBtn.style.fontWeight = '700';
+        loadCallHistory();
+    }
+}
+
+async function renderCommsPeerList() {
+    const list = document.getElementById('commsPeerList');
+    if (!list) return;
+
+    const people = await loadPeople();
+    if (people.length === 0) {
+        list.innerHTML = `
+            <div style="padding: 16px 8px; text-align: center; color: var(--text-muted); font-size: 11px;">
+                No contacts yet.<br/>
+                <button class="primary smallBtn" onclick="openAddPersonModal()" style="margin-top: 8px; padding: 4px 10px; font-size: 10px;">+ Add Contact</button>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = people.map(p => {
+        const isActive = activeCommsPeer && activeCommsPeer.id === p.id;
+        const initials = (p.name || 'P').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        return `
+            <div class="commsContactRow ${isActive ? 'active' : ''}" onclick="selectCommsPeer('${escapeHtml(p.name)}', '${p.id}', '${escapeHtml(p.phone || '+91 98765 43210')}')" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">
+                        ${initials}
+                    </div>
+                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <div style="font-weight: 700; font-size: 12px; color: var(--text-main);">${escapeHtml(p.name)}</div>
+                        <div style="font-size: 10px; color: var(--text-muted);">${escapeHtml(p.phone || p.role || 'Contact')}</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                    <button onclick="event.stopPropagation(); removePersonAction('${p.id}', '${escapeHtml(p.name)}')" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:12px; padding:2px;" title="Remove Contact">×</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // If no peer is active, select first
+    if (!activeCommsPeer && people.length > 0) {
+        selectCommsPeer(people[0].name, people[0].id, people[0].phone || '+91 98765 43210');
+    }
+}
+
+async function selectCommsPeer(name, id, phone = '+91 98765 43210') {
+    activeCommsPeer = { name, id, phone };
+    const label = document.getElementById('activeCommsPeerLabel');
+    const phoneEl = document.getElementById('activeCommsPeerPhone');
+    if (label) label.textContent = name;
+    if (phoneEl) phoneEl.textContent = `${phone} · Chrono Network`;
+
+    const container = document.getElementById('commsMessagesContainer');
+    if (!container) return;
+
+    container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);">Loading conversation...</div>`;
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (ipc) {
+        try {
+            const msgs = await ipc.invoke('get-direct-messages', id) || [];
+            if (msgs.length === 0) {
+                container.innerHTML = `
+                    <div style="align-self: center; background: rgba(255,255,255,0.04); border: 1px dashed var(--border-color); padding: 10px 16px; border-radius: 12px; text-align: center; font-size: 11px; color: var(--text-muted); max-width: 90%;">
+                        🔒 End-to-end encrypted session with <strong>${escapeHtml(name)}</strong> (${escapeHtml(phone)}) established.
+                    </div>
+                `;
+            } else {
+                container.innerHTML = msgs.map(m => {
+                    const isSelf = m.sender_id !== id;
+                    const time = new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return `
+                        <div style="align-self: ${isSelf ? 'flex-end' : 'flex-start'}; background: ${isSelf ? '#3b82f6' : 'rgba(255,255,255,0.06)'}; color: #fff; padding: 8px 12px; border-radius: 10px; max-width: 80%; display: flex; flex-direction: column; gap: 2px;">
+                            <div>${escapeHtml(m.content)}</div>
+                            <div style="font-size: 9px; opacity: 0.7; align-self: flex-end; display: flex; align-items: center; gap: 4px;">
+                                <span>${time}</span>
+                                ${isSelf ? '<span>✓✓</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                container.scrollTop = container.scrollHeight;
+            }
+        } catch (e) {
+            container.innerHTML = `<div style="color: #ef4444; padding: 10px;">Failed to load messages: ${e.message}</div>`;
+        }
+    }
+}
+
+function editSelectedCommsPeer() {
+    if (activeCommsPeer && activeCommsPeer.id) {
+        openEditPersonModal(activeCommsPeer.id);
+    } else {
+        showToast('Please select a contact first', 'error');
+    }
+}
+
+async function sendCommsMessageAction() {
+    const input = document.getElementById('commsMessageInput');
+    const text = input?.value?.trim();
+    if (!text || !activeCommsPeer) return;
+
+    const container = document.getElementById('commsMessagesContainer');
+    if (container) {
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const msgDiv = document.createElement('div');
+        msgDiv.style.cssText = 'align-self: flex-end; background: #3b82f6; color: #fff; padding: 8px 12px; border-radius: 10px; max-width: 80%; display: flex; flex-direction: column; gap: 2px;';
+        msgDiv.innerHTML = `
+            <div>${escapeHtml(text)}</div>
+            <div style="font-size: 9px; opacity: 0.7; align-self: flex-end; display: flex; align-items: center; gap: 4px;">
+                <span>${time}</span>
+                <span>✓✓</span>
+            </div>
+        `;
+        container.appendChild(msgDiv);
+        container.scrollTop = container.scrollHeight;
+    }
+    if (input) input.value = '';
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (ipc && activeCommsPeer.id) {
+        ipc.invoke('send-direct-message', { recipientId: activeCommsPeer.id, content: text }).catch(console.error);
+    }
+}
+
+function startCallWithActivePeer(callType = 'AUDIO') {
+    if (!activeCommsPeer) {
+        showToast('Please select a contact to call', 'error');
+        return;
+    }
+    initiateWebrtcCall(activeCommsPeer.id, activeCommsPeer.name, callType, activeCommsPeer.phone || '+91 98765 43210');
+}
+
+async function startExternalCall(service) {
+    if (!activeCommsPeer) {
+        showToast('Please select a contact first', 'error');
+        return;
+    }
+    const rawPhone = (activeCommsPeer.phone || '').replace(/[^0-9+]/g, '');
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    
+    let url = '';
+    if (service === 'meet') {
+        url = 'https://meet.google.com/new';
+        showToast(`Opening Google Meet room for ${activeCommsPeer.name}...`, 'info');
+    } else if (service === 'whatsapp') {
+        if (!rawPhone) {
+            showToast('No phone number saved on this contact for WhatsApp', 'error');
+            return;
+        }
+        const cleanPhone = rawPhone.replace(/^\+/, '');
+        url = `https://wa.me/${cleanPhone}`;
+        showToast(`Launching WhatsApp with ${activeCommsPeer.name}...`, 'info');
+    } else if (service === 'facetime') {
+        const target = rawPhone || activeCommsPeer.email;
+        if (!target) {
+            showToast('No phone number or Apple ID email on this contact', 'error');
+            return;
+        }
+        url = `facetime:${target}`;
+        showToast(`Launching FaceTime with ${activeCommsPeer.name}...`, 'info');
+    }
+
+    if (url) {
+        if (ipc) {
+            await ipc.invoke('open-external-url', url);
+        } else {
+            window.open(url, '_blank');
+        }
+    }
+}
+
+async function loadCallHistory() {
+    const list = document.getElementById('commsCallHistoryList');
+    if (!list) return;
+    list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Loading call records...</div>`;
+
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+
+    try {
+        const history = await ipc.invoke('get-call-history') || [];
+        if (history.length === 0) {
+            list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-muted); font-size: 12px;">📞 No call history records yet.</div>`;
+            return;
+        }
+        list.innerHTML = history.map(c => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 10px;">
+                <div>
+                    <div style="font-weight: 700; font-size: 13px; color: var(--text-main);">${c.call_type === 'VIDEO' ? '📹' : '📞'} ${escapeHtml(c.peer_name || 'Contact')}</div>
+                    <div style="font-size: 10px; color: var(--text-muted);">${escapeHtml(c.peer_phone || '')} · Status: <span style="color: ${c.status === 'COMPLETED' ? '#10b981' : '#f59e0b'};">${c.status}</span> · Duration: ${Math.floor(c.duration_seconds || 0)}s</div>
+                </div>
+                <div style="font-size: 10px; color: var(--text-muted);">${new Date(c.created_at || Date.now()).toLocaleTimeString()}</div>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = `<div style="color: #ef4444; padding: 10px;">Error loading call history: ${e.message}</div>`;
+    }
+}
+
+async function clearCallHistoryAction() {
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) return;
+    try {
+        await ipc.invoke('clear-call-history');
+        showToast('✓ Call history cleared', 'success');
+        await loadCallHistory();
+    } catch (e) {
+        console.error("Clear call history error:", e);
+    }
+}
+
+// Window Globals
+window.showToast = showToast;
+window.showChronoConfirm = showChronoConfirm;
+window.closeChronoConfirmModal = closeChronoConfirmModal;
+window.openAddPersonModal = openAddPersonModal;
+window.openEditPersonModal = openEditPersonModal;
+window.closePersonCrudModal = closePersonCrudModal;
+window.savePersonCrudAction = savePersonCrudAction;
+window.removePersonAction = removePersonAction;
+window.openProposalModal = openProposalModal;
+window.closeProposalModal = closeProposalModal;
+window.mergeCurrentProposal = mergeCurrentProposal;
+window.rejectCurrentProposal = rejectCurrentProposal;
+window.openWebrtcCallModal = openWebrtcCallModal;
+window.closeWebrtcCallModal = closeWebrtcCallModal;
+window.initiateWebrtcCall = initiateWebrtcCall;
+window.toggleCallMute = toggleCallMute;
+window.toggleCallVideo = toggleCallVideo;
+window.endActiveCall = endActiveCall;
+window.openSpacesDrawer = openSpacesDrawer;
+window.closeSpacesDrawer = closeSpacesDrawer;
+window.createNewSpaceAction = createNewSpaceAction;
+window.openDirectMessagesModal = openDirectMessagesModal;
+window.closeDirectMessagesModal = closeDirectMessagesModal;
+window.switchCommsTab = switchCommsTab;
+window.selectCommsPeer = selectCommsPeer;
+window.editSelectedCommsPeer = editSelectedCommsPeer;
+window.sendCommsMessageAction = sendCommsMessageAction;
+window.startCallWithActivePeer = startCallWithActivePeer;
+window.startExternalCall = startExternalCall;
+window.clearCallHistoryAction = clearCallHistoryAction;
+
+

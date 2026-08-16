@@ -29,15 +29,8 @@ try {
     console.warn("Could not load Electron app paths, falling back to local database path.");
 }
 
-// Support a test/dev override when Electron `app` is not available.
-if (!userIndexPath && process.env.CHRONO_USER_DATA) {
-    try {
-        const userDataPath = process.env.CHRONO_USER_DATA;
-        userIndexPath = path.join(userDataPath, 'chrono_user.json');
-        dbPath = path.join(userDataPath, 'chrono.db');
-    } catch (e) {
-        console.warn('Failed to apply CHRONO_USER_DATA override:', e.message);
-    }
+if (!userIndexPath) {
+    userIndexPath = path.join(process.cwd(), 'chrono_user.json');
 }
 
 function sanitizeUserId(userId) {
@@ -48,11 +41,9 @@ function sanitizeUserId(userId) {
 }
 
 function getUserDbPath(userId) {
-    if (!userIndexPath) {
-        return dbPath;
-    }
+    const baseDir = userIndexPath ? path.dirname(userIndexPath) : process.cwd();
     const safeId = sanitizeUserId(userId || 'local_user');
-    return path.join(path.dirname(userIndexPath), `chrono_${safeId}.db`);
+    return path.join(baseDir, `chrono_${safeId}.db`);
 }
 
 function loadActiveUserId() {
@@ -181,9 +172,6 @@ function setActiveUserId(newUserId) {
     }
     if (db) {
         try {
-            if (activeUserId === 'local_user' && normalizedUserId !== 'local_user' && !fs.existsSync(newDbPath)) {
-                copyLegacyDbTo(newDbPath);
-            }
             db.close();
         } catch (err) {
             console.warn('Failed to close previous database:', err.message);
@@ -192,17 +180,7 @@ function setActiveUserId(newUserId) {
     activeUserId = normalizedUserId;
     dbPath = newDbPath;
     db = openDatabaseAtPath(dbPath);
-    // Ensure metadata table exists on newly opened per-user DB so setSyncMeta can run
-    try {
-        db.prepare(`
-            CREATE TABLE IF NOT EXISTS sync_meta (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )
-        `).run();
-    } catch (e) {
-        console.warn('Failed to ensure sync_meta on new DB:', e.message);
-    }
+    ensureSchemaOnDb(db);
     setCurrentUserId(normalizedUserId);
     persistActiveUserId(activeUserId);
 }
@@ -220,16 +198,422 @@ if (userIndexPath && !fs.existsSync(chosenDbPath) && fs.existsSync(path.join(pat
     copyLegacyDbTo(chosenDbPath);
 }
 dbPath = chosenDbPath;
-db = openDatabaseAtPath(dbPath);
-setCurrentUserId(activeUserId);
+function ensureSchemaOnDb(targetDb) {
+    if (!targetDb) return;
+    try {
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS sync_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        `).run();
 
-// Create metadata table first
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS sync_meta (
-        key TEXT PRIMARY KEY,
-        value TEXT
-    )
-`).run();
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                text TEXT NOT NULL,
+                date TEXT NOT NULL,
+                calendar TEXT DEFAULT 'personal',
+                completed INTEGER DEFAULT 0,
+                start_time TEXT,
+                duration_min INTEGER DEFAULT 60,
+                updated_at INTEGER NOT NULL,
+                device_id TEXT,
+                synced INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                goal_id TEXT,
+                project_id TEXT,
+                subject_id TEXT,
+                visibility TEXT DEFAULT 'private',
+                shared_with TEXT DEFAULT '[]',
+                importance_score INTEGER DEFAULT 5,
+                impact_score INTEGER DEFAULT 5
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS calendars (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                owner_id TEXT,
+                layer_type TEXT DEFAULT 'personal',
+                updated_at INTEGER NOT NULL,
+                device_id TEXT,
+                synced INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS calendar_events (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                title TEXT NOT NULL,
+                start_time TEXT,
+                end_time TEXT,
+                category TEXT DEFAULT 'default',
+                is_private INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS cognitive_memories (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                memory_type TEXT DEFAULT 'short_term',
+                content TEXT,
+                source_type TEXT DEFAULT 'user_explicit',
+                evidence TEXT,
+                confidence TEXT DEFAULT 'medium',
+                status TEXT DEFAULT 'active',
+                importance_score INTEGER DEFAULT 5,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                device_id TEXT,
+                synced INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0
+            )
+        `).run();
+
+        try { targetDb.prepare("ALTER TABLE cognitive_memories ADD COLUMN source_type TEXT DEFAULT 'user_explicit'").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE cognitive_memories ADD COLUMN evidence TEXT").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE cognitive_memories ADD COLUMN confidence TEXT DEFAULT 'medium'").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE cognitive_memories ADD COLUMN status TEXT DEFAULT 'active'").run(); } catch(e) {}
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS workspace_conversation (
+                id TEXT PRIMARY KEY,
+                parent_id TEXT NULL,
+                generation_group_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                semantic_metadata TEXT,
+                created_at INTEGER,
+                updated_at INTEGER NOT NULL,
+                device_id TEXT,
+                synced INTEGER DEFAULT 0
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS workspace_notes (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                parent_note_id TEXT,
+                title TEXT NOT NULL,
+                icon TEXT DEFAULT '📝',
+                cover_url TEXT,
+                is_pinned INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                synced INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS workspace_blocks (
+                id TEXT PRIMARY KEY,
+                note_id TEXT NOT NULL,
+                parent_block_id TEXT,
+                type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                depth_level INTEGER DEFAULT 0,
+                order_index INTEGER DEFAULT 0,
+                properties TEXT,
+                source_provenance TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS workspace_links (
+                id TEXT PRIMARY KEY,
+                source_id TEXT NOT NULL,
+                target_id TEXT NOT NULL,
+                target_type TEXT NOT NULL,
+                relationship TEXT DEFAULT 'reference',
+                created_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS flashcard_decks (
+                id TEXT PRIMARY KEY,
+                block_id TEXT,
+                user_id TEXT NOT NULL,
+                front_prompt TEXT NOT NULL,
+                back_answer TEXT NOT NULL,
+                repetition_level INTEGER DEFAULT 0,
+                ease_factor REAL DEFAULT 2.5,
+                interval_days INTEGER DEFAULT 1,
+                next_review_at INTEGER NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS projects (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                status TEXT DEFAULT 'active',
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS peers (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                display_name TEXT NOT NULL,
+                relationship_type TEXT DEFAULT 'peer',
+                email TEXT,
+                phone TEXT,
+                public_key TEXT,
+                trust_score INTEGER DEFAULT 5,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS chrono_call_history (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                caller_id TEXT NOT NULL,
+                receiver_id TEXT NOT NULL,
+                call_type TEXT DEFAULT 'AUDIO',
+                status TEXT DEFAULT 'ENDED',
+                duration_seconds INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS chrono_direct_messages (
+                id TEXT PRIMARY KEY,
+                thread_id TEXT NOT NULL,
+                sender_id TEXT NOT NULL,
+                recipient_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                media_url TEXT,
+                origin TEXT DEFAULT 'CHRONO',
+                read_status INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS workspace_attachments (
+                id TEXT PRIMARY KEY,
+                note_id TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                storage_path TEXT,
+                mime_type TEXT,
+                file_size INTEGER,
+                created_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS relationships (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                name TEXT NOT NULL,
+                role TEXT,
+                phone TEXT,
+                country TEXT,
+                avatar_url TEXT,
+                status TEXT DEFAULT 'active',
+                peer_user_id TEXT,
+                peer_email TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS shared_activities (
+                id TEXT PRIMARY KEY,
+                relationship_id TEXT NOT NULL,
+                activity_type TEXT NOT NULL,
+                activity_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS shared_milestones (
+                id TEXT PRIMARY KEY,
+                peer_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                status TEXT DEFAULT 'active',
+                importance_score INTEGER DEFAULT 5,
+                completed INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER,
+                completed_at INTEGER
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS relationship_interactions (
+                id TEXT PRIMARY KEY,
+                peer_id TEXT NOT NULL,
+                interaction_type TEXT NOT NULL DEFAULT 'conversation',
+                type TEXT DEFAULT 'conversation',
+                notes TEXT,
+                timestamp INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS continuity_metrics (
+                peer_id TEXT PRIMARY KEY,
+                continuity_score TEXT DEFAULT 'Medium',
+                trend TEXT DEFAULT 'Stable',
+                last_interaction INTEGER,
+                shared_projects INTEGER DEFAULT 0,
+                shared_milestones INTEGER DEFAULT 0,
+                reciprocity TEXT DEFAULT 'Balanced',
+                frequency INTEGER DEFAULT 0,
+                calculated_at INTEGER,
+                updated_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS chrono_spaces (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                icon TEXT DEFAULT '👥',
+                owner_id TEXT,
+                created_by TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                synced INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS chrono_space_members (
+                space_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                display_name TEXT DEFAULT 'Member',
+                role TEXT DEFAULT 'MEMBER',
+                joined_at INTEGER NOT NULL,
+                synced INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                PRIMARY KEY(space_id, user_id)
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS chrono_space_resources (
+                id TEXT PRIMARY KEY,
+                space_id TEXT NOT NULL,
+                resource_type TEXT NOT NULL,
+                resource_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                permission_level TEXT DEFAULT 'VIEW',
+                created_at INTEGER NOT NULL
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS chrono_space_proposals (
+                id TEXT PRIMARY KEY,
+                space_id TEXT NOT NULL,
+                proposer_id TEXT NOT NULL,
+                proposer_name TEXT NOT NULL,
+                proposal_type TEXT DEFAULT 'CALENDAR_EVENT',
+                title TEXT,
+                payload_json TEXT,
+                event_data TEXT,
+                status TEXT DEFAULT 'OPEN',
+                conflict_status TEXT DEFAULT 'CLEAN',
+                conflict_details TEXT,
+                review_feedback TEXT,
+                reviewer_id TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER,
+                reviewed_at INTEGER
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS events (
+                id TEXT PRIMARY KEY,
+                calendar_id TEXT DEFAULT 'personal',
+                text TEXT NOT NULL,
+                date TEXT NOT NULL,
+                completed INTEGER DEFAULT 0,
+                start_time TEXT,
+                duration_min INTEGER DEFAULT 60,
+                created_by TEXT,
+                updated_at INTEGER NOT NULL,
+                device_id TEXT,
+                deleted INTEGER DEFAULT 0
+            )
+        `).run();
+
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS workspace_revisions (
+                id TEXT PRIMARY KEY,
+                note_id TEXT NOT NULL,
+                user_id TEXT,
+                change_type TEXT DEFAULT 'edited',
+                created_by TEXT DEFAULT 'user',
+                content_snapshot TEXT,
+                snapshot_content TEXT,
+                change_summary TEXT,
+                created_at INTEGER NOT NULL
+            )
+        `).run();
+
+        try { targetDb.prepare("ALTER TABLE tasks ADD COLUMN user_id TEXT").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE relationships ADD COLUMN phone TEXT").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE relationships ADD COLUMN country TEXT").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE relationships ADD COLUMN avatar_url TEXT").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE relationships ADD COLUMN status TEXT DEFAULT 'active'").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE relationship_interactions ADD COLUMN interaction_type TEXT DEFAULT 'conversation'").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE relationship_interactions ADD COLUMN notes TEXT").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE chrono_spaces ADD COLUMN icon TEXT DEFAULT '👥'").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE chrono_space_proposals ADD COLUMN proposal_type TEXT DEFAULT 'EVENT'").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE continuity_metrics ADD COLUMN trend TEXT DEFAULT 'Stable'").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE continuity_metrics ADD COLUMN last_interaction INTEGER").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE continuity_metrics ADD COLUMN shared_projects INTEGER DEFAULT 0").run(); } catch(e) {}
+        try { targetDb.prepare("ALTER TABLE continuity_metrics ADD COLUMN shared_milestones INTEGER DEFAULT 0").run(); } catch(e) {}
+
+        // High-Volume Scale Indexes for O(log N) branch traversal and rapid retrieval
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_ws_conv_parent ON workspace_conversation(parent_id)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_ws_conv_gen_grp ON workspace_conversation(generation_group_id)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_ws_conv_created ON workspace_conversation(created_at)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_cog_mem_status_user ON cognitive_memories(user_id, status, deleted, updated_at)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(date, deleted)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_tasks_user_date ON tasks(user_id, date, deleted)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_cal_user_time ON calendar_events(user_id, start_time)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_ws_blocks_note ON workspace_blocks(note_id, order_index)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_ws_notes_user ON workspace_notes(user_id, deleted)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_dir_msg_thread ON chrono_direct_messages(thread_id, created_at)`).run();
+        targetDb.prepare(`CREATE INDEX IF NOT EXISTS idx_call_hist_user ON chrono_call_history(caller_id, receiver_id, created_at)`).run();
+    } catch (e) {
+        console.warn("ensureSchemaOnDb warning:", e.message);
+    }
+}
+
+db = openDatabaseAtPath(dbPath);
+ensureSchemaOnDb(db);
+setCurrentUserId(activeUserId);
 
 // Schema Migration for tasks table:
 // If table exists but has INTEGER primary key, migrate it.
@@ -357,6 +741,21 @@ db.prepare(`
 `).run();
 
 db.prepare(`
+    CREATE TABLE IF NOT EXISTS workspace_conversation (
+        id TEXT PRIMARY KEY,
+        parent_id TEXT NULL,
+        generation_group_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        semantic_metadata TEXT,
+        created_at INTEGER,
+        updated_at INTEGER NOT NULL,
+        device_id TEXT,
+        synced INTEGER DEFAULT 0
+    )
+`).run();
+
+db.prepare(`
     CREATE TABLE IF NOT EXISTS memory_chat (
         id TEXT PRIMARY KEY,
         user_input TEXT,
@@ -436,6 +835,7 @@ db.prepare(`
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         hypothesis TEXT NOT NULL,
+        category TEXT DEFAULT 'HYPOTHESIS',
         evidence TEXT DEFAULT '[]',
         counterevidence TEXT DEFAULT '[]',
         confidence REAL DEFAULT 0.5,
@@ -541,11 +941,19 @@ db.prepare(`
 // 🧠 KNOWLEDGE WORKSPACE SCHEMA
 // ========================================
 
+// ========================================
+// 🧠 KNOWLEDGE WORKSPACE SCHEMA (Notion + RemNote Subsystem)
+// ========================================
+
 db.prepare(`
     CREATE TABLE IF NOT EXISTS workspace_notes (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
+        parent_note_id TEXT,
         title TEXT NOT NULL,
+        icon TEXT DEFAULT '📝',
+        cover_url TEXT,
+        is_pinned INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         deleted INTEGER DEFAULT 0,
@@ -553,16 +961,81 @@ db.prepare(`
     )
 `).run();
 
+// Migration: add columns if table already existed
+try { db.prepare(`ALTER TABLE workspace_notes ADD COLUMN parent_note_id TEXT`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_notes ADD COLUMN icon TEXT DEFAULT '📝'`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_notes ADD COLUMN cover_url TEXT`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_notes ADD COLUMN is_pinned INTEGER DEFAULT 0`).run(); } catch(e) {}
+
 db.prepare(`
     CREATE TABLE IF NOT EXISTS workspace_blocks (
         id TEXT PRIMARY KEY,
         note_id TEXT NOT NULL,
+        parent_block_id TEXT,
         type TEXT DEFAULT 'paragraph',
         content TEXT,
+        depth_level INTEGER DEFAULT 0,
         order_index INTEGER DEFAULT 0,
+        properties TEXT,
+        source_provenance TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY(note_id) REFERENCES workspace_notes(id) ON DELETE CASCADE
+    )
+`).run();
+
+try { db.prepare(`ALTER TABLE workspace_blocks ADD COLUMN parent_block_id TEXT`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_blocks ADD COLUMN depth_level INTEGER DEFAULT 0`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_blocks ADD COLUMN properties TEXT`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_blocks ADD COLUMN source_provenance TEXT`).run(); } catch(e) {}
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS workspace_attachments (
+        id TEXT PRIMARY KEY,
+        note_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        storage_path TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        ocr_text TEXT,
+        thumbnail_path TEXT,
+        source_provenance TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(note_id) REFERENCES workspace_notes(id) ON DELETE CASCADE
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS workspace_revisions (
+        id TEXT PRIMARY KEY,
+        note_id TEXT NOT NULL,
+        user_id TEXT DEFAULT 'local_user',
+        change_type TEXT DEFAULT 'edited',
+        created_by TEXT DEFAULT 'user',
+        content_snapshot TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(note_id) REFERENCES workspace_notes(id) ON DELETE CASCADE
+    )
+`).run();
+
+try { db.prepare(`ALTER TABLE workspace_revisions ADD COLUMN user_id TEXT DEFAULT 'local_user'`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_revisions ADD COLUMN change_type TEXT DEFAULT 'edited'`).run(); } catch(e) {}
+try { db.prepare(`ALTER TABLE workspace_revisions ADD COLUMN created_by TEXT DEFAULT 'user'`).run(); } catch(e) {}
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS flashcard_decks (
+        id TEXT PRIMARY KEY,
+        block_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        front_prompt TEXT NOT NULL,
+        back_answer TEXT NOT NULL,
+        repetition_level INTEGER DEFAULT 0,
+        ease_factor REAL DEFAULT 2.5,
+        interval_days INTEGER DEFAULT 1,
+        next_review_at INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(block_id) REFERENCES workspace_blocks(id) ON DELETE CASCADE
     )
 `).run();
 
@@ -578,12 +1051,33 @@ db.prepare(`
 `).run();
 
 db.prepare(`
-    CREATE TABLE IF NOT EXISTS workspace_revisions (
+    CREATE TABLE IF NOT EXISTS workspace_resources (
         id TEXT PRIMARY KEY,
-        note_id TEXT NOT NULL,
-        content_snapshot TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        category TEXT DEFAULT 'document',
+        original_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        storage_path TEXT,
+        ocr_text TEXT,
+        parsed_metadata TEXT,
+        status TEXT DEFAULT 'processed',
         created_at INTEGER NOT NULL,
-        FOREIGN KEY(note_id) REFERENCES workspace_notes(id) ON DELETE CASCADE
+        updated_at INTEGER NOT NULL
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS resource_shares (
+        id TEXT PRIMARY KEY,
+        resource_id TEXT NOT NULL,
+        owner_user_id TEXT NOT NULL,
+        shared_with_user_id TEXT NOT NULL,
+        permission_level TEXT DEFAULT 'VIEW',
+        revoked INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(resource_id) REFERENCES workspace_resources(id) ON DELETE CASCADE
     )
 `).run();
 
@@ -662,6 +1156,79 @@ db.prepare(`
     )
 `).run();
 
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chrono_spaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT DEFAULT '🚀',
+        owner_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        synced INTEGER DEFAULT 0,
+        deleted INTEGER DEFAULT 0
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chrono_space_members (
+        space_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        display_name TEXT,
+        role TEXT DEFAULT 'CONTRIBUTOR',
+        joined_at INTEGER NOT NULL,
+        synced INTEGER DEFAULT 0,
+        deleted INTEGER DEFAULT 0,
+        PRIMARY KEY (space_id, user_id),
+        FOREIGN KEY(space_id) REFERENCES chrono_spaces(id) ON DELETE CASCADE
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chrono_space_resources (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        resource_type TEXT NOT NULL,
+        resource_id TEXT NOT NULL,
+        title TEXT,
+        permission_level TEXT DEFAULT 'VIEW',
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(space_id) REFERENCES chrono_spaces(id) ON DELETE CASCADE
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chrono_space_proposals (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        proposer_id TEXT NOT NULL,
+        proposer_name TEXT,
+        proposal_type TEXT DEFAULT 'CALENDAR_EVENT',
+        title TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        status TEXT DEFAULT 'OPEN',
+        conflict_status TEXT DEFAULT 'CLEAN',
+        conflict_details TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY(space_id) REFERENCES chrono_spaces(id) ON DELETE CASCADE
+    )
+`).run();
+
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS chrono_direct_messages (
+        id TEXT PRIMARY KEY,
+        thread_id TEXT NOT NULL,
+        sender_id TEXT NOT NULL,
+        recipient_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        media_url TEXT,
+        origin TEXT DEFAULT 'CHRONO',
+        read_status INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL
+    )
+`).run();
+
 
 // Alter tables for migrations (e.g. visibility column on tasks)
 try {
@@ -691,6 +1258,10 @@ try {
 } catch(e) {}
 try {
     db.prepare("ALTER TABLE notes ADD COLUMN impact_score INTEGER DEFAULT 5").run();
+} catch(e) {}
+
+try {
+    db.prepare("ALTER TABLE chat_hypotheses ADD COLUMN category TEXT DEFAULT 'HYPOTHESIS'").run();
 } catch(e) {}
 
 try {
@@ -766,6 +1337,14 @@ try {
 // Alter tables to add memory preservation state columns
 try {
     db.prepare("ALTER TABLE cognitive_memories ADD COLUMN preservation_state TEXT DEFAULT 'Archive'").run();
+} catch(e) {}
+
+try {
+    // Phase 4 Provenance Migrations
+    db.prepare("ALTER TABLE cognitive_memories ADD COLUMN source_type TEXT DEFAULT 'system_observation'").run();
+    db.prepare("ALTER TABLE cognitive_memories ADD COLUMN evidence TEXT").run();
+    db.prepare("ALTER TABLE cognitive_memories ADD COLUMN confidence TEXT DEFAULT 'medium'").run();
+    db.prepare("ALTER TABLE cognitive_memories ADD COLUMN status TEXT DEFAULT 'active'").run();
 } catch(e) {}
 try {
     db.prepare("ALTER TABLE tasks ADD COLUMN preservation_state TEXT DEFAULT 'Archive'").run();
@@ -1114,6 +1693,40 @@ async function deleteTask(idOrText) {
             WHERE text = ?
         `).run(updatedAt, deviceId, idOrText);
     }
+    return { success: true };
+}
+
+async function editTaskText(idOrText, newText) {
+    const deviceId = getDeviceId();
+    const updatedAt = Date.now();
+    const authUserId = getSyncMeta('auth_user_id');
+    const authToken = getSyncMeta('auth_token');
+    const useCloud = getSyncMeta('use_cloud') !== 'false';
+
+    if (cloudDb && authUserId && authToken && useCloud) {
+        try {
+            await cloudDb.from('events').update({ text: newText, updated_at: updatedAt, device_id: deviceId }).or(`id.eq.${idOrText},text.eq.${idOrText}`);
+        } catch (e) {
+            console.warn('Cloud editTaskText failed, updating local copy:', e.message);
+        }
+    }
+
+    // Try updating by ID first
+    const res = db.prepare(`
+        UPDATE tasks 
+        SET text = ?, updated_at = ?, device_id = ?, synced = 0 
+        WHERE id = ?
+    `).run(newText, updatedAt, deviceId, idOrText);
+
+    // If no row updated by ID, fallback to updating by text
+    if (res.changes === 0) {
+        db.prepare(`
+            UPDATE tasks 
+            SET text = ?, updated_at = ?, device_id = ?, synced = 0 
+            WHERE text = ?
+        `).run(newText, updatedAt, deviceId, idOrText);
+    }
+    return { success: true };
 }
 
 function getSyncMeta(key) {
@@ -1184,8 +1797,154 @@ db.prepare(`
     )
 `).run();
 
+// ==========================================
+// CONVERSATION TREE (WORKSPACE)
+// ==========================================
+
+function addWorkspaceMessage(arg1, parentId, content, role, metadata) {
+    let msg;
+    if (typeof arg1 === 'object' && arg1 !== null) {
+        msg = { ...arg1 };
+    } else {
+        msg = {
+            id: arg1 || generateUUID(),
+            parent_id: parentId || null,
+            content: content || '',
+            role: role || 'user',
+            semantic_metadata: metadata || null
+        };
+    }
+    if (!msg.id) msg.id = generateUUID();
+    const now = Date.now();
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const stmt = activeDb.prepare(`
+        INSERT INTO workspace_conversation (id, parent_id, generation_group_id, role, content, semantic_metadata, created_at, updated_at, device_id, synced)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `);
+    stmt.run(
+        msg.id,
+        msg.parent_id !== undefined ? msg.parent_id : (msg.parentId || null),
+        msg.generation_group_id || msg.generationGroupId || msg.id,
+        msg.role,
+        msg.content,
+        msg.semantic_metadata ? (typeof msg.semantic_metadata === 'string' ? msg.semantic_metadata : JSON.stringify(msg.semantic_metadata)) : null,
+        msg.created_at || now,
+        now,
+        getDeviceId()
+    );
+    return msg;
+}
+
+function getWorkspaceMessage(id) {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const stmt = activeDb.prepare("SELECT * FROM workspace_conversation WHERE id = ?");
+    const msg = stmt.get(id);
+    if (msg && msg.semantic_metadata) {
+        try { msg.semantic_metadata = JSON.parse(msg.semantic_metadata); } catch(e){}
+    }
+    return msg;
+}
+
+function getWorkspaceBranch(leafId) {
+    if (!leafId) return [];
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    try {
+        const rows = activeDb.prepare(`
+            WITH RECURSIVE branch_cte AS (
+                SELECT id, parent_id, generation_group_id, role, content, semantic_metadata, created_at, updated_at, device_id, synced, 0 as depth
+                FROM workspace_conversation
+                WHERE id = ?
+                
+                UNION ALL
+                
+                SELECT w.id, w.parent_id, w.generation_group_id, w.role, w.content, w.semantic_metadata, w.created_at, w.updated_at, w.device_id, w.synced, b.depth + 1
+                FROM workspace_conversation w
+                JOIN branch_cte b ON w.id = b.parent_id
+            )
+            SELECT * FROM branch_cte ORDER BY depth DESC
+        `).all(leafId);
+
+        for (const row of rows) {
+            if (row.semantic_metadata) {
+                try { row.semantic_metadata = JSON.parse(row.semantic_metadata); } catch(e){}
+            }
+        }
+        return rows;
+    } catch(e) {
+        // Resilient fallback to iterative traversal
+        const branch = [];
+        let currentId = leafId;
+        while (currentId) {
+            const msg = getWorkspaceMessage(currentId);
+            if (!msg) break;
+            branch.unshift(msg);
+            currentId = msg.parent_id;
+        }
+        return branch;
+    }
+}
+
+function getWorkspaceConversationLeaves() {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const stmt = activeDb.prepare(`
+        SELECT * FROM workspace_conversation w1
+        WHERE NOT EXISTS (
+            SELECT 1 FROM workspace_conversation w2 WHERE w2.parent_id = w1.id
+        )
+        ORDER BY created_at DESC
+    `);
+    return stmt.all();
+}
+
+function getWorkspaceMessageSiblings(parentId) {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const stmt = parentId 
+        ? activeDb.prepare("SELECT * FROM workspace_conversation WHERE parent_id = ? ORDER BY created_at ASC")
+        : activeDb.prepare("SELECT * FROM workspace_conversation WHERE parent_id IS NULL ORDER BY created_at ASC");
+    return parentId ? stmt.all(parentId) : stmt.all();
+}
+
+function deleteWorkspaceMessage(id) {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    activeDb.prepare("DELETE FROM workspace_conversation WHERE id = ?").run(id);
+}
+
+function getActiveLeafId() {
+    return getSyncMeta('active_leaf_id') || null;
+}
+
+function setActiveLeafId(id) {
+    setSyncMeta('active_leaf_id', id);
+}
+
+/**
+ * Writes a shared memory record to the shared_memories table.
+ * @param {string} userId - The active user ID (for future user-scoping if schema expands).
+ * @param {string} peerId - The relationship ID (foreign key to relationships.id).
+ * @param {string} title - Short label for the shared memory.
+ * @param {string} summary - Full content/description of the shared memory.
+ * @param {number} [importance=5] - Importance score (1–10).
+ * @returns {string|null} The new record ID or null on failure.
+ */
+function addSharedMemory(userId, peerId, title, summary, importance = 5) {
+    try {
+        const id = generateUUID();
+        const now = Date.now();
+        dbProxy.prepare(`
+            INSERT INTO shared_memories (id, peer_id, title, summary, importance, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(id, peerId, title, summary, importance, now);
+        console.log(`[SharedMemory] Created shared memory ${id} for peer ${peerId}.`);
+        return id;
+    } catch (e) {
+        console.error('[SharedMemory] addSharedMemory failed:', e.message);
+        return null;
+    }
+}
+
 module.exports = {
     db: dbProxy,
+    getDb: () => db,
     // `dbPath` can change when switching users; provide a dynamic getter below
     getDbPath: () => dbPath,
     getActiveUserId: () => activeUserId,
@@ -1199,8 +1958,18 @@ module.exports = {
     completeTask,
     uncompleteTask,
     deleteTask,
+    editTaskText,
     getSyncMeta,
-    setSyncMeta
+    setSyncMeta,
+    addWorkspaceMessage,
+    getWorkspaceMessage,
+    getWorkspaceBranch,
+    getWorkspaceConversationLeaves,
+    getWorkspaceMessageSiblings,
+    deleteWorkspaceMessage,
+    getActiveLeafId,
+    setActiveLeafId,
+    addSharedMemory
 };
 
 // Backwards-compat: allow `require('./main_db').dbPath` to reflect current path

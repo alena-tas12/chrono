@@ -123,14 +123,7 @@ const agents = {
             return `[Architect Engine] Schedule Status: ${openWindows} density. Total active blocks: ${eventCount}. ${reason}, I recommend allocating 45 minutes of unstructured buffer space in the afternoon to mitigate cognitive depletion.`;
         }
     },
-    princess: {
-        name: 'Princess',
-        tone: 'Collaborative, cheerful, direct, and academic.',
-        objective: 'Co-plan study sessions and synchronize collaborative calendars with user groups.',
-        respond: (input, context) => {
-            return `Hey! I've checked the shared Study calendar. Saturday from 3:00 PM to 5:00 PM is open for both of us. Conflict Risk: Low. Should we lock that block in?`;
-        }
-    },
+
     studyCoach: {
         name: 'Study Coach',
         tone: 'Motivational, structured, pedagogical, and actionable.',
@@ -423,7 +416,8 @@ const agents = {
                 }
             }
 
-            return `I am scanning the timeline matrix. You have established threads with Princess, Rayhaan, and others. Query me with precision, e.g.: "Compute Princess's impact on our objectives" or "Extract completed milestones."`;
+            // No specific peer matched, no timeline keyword — give a helpful generic prompt
+            return `I can synthesize your timeline, relationships, and shared milestones. Try asking about a specific person in your relationships, a goal, or a time period.`;
         }
     }
 };
@@ -449,9 +443,9 @@ function routeQuery(input, context = {}) {
         return agents.scheduler;
     }
     
-    // 3. Collaborative study triggers -> Princess
-    if (lowerInput.includes('princess') || lowerInput.includes('study with') || lowerInput.includes('vian')) {
-        return agents.princess;
+    // 3. Collaborative / peer-related queries — route to Continuity agent which does a live DB lookup
+    if (lowerInput.includes('study with') || lowerInput.includes('who matters') || lowerInput.includes('my people')) {
+        return agents.continuity;
     }
 
     // 4. Learning / Homework / Study queries -> Study Coach

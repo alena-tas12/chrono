@@ -54,6 +54,8 @@ const interactionAdaptation = require('./interactionAdaptation');
 
 const syncEngine = require('./syncEngine');
 const realtimeSync = require('./realtimeSync');
+const episodicReplay = require('./episodicReplay');
+
 
 // 🛡️ TRUST KILLER PREVENTION FRAMEWORK (Original Chrono Inner Circle)
 const dataIntegrity = require('./dataIntegrity');
@@ -315,9 +317,43 @@ ipcMain.handle('detect-silent-failures', async () => {
     }
 });
 
+function startBackgroundMaintenance() {
+    const runTasks = () => {
+        try {
+            const contextCompression = require('./contextCompression');
+            const episodicReplay = require('./episodicReplay');
+            const reflectionEngine = require('./reflectionEngine');
+            const userId = db.getActiveUserId() || 'local_user';
+
+            // 1. Context & Database Compression (Task rollup & delete purge)
+            contextCompression.compressAndCleanDb();
+
+            // 2. Episodic Replay (Completed task outcome log)
+            episodicReplay.replayCompletedEpisodes(userId, 14);
+
+            // 3. Daily Reflection & Weekly Consolidation
+            reflectionEngine.generateDailyReflection(userId);
+            reflectionEngine.pruneAndConsolidateReflections(userId);
+
+            console.log('[CHRONO] Background maintenance cycle completed successfully.');
+        } catch (e) {
+            console.error('[CHRONO] Background maintenance error:', e.message);
+        }
+    };
+
+    // Run initial cycle 5s after startup (non-blocking)
+    setTimeout(runTasks, 5000);
+
+    // Schedule subsequent cycles every 6 hours
+    setInterval(runTasks, 6 * 60 * 60 * 1000);
+}
+
 app.whenReady().then(() => {
     // Open the main window immediately
     createWindow();
+
+    // Start background maintenance scheduler (Compression + Episodic Replay + Reflections)
+    startBackgroundMaintenance();
 
     // Trigger startup database backup check
     try {
@@ -426,15 +462,25 @@ app.whenReady().then(() => {
 
 
 ipcMain.handle('ai-response', async (event, data) => {
-    // 🎯 Central orchestration point - Upgraded to Chrono Cognitive OS
-    
     try {
         const userInput = data.userInput || data.message || data.input;
+        const parentId = data.parent_id || db.getActiveLeafId() || null;
+        
+        // Save User Message
+        const userMsg = db.addWorkspaceMessage({
+            role: 'user',
+            content: userInput,
+            parent_id: parentId
+        });
+
+        // Get full branch history
+        const branch = db.getWorkspaceBranch(userMsg.id);
+        const sessionHistory = branch.map(m => ({ role: m.role, content: m.content }));
         
         // 1. Plan Intent
         const intentPlan = await globalDispatchEngine.planIntent({ 
             input: userInput, 
-            session: { currentTopic: null } 
+            session: { currentTopic: null, history: sessionHistory } 
         });
 
         // 2. Retrieve State Iteratively using Structured Contracts
@@ -448,24 +494,46 @@ ipcMain.handle('ai-response', async (event, data) => {
         const opportunities = globalDispatchEngine.detectOpportunities(retrievedState);
 
         // 4. Executive Execution Pipeline (Observe -> Reason -> Simulate -> Recommend -> Act)
-        const pipelineResult = globalExecutiveLayer.executePipeline(intentPlan, retrievedState, contradictions, opportunities);
+        const pipelineResult = globalExecutiveLayer.executePipeline(intentPlan, retrievedState, contradictions, opportunities, sessionHistory);
+
+        // 4b. Generate Hypotheses / Observations for World Model
+        try {
+            orchestrator.generateHypotheses(db.getActiveUserId(), userInput, retrievedState);
+        } catch (hypErr) {
+            console.error('Failed to generate hypotheses:', hypErr.message);
+        }
 
         // 5. LLM Synthesis (Reasoning Engine)
-        // Pass the full pipeline trace and recommendations to the LLM
-        const finalResponseText = await globalReasoningEngine.synthesizeResponse(userInput, pipelineResult);
+        const synthRes = await globalReasoningEngine.synthesizeResponse(userInput, pipelineResult);
+        const finalResponseText = typeof synthRes === 'string' ? synthRes : (synthRes.text || '');
+        const providerUsed = typeof synthRes === 'object' ? (synthRes.providerUsed || 'Google Gemini') : 'Google Gemini';
+        const modelUsed = typeof synthRes === 'object' ? (synthRes.modelUsed || 'gemini-3.5-flash') : 'gemini-3.5-flash';
         
         // 6. Memory Write Path (Post-Processing)
         const memoryWriteResult = globalMemoryModule.processInteraction(userInput, finalResponseText);
 
-        // 7. Remove internal diagnostic leaks. Only return the true natural language response.
+        // Save AI Message
+        const aiMsg = db.addWorkspaceMessage({
+            role: 'assistant',
+            content: finalResponseText,
+            parent_id: userMsg.id
+        });
+        
+        db.setActiveLeafId(aiMsg.id);
+
         return {
             response: finalResponseText,
+            providerUsed,
+            modelUsed,
             state: { emotion: 'analytical', focus: 1.0, priority: 1 },
-            log: 'Success'
+            log: 'Success',
+            nodeId: aiMsg.id
         };
     } catch (err) {
         return {
             response: `Error in Dispatch Engine: ${err.message}`,
+            providerUsed: 'NONE',
+            modelUsed: 'error',
             state: { emotion: 'error', focus: 0, priority: 0 },
             log: err.message
         };
@@ -526,6 +594,12 @@ ipcMain.handle('delete-task', async (event, idOrText) => {
     return { deleted: true };
 });
 
+ipcMain.handle('edit-task-text', async (event, idOrText, newText) => {
+    await Promise.resolve(db.editTaskText(idOrText, newText));
+    syncEngine.triggerSync();
+    return { success: true };
+});
+
 // 📊 MEMORY HANDLERS
 
 ipcMain.handle('log-session', (event, task, duration) => {
@@ -538,7 +612,32 @@ ipcMain.handle('get-history', () => {
 });
 
 ipcMain.handle('get-chat-history', (event, limit) => {
-    return memory.getRecentChats(limit || 50);
+    const activeLeafId = db.getActiveLeafId();
+    if (!activeLeafId) return [];
+    return db.getWorkspaceBranch(activeLeafId);
+});
+
+ipcMain.handle('new-chat', () => {
+    db.setActiveLeafId(null);
+    return { success: true };
+});
+
+ipcMain.handle('switch-chat-leaf', (event, leafId) => {
+    db.setActiveLeafId(leafId);
+    return db.getWorkspaceBranch(leafId);
+});
+
+ipcMain.handle('get-chat-leaves', () => {
+    return db.getWorkspaceConversationLeaves();
+});
+
+ipcMain.handle('get-message-siblings', (event, parentId) => {
+    return db.getWorkspaceMessageSiblings(parentId);
+});
+
+ipcMain.handle('delete-chat-message', (event, id) => {
+    db.deleteWorkspaceMessage(id);
+    return { deleted: true };
 });
 
 ipcMain.handle('get-average-focus', () => {
@@ -563,7 +662,64 @@ ipcMain.handle('get-core-identity', () => {
     return memory.getCoreIdentity();
 });
 
-// 📋 TASK HANDLERS
+// 🔁 EPISODIC REPLAY
+
+ipcMain.handle('get-episodic-replay', async (event, daysBack) => {
+    try {
+        const userId = db.getActiveUserId() || 'local_user';
+        episodicReplay.replayCompletedEpisodes(userId, daysBack || 7);
+        return episodicReplay.getEpisodeSummary(20);
+    } catch (e) {
+        console.error('get-episodic-replay failed:', e.message);
+        return [];
+    }
+});
+
+// 🤝 SHARED MEMORIES
+
+ipcMain.handle('add-shared-memory', async (event, data) => {
+    try {
+        const userId = db.getActiveUserId() || 'local_user';
+        const id = db.addSharedMemory(userId, data.peerId, data.title, data.summary, data.importance || 5);
+        return { success: !!id, id };
+    } catch (e) {
+        console.error('add-shared-memory failed:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+// 🌐 WORLD MODEL — HYPOTHESES
+
+ipcMain.handle('get-hypotheses', async () => {
+    try {
+        const userId = db.getActiveUserId() || 'local_user';
+        return db.db.prepare(`
+            SELECT * FROM chat_hypotheses
+            WHERE user_id = ? AND status = 'active'
+            ORDER BY created_at DESC LIMIT 20
+        `).all(userId);
+    } catch (e) {
+        console.error('get-hypotheses failed:', e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('resolve-hypothesis', async (event, data) => {
+    try {
+        const now = Date.now();
+        db.db.prepare(`
+            UPDATE chat_hypotheses
+            SET status = ?, updated_at = ?
+            WHERE id = ?
+        `).run(data.resolution || 'resolved', now, data.id);
+        return { success: true };
+    } catch (e) {
+        console.error('resolve-hypothesis failed:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+
 
 ipcMain.handle('get-tasks', async (event, date) => {
     return await Promise.resolve(db.fetchTasks(date));
@@ -695,11 +851,58 @@ ipcMain.handle('set-auth-token', (event, token, userId) => {
 
 ipcMain.handle('set-sync-meta', (event, key, value) => {
     db.setSyncMeta(key, value);
+    if (key === 'openai_api_key') {
+        globalReasoningEngine.setApiKey(value);
+    }
     return { success: true };
+});
+
+ipcMain.handle('set-openai-key', (event, apiKey) => {
+    return globalReasoningEngine.setApiKey(apiKey);
 });
 
 ipcMain.handle('get-sync-meta', (event, key) => {
     return db.getSyncMeta(key);
+});
+
+ipcMain.handle('audit-providers', async () => {
+    const apiAuditEngine = require('./apiAuditEngine');
+    return await apiAuditEngine.auditAllProviders();
+});
+
+ipcMain.handle('test-provider', async (event, { provider, keyOverride }) => {
+    const apiAuditEngine = require('./apiAuditEngine');
+    return await apiAuditEngine.testProviderConnection(provider, keyOverride);
+});
+
+ipcMain.handle('get-provider-keys-status', async () => {
+    const creds = modelProvider.getProviderCredentials();
+    return {
+        gemini: { configured: !!creds.gemini.key, model: creds.gemini.model },
+        openai: { configured: !!creds.openai.key, model: creds.openai.model },
+        qwen: { configured: !!creds.qwen.key, model: creds.qwen.model },
+        ollama: { configured: true, endpoint: creds.ollama.endpoint, model: creds.ollama.model }
+    };
+});
+
+ipcMain.handle('save-provider-keys', async (event, keys) => {
+    if (keys.geminiKey !== undefined) db.setSyncMeta('gemini_api_key', keys.geminiKey);
+    if (keys.groqKey !== undefined) db.setSyncMeta('groq_api_key', keys.groqKey);
+    if (keys.openrouterKey !== undefined) db.setSyncMeta('openrouter_api_key', keys.openrouterKey);
+    if (keys.openaiKey !== undefined) db.setSyncMeta('openai_api_key', keys.openaiKey);
+    if (keys.qwenKey !== undefined) db.setSyncMeta('qwen_api_key', keys.qwenKey);
+    if (keys.ollamaEndpoint !== undefined) db.setSyncMeta('ollama_endpoint', keys.ollamaEndpoint);
+    return { success: true };
+});
+
+ipcMain.handle('groq-transcribe-audio', async (event, { audioBuffer, filename }) => {
+    const groqService = require('./groqService');
+    try {
+        const text = await groqService.transcribeAudio(Buffer.from(audioBuffer), filename);
+        return { success: true, text };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('set-use-cloud', (event, useCloud) => {
@@ -817,47 +1020,52 @@ ipcMain.handle('cloud-api-call', async (event, { endpoint, method, body }) => {
             return { success: true, token, userId, displayName };
 
         } else if (endpoint === '/api/profiles/me') {
-            const userId = db.getSyncMeta('auth_user_id');
-            if (!userId) throw new Error("Unauthorized");
+            const userId = db.getSyncMeta('auth_user_id') || 'local_user';
 
             if (method === 'GET') {
-                const { data: profile, error } = await cloudDb
-                    .from('profiles')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .maybeSingle();
-                if (error) throw error;
-                if (!profile) throw new Error('Profile not found');
+                if (cloudDb && db.getSyncMeta('auth_user_id')) {
+                    const { data: profile, error } = await cloudDb
+                        .from('profiles')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .maybeSingle();
+                    if (!error && profile) {
+                        return {
+                            display_name: profile.display_name,
+                            cognitive_style: profile.cognitive_style,
+                            reassurance_needs: profile.reassurance_needs
+                        };
+                    }
+                }
+                const localProfile = db.getUserProfile();
                 return {
-                    display_name: profile.display_name,
-                    cognitive_style: profile.cognitive_style,
-                    reassurance_needs: profile.reassurance_needs
+                    display_name: localProfile.name || 'User',
+                    cognitive_style: localProfile.style || 'adaptive',
+                    reassurance_needs: 'moderate'
                 };
             } else if (method === 'PUT') {
                 const { cognitiveStyle } = body;
-                const { error } = await cloudDb
-                    .from('profiles')
-                    .update({
-                        cognitive_style: cognitiveStyle || 'adaptive',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('user_id', userId);
-                if (error) throw error;
+                if (cloudDb && db.getSyncMeta('auth_user_id')) {
+                    await cloudDb
+                        .from('profiles')
+                        .update({
+                            cognitive_style: cognitiveStyle || 'adaptive',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('user_id', userId);
+                }
                 return { success: true };
             }
 
         } else if (endpoint === '/api/chat') {
-            const userId = db.getSyncMeta('auth_user_id');
-            if (!userId) throw new Error("Unauthorized");
-
+            const userId = db.getSyncMeta('auth_user_id') || 'local_user';
             const { input, selectedDate, activeView, taskCount } = body;
             // Process AI Chat directly in the main process
             const aiResponse = await processAIChat(userId, input, { selectedDate, activeView, taskCount });
             return aiResponse;
 
         } else if (endpoint === '/api/chat/history') {
-            const userId = db.getSyncMeta('auth_user_id');
-            if (!userId) throw new Error("Unauthorized");
+            const userId = db.getSyncMeta('auth_user_id') || 'local_user';
 
             const { data: history, error } = await cloudDb
                 .from('chat_history')
@@ -1175,21 +1383,84 @@ ipcMain.handle('get-notes', (event) => {
     return notesService.getNotes(userId);
 });
 
-ipcMain.handle('add-note', (event, title, content, visibility, sharedWith, importanceScore, impactScore) => {
+ipcMain.handle('add-note', (event, title, content, parentNoteId = null, icon = '📝', coverUrl = null, isPinned = 0) => {
     const notesService = require('./notesService');
     const userId = db.getSyncMeta('auth_user_id') || 'local_user';
-    return notesService.addNote(userId, title, content, visibility, sharedWith, importanceScore, impactScore);
+    return notesService.addNote(userId, title, content, parentNoteId, icon, coverUrl, isPinned);
 });
 
-ipcMain.handle('edit-note', (event, noteId, title, content, visibility, sharedWith, importanceScore, impactScore) => {
+ipcMain.handle('edit-note', (event, noteId, title, content, parentNoteId = null, icon = '📝', coverUrl = null, isPinned = 0) => {
     const notesService = require('./notesService');
     const userId = db.getSyncMeta('auth_user_id') || 'local_user';
-    return notesService.editNote(userId, noteId, title, content, visibility, sharedWith, importanceScore, impactScore);
+    return notesService.editNote(userId, noteId, title, content, parentNoteId, icon, coverUrl, isPinned);
 });
 
 ipcMain.handle('delete-note', (event, noteId) => {
     const notesService = require('./notesService');
     return notesService.deleteNote(noteId);
+});
+
+ipcMain.handle('get-revisions', (event, noteId) => {
+    const notesService = require('./notesService');
+    return notesService.getNoteRevisions(noteId);
+});
+
+ipcMain.handle('restore-revision', (event, noteId, revisionId) => {
+    const notesService = require('./notesService');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return notesService.restoreNoteRevision(userId, noteId, revisionId);
+});
+
+ipcMain.handle('get-flashcards', (event) => {
+    const notesService = require('./notesService');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return notesService.getFlashcards(userId);
+});
+
+ipcMain.handle('review-flashcard', (event, flashcardId, score) => {
+    const notesService = require('./notesService');
+    return notesService.reviewFlashcard(flashcardId, score);
+});
+
+// 📅 Timetable & Universal Resource Ingestion Handlers
+ipcMain.handle('parse-timetable-text', (event, rawText) => {
+    const timetableParser = require('./timetableParser');
+    return timetableParser.parseTimetableText(rawText);
+});
+
+ipcMain.handle('commit-timetable-schedule', (event, scheduleItems) => {
+    const timetableParser = require('./timetableParser');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return timetableParser.commitTimetableToWorkspace(userId, scheduleItems);
+});
+
+ipcMain.handle('export-timetable', (event, scheduleItems, format) => {
+    const timetableParser = require('./timetableParser');
+    return timetableParser.exportTimetable(scheduleItems, format);
+});
+
+ipcMain.handle('store-resource', (event, title, category, originalName, mimeType, fileSize, storagePath, ocrText) => {
+    const timetableParser = require('./timetableParser');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return timetableParser.storeResource(userId, title, category, originalName, mimeType, fileSize, storagePath, ocrText);
+});
+
+ipcMain.handle('share-resource', (event, resourceId, targetUserId, permissionLevel) => {
+    const timetableParser = require('./timetableParser');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return timetableParser.shareResource(resourceId, userId, targetUserId, permissionLevel);
+});
+
+ipcMain.handle('revoke-resource-share', (event, resourceId, targetUserId) => {
+    const timetableParser = require('./timetableParser');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return timetableParser.revokeResourceShare(resourceId, userId, targetUserId);
+});
+
+ipcMain.handle('access-resource', (event, resourceId) => {
+    const timetableParser = require('./timetableParser');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return timetableParser.accessResource(resourceId, userId);
 });
 
 // 👥 Relationships & Continuity Threads Handlers
@@ -1429,6 +1700,184 @@ ipcMain.handle('check-for-updates', async () => {
     updateStatus = 'Auto-update is disabled until a signed production feed is configured.';
     sendUpdateStatusToWindows();
     return { success: false, status: updateStatus };
+});
+
+// =========================================================================
+// 🚀 CHRONO SPACES & COMMUNICATION OS (v2.3.0) IPC HANDLERS
+// =========================================================================
+const chronoSpaces = require('./chronoSpaces');
+const communicationOS = require('./communicationOS');
+
+ipcMain.handle('get-spaces', async () => {
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return chronoSpaces.getSpaces(userId);
+});
+
+ipcMain.handle('create-space', async (event, { name, description, icon } = {}) => {
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return chronoSpaces.createSpace(userId, name, description, icon);
+});
+
+ipcMain.handle('create-chrono-space', async (event, { name, description, icon } = {}) => {
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return chronoSpaces.createSpace(userId, name, description, icon);
+});
+
+ipcMain.handle('get-space-details', async (event, spaceId) => {
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return chronoSpaces.getSpaceDetails(spaceId, userId);
+});
+
+ipcMain.handle('add-space-member', async (event, { spaceId, targetUserId, displayName, role }) => {
+    const requesterId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return chronoSpaces.addMember(spaceId, requesterId, targetUserId, displayName, role);
+});
+
+ipcMain.handle('link-space-resource', async (event, { spaceId, resourceType, resourceId, title, permissionLevel }) => {
+    const requesterId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return chronoSpaces.linkResource(spaceId, requesterId, resourceType, resourceId, title, permissionLevel);
+});
+
+ipcMain.handle('create-event-proposal', async (event, { spaceId, eventData }) => {
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    const profile = db.getUserProfile();
+    const proposerName = profile.name || 'Alen';
+    return chronoSpaces.createEventProposal(spaceId, userId, proposerName, eventData);
+});
+
+ipcMain.handle('review-space-proposal', async (event, { proposalId, action, feedback }) => {
+    const reviewerId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return chronoSpaces.reviewProposal(proposalId, reviewerId, action, feedback);
+});
+
+ipcMain.handle('send-direct-message', async (event, { recipientId, content, mediaUrl }) => {
+    const senderId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return communicationOS.sendDirectMessage(senderId, recipientId, content, mediaUrl);
+});
+
+ipcMain.handle('get-direct-messages', async (event, peerId) => {
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return communicationOS.getDirectMessages(userId, peerId);
+});
+
+ipcMain.handle('webrtc-initiate-call', async (event, { receiverId, callType, sdpOffer }) => {
+    const callerId = db.getSyncMeta('auth_user_id') || 'local_user';
+    const profile = db.getUserProfile();
+    const callerName = profile.name || 'Alen';
+    return communicationOS.initiateCall(callerId, callerName, receiverId, callType, sdpOffer);
+});
+
+ipcMain.handle('webrtc-answer-call', async (event, { callSessionId, sdpAnswer }) => {
+    const receiverId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return communicationOS.answerCall(callSessionId, receiverId, sdpAnswer);
+});
+
+ipcMain.handle('webrtc-end-call', async (event, { callSessionId, reason }) => {
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return communicationOS.endCall(callSessionId, userId, reason);
+});
+
+ipcMain.handle('handle-external-webhook-message', async (event, { platform, senderIdentifier, senderName, rawContent }) => {
+    return communicationOS.handleExternalWebhookMessage(platform, senderIdentifier, senderName, rawContent);
+});
+
+// 👥 People & Contacts Management Handlers
+ipcMain.handle('get-people', (event) => {
+    const continuityThreads = require('./continuityThreads');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return continuityThreads.getThreads(userId);
+});
+
+ipcMain.handle('add-person', (event, { name, role, email, peerUserId, phone, avatarUrl, country }) => {
+    const continuityThreads = require('./continuityThreads');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return continuityThreads.addThread(userId, name, role, email, peerUserId, phone, avatarUrl, country);
+});
+
+ipcMain.handle('edit-person', (event, { personId, name, role, email, phone, avatarUrl, country }) => {
+    const continuityThreads = require('./continuityThreads');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return continuityThreads.editThread(userId, personId, name, role, email, phone, avatarUrl, country);
+});
+
+ipcMain.handle('remove-person', (event, personId) => {
+    const continuityThreads = require('./continuityThreads');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return continuityThreads.removeThread(userId, personId);
+});
+
+// 📝 Notes Trash, Duplicate & Pinning Handlers
+ipcMain.handle('get-trash-notes', (event) => {
+    const notesService = require('./notesService');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return notesService.getTrashNotes(userId);
+});
+
+ipcMain.handle('restore-note', (event, noteId) => {
+    const notesService = require('./notesService');
+    return notesService.restoreNote(noteId);
+});
+
+ipcMain.handle('permanent-delete-note', (event, noteId) => {
+    const notesService = require('./notesService');
+    return notesService.permanentDeleteNote(noteId);
+});
+
+ipcMain.handle('duplicate-note', (event, noteId) => {
+    const notesService = require('./notesService');
+    const userId = db.getSyncMeta('auth_user_id') || 'local_user';
+    return notesService.duplicateNote(userId, noteId);
+});
+
+ipcMain.handle('pin-note', (event, noteId, isPinned) => {
+    const notesService = require('./notesService');
+    return notesService.pinNote(noteId, isPinned);
+});
+
+// 📱 Phone Identity & Profile Handlers
+ipcMain.handle('save-profile-phone', (event, phone, country = null) => {
+    db.setSyncMeta('user_phone', phone);
+    if (country) db.setSyncMeta('user_country', country);
+    return { success: true, phone, country };
+});
+
+ipcMain.handle('get-profile-phone', (event) => {
+    const phone = db.getSyncMeta('user_phone') || '';
+    const country = db.getSyncMeta('user_country') || '';
+    return { phone, country };
+});
+
+// 📞 Call History Handlers
+ipcMain.handle('get-call-history', (event) => {
+    const activeDb = (typeof db.getDb === 'function' ? db.getDb() : db.db || db);
+    try {
+        return activeDb.prepare(`SELECT * FROM chrono_call_history ORDER BY created_at DESC LIMIT 50`).all();
+    } catch (e) {
+        return [];
+    }
+});
+
+ipcMain.handle('clear-call-history', (event) => {
+    const activeDb = (typeof db.getDb === 'function' ? db.getDb() : db.db || db);
+    try {
+        activeDb.prepare(`DELETE FROM chrono_call_history`).run();
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('open-external-url', async (event, url) => {
+    try {
+        const { shell } = require('electron');
+        if (url && (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('facetime:') || url.startsWith('tel:'))) {
+            await shell.openExternal(url);
+            return { success: true };
+        }
+        return { success: false, error: "Invalid URL scheme" };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ========================================

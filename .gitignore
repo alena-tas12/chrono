@@ -7,6 +7,10 @@ node_modules
 *.exe
 *.blockmap
 chrono.db
+*.db
+*.db-journal
+chrono_user.json
+backups/
 chrono_app_test_data/
 output/
 

@@ -79,6 +79,7 @@ class StateManager {
         this.knowledgeBase = new KnowledgeBase();
         this.memoryGraph = new MemoryGraph();
         this.goalSubsystem = new GoalSubsystem();
+        this.taskSubsystem = new TaskSubsystem();
         this.health = new SystemHealth();
         
         // Listen to EventBus for updates
@@ -140,6 +141,9 @@ class StateManager {
         }
         if (modules.includes('KnowledgeBase')) {
             compiledState.knowledge = this.knowledgeBase.queryFacts(parameters);
+        }
+        if (modules.includes('Tasks')) {
+            compiledState.tasks = this.taskSubsystem.getPendingTasks();
         }
 
         return compiledState;
@@ -338,6 +342,34 @@ class GoalSubsystem {
     }
 }
 
+class TaskSubsystem {
+    constructor() {
+        this.dbModule = require('./main_db');
+    }
+
+    getPendingTasks() {
+        try {
+            // Get uncompleted tasks 
+            const tasks = this.dbModule.db.prepare(`
+                SELECT text, date, calendar FROM tasks 
+                WHERE completed = 0 AND deleted = 0
+                ORDER BY date ASC
+                LIMIT 15
+            `).all();
+            
+            return tasks.map(t => ({
+                text: t.text,
+                date: t.date,
+                calendar: t.calendar,
+                provenance: { source: 'task_db', confidence: 1.0 }
+            }));
+        } catch (e) {
+            console.warn("TaskSubsystem query failed:", e.message);
+            return [];
+        }
+    }
+}
+
 module.exports = {
     StateManager,
     WorldState,
@@ -346,6 +378,7 @@ module.exports = {
     KnowledgeBase,
     MemoryGraph,
     GoalSubsystem,
+    TaskSubsystem,
     SystemHealth
 };
 

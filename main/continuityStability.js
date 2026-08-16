@@ -36,7 +36,7 @@ function getCognitiveFronts(userId = 'local_user') {
             if (t.goal_id || t.project_id || cal === 'project') {
                 counts.Project++;
             }
-            if (cal === 'family' || t.visibility === 'shared_specific' || t.visibility === 'shared_group' || /princess|rayhaan|sana|tara|anwesha/.test(text)) {
+            if (cal === 'family' || t.visibility === 'shared_specific' || t.visibility === 'shared_group') {
                 counts.Relationship++;
             }
             if (cal === 'routine') {

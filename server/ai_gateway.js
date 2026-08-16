@@ -101,9 +101,7 @@ async function processAIChat(userId, userInput, userContext = {}) {
         const lowerInput = userInput.toLowerCase();
 
         // Natural Language reasoning checks (Cross-Calendar queries)
-        if (lowerInput.includes('princess') && lowerInput.includes('vian') && (lowerInput.includes('study') || lowerInput.includes('free') || lowerInput.includes('block') || lowerInput.includes('weekend'))) {
-            responseText = `Saturday 3–5 PM is available for both. Conflict Risk: Low. Focus Levels: Good. Travel Time: None. I've highlighted this slot on the shared Study calendar group.`;
-        } else if (lowerInput.includes('add') || lowerInput.includes('schedule') || lowerInput.includes('put') || lowerInput.includes('create')) {
+        if (lowerInput.includes('add') || lowerInput.includes('schedule') || lowerInput.includes('put') || lowerInput.includes('create')) {
             const taskText = userInput.replace(/.*?(?:add|create|schedule|put)\s*/i, '').trim();
             responseText = `I've mapped "${taskText || 'New Event'}" onto your schedule details. 📅 Block added to your calendar layers.`;
         } else if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
@@ -131,10 +129,10 @@ async function processAIChat(userId, userInput, userContext = {}) {
     if (isElectron && observatory) {
         let agentName = 'Companion';
         if (modelUsed.includes('architect')) agentName = 'Architect';
-        else if (modelUsed.includes('princess')) agentName = 'Princess';
         else if (modelUsed.includes('studycoach')) agentName = 'Study Coach';
         else if (modelUsed.includes('scheduler')) agentName = 'Scheduler';
         else if (modelUsed.includes('focusguardian')) agentName = 'Focus Guardian';
+        else if (modelUsed.includes('continuity')) agentName = 'Continuity';
         
         observatory.recordAIChat(agentName, latencyMs, tokens);
     }

@@ -61,7 +61,7 @@ class ExecutiveLayer {
     /**
      * Executes the cognitive pipeline.
      */
-    executePipeline(intentPlan, retrievedState, contradictions, opportunities) {
+    executePipeline(intentPlan, retrievedState, contradictions, opportunities, sessionHistory = []) {
         let executionTrace = [];
         let recommendations = [];
 
@@ -86,8 +86,18 @@ class ExecutiveLayer {
         let simulationResult = null;
         if (intentPlan.requiresSimulation) {
             executionTrace.push(`[${ExecutionMode.SIMULATE}] Simulation requested by Dispatch.`);
+            
+            // Dynamically infer target entity from user input if present
+            let targetEntity = 'Action Item';
+            const rawInput = intentPlan.userInput || intentPlan.input || '';
+            if (rawInput) {
+                const lower = rawInput.toLowerCase();
+                const match = lower.match(/(?:move|reschedule|change|shift)\s+([a-z0-9_\s]+?)\s+(?:to|at|for|on)/i);
+                if (match && match[1]) targetEntity = match[1].trim();
+            }
+
             simulationResult = this.simulationEngine.simulateBranch({
-                hypothesis: { action: 'move_event', target: 'Meeting' }, // Stub hypothesis based on intent
+                hypothesis: { action: 'move_event', target: targetEntity },
                 state: retrievedState,
                 maxDepth: 3
             });
@@ -135,7 +145,8 @@ class ExecutiveLayer {
             retrievedState,
             contradictions,
             opportunities,
-            contextSummary
+            contextSummary,
+            sessionHistory  // Carried through for reasoningEngine LLM message construction
         };
     }
 
@@ -151,7 +162,13 @@ class ExecutiveLayer {
         for (const key of stateKeys) {
             const data = retrievedState[key];
             if (Array.isArray(data)) {
-                if (key === 'knowledge' && data.length > 0) {
+                if (key === 'episodicReplay' && data.length > 0) {
+                    // Serialize episode content verbatim — this is what the LLM actually reads
+                    facts.push(
+                        `Recently completed episodes (context for continuity):\n    ` +
+                        data.map(ep => `- ${ep.content}`).join('\n    ')
+                    );
+                } else if (key === 'knowledge' && data.length > 0) {
                     facts.push(`Explicit Knowledge Workspace Blocks:\n    ` + data.map(d => `- ${d.fact} (Source: ${d.provenance.source})`).join('\n    '));
                 } else if (data.length > 0) {
                     const sample = data[0];

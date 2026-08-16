@@ -286,11 +286,9 @@ function interruptEmotionalLoop() {
     if (!safetyState.attachment.loopDetected) return null;
     
     const interruptionResponses = [
-        'I notice we\'re circling. Let\'s pause.',
-        'I want to be helpful, but I notice we\'re repeating.',
-        'Let me step back. What\'s actually needed right now?',
-        'I\'m here, but let\'s shift to something concrete.',
-        'I hear you. Let\'s take a breath and reset.'
+        'Let\'s pause. What do you want to focus on?',
+        'I notice we\'re repeating. Let\'s shift to something concrete.',
+        'Let me step back. What\'s actually needed right now?'
     ];
     
     const response = interruptionResponses[Math.floor(Math.random() * interruptionResponses.length)];
