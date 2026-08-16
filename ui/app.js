@@ -5863,12 +5863,29 @@ async function renderCommsPeerList() {
 
     const people = await loadPeople();
     if (people.length === 0) {
+        activeCommsPeer = null;
         list.innerHTML = `
             <div style="padding: 16px 8px; text-align: center; color: var(--text-muted); font-size: 11px;">
                 No contacts yet.<br/>
                 <button class="primary smallBtn" onclick="openAddPersonModal()" style="margin-top: 8px; padding: 4px 10px; font-size: 10px;">+ Add Contact</button>
             </div>
         `;
+        const label = document.getElementById('activeCommsPeerLabel');
+        const phoneEl = document.getElementById('activeCommsPeerPhone');
+        if (label) label.textContent = 'No Contact Selected';
+        if (phoneEl) phoneEl.textContent = 'Add or select a contact on the left';
+
+        const container = document.getElementById('commsMessagesContainer');
+        if (container) {
+            container.innerHTML = `
+                <div style="margin: auto; text-align: center; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px;">
+                    <span style="font-size: 32px;">📱</span>
+                    <strong style="color: var(--text-main); font-size: 13px;">No Contact Selected</strong>
+                    <p style="margin: 0; font-size: 11px; max-width: 320px; line-height: 1.4;">Add a peer with their phone number to start encrypted messaging, WebRTC calling, WhatsApp, Google Meet, or FaceTime.</p>
+                    <button class="primary smallBtn" onclick="openAddPersonModal()" style="margin-top: 6px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer;">+ Add Contact</button>
+                </div>
+            `;
+        }
         return;
     }
 
@@ -5876,7 +5893,7 @@ async function renderCommsPeerList() {
         const isActive = activeCommsPeer && activeCommsPeer.id === p.id;
         const initials = (p.name || 'P').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
         return `
-            <div class="commsContactRow ${isActive ? 'active' : ''}" onclick="selectCommsPeer('${escapeHtml(p.name)}', '${p.id}', '${escapeHtml(p.phone || '+91 98765 43210')}')" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="commsContactRow ${isActive ? 'active' : ''}" onclick="selectCommsPeer('${escapeHtml(p.name)}', '${p.id}', '${escapeHtml(p.phone || '')}')" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: ${isActive ? 'rgba(59,130,246,0.15)' : 'transparent'};">
                 <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
                     <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">
                         ${initials}
@@ -5896,7 +5913,7 @@ async function renderCommsPeerList() {
 
     // If no peer is active, select first
     if (!activeCommsPeer && people.length > 0) {
-        selectCommsPeer(people[0].name, people[0].id, people[0].phone || '+91 98765 43210');
+        selectCommsPeer(people[0].name, people[0].id, people[0].phone || '');
     }
 }
 
