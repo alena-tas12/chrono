@@ -5754,22 +5754,71 @@ async function removePersonAction(personId, personName) {
 // ========================================
 
 function openSpacesDrawer() {
-    const drawer = document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
-    if (drawer) drawer.style.display = 'block';
+    const drawer = document.getElementById('spacesDrawerModal') || document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
+    if (drawer) {
+        drawer.style.display = 'flex';
+        renderSpacesList();
+    }
 }
 
 function closeSpacesDrawer() {
-    const drawer = document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
+    const drawer = document.getElementById('spacesDrawerModal') || document.getElementById('chronoSpacesDrawer') || document.getElementById('spacesDrawer');
     if (drawer) drawer.style.display = 'none';
 }
 
+async function renderSpacesList() {
+    const container = document.getElementById('spacesListContainer');
+    if (!container) return;
+    
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) {
+        container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">No spaces active.</div>`;
+        return;
+    }
+    
+    try {
+        const spaces = await ipc.invoke('get-spaces') || [];
+        if (!spaces || spaces.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 12px; background: rgba(0,0,0,0.15); border-radius: 12px; border: 1px dashed var(--border-color);">
+                    <span style="font-size: 28px; display: block; margin-bottom: 8px;">🪐</span>
+                    <strong style="color: var(--text-main); font-size: 13px;">No Chrono Spaces Yet</strong>
+                    <p style="margin: 4px 0 0 0; font-size: 11px;">Create a collaborative space above to share calendars, propose events, and review conflict PRs.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = spaces.map(spc => `
+            <div style="padding: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">${spc.icon || '🪐'}</span>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">${escapeHtml(spc.name)}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(spc.description || 'Shared collaboration space')}</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="smallBtn primary" onclick="showToast('Space: ${escapeHtml(spc.name)} active', 'info')" style="padding: 4px 10px; font-size: 11px;">View Space</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">Failed to load spaces: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
 async function createNewSpaceAction() {
-    const name = prompt("Enter Space name:");
+    const input = document.getElementById('newSpaceNameInput');
+    const name = input && input.value ? input.value.trim() : prompt("Enter Space name:");
     if (!name) return;
+    
     const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
     if (ipc) {
         await ipc.invoke('create-chrono-space', { name, description: '' });
-        showToast(`✓ Space ${name} created`, 'success');
+        if (input) input.value = '';
+        showToast(`✓ Space "${name}" created`, 'success');
+        renderSpacesList();
     }
 }
 
