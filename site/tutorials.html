@@ -74,15 +74,16 @@
             Download the latest <code>Chrono Setup 2.2.0.exe</code> from GitHub Releases or compile from source using npm:
           </p>
           <div class="code-block">
-# Clone the repository
-git clone https://github.com/alena10-05/chrono.git
-cd chrono
+<div class="code-header"><span>Terminal / PowerShell</span><span>Bash Commands</span></div>
+<span class="code-comment"># 1. Clone the repository</span>
+<span class="code-keyword">git clone</span> <span class="code-string">https://github.com/alena10-05/chrono.git</span>
+<span class="code-keyword">cd</span> chrono
 
-# Install dependencies
-npm install
+<span class="code-comment"># 2. Install all dependencies (Electron & SQLite)</span>
+<span class="code-keyword">npm install</span>
 
-# Run Chrono in development mode
-npm run dev
+<span class="code-comment"># 3. Run Chrono in development mode</span>
+<span class="code-keyword">npm run dev</span>
           </div>
 
           <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 2: Sign In or Use Offline Mode</h4>
@@ -114,16 +115,23 @@ npm run dev
             Any contributor can propose a workshop, sprint review, or study session. Chrono automatically analyzes all member calendars for temporal conflicts:
           </p>
           <div class="code-block">
-// Automated conflict detection during proposal
+<div class="code-header"><span>Event Proposal Payload</span><span>JSON Schema</span></div>
 {
-  "proposal_id": "pr_10827361",
-  "space_id": "spc_ai_research",
-  "title": "LLM Architecture Working Group",
-  "start_time": "2026-08-18T15:00:00Z",
-  "end_time": "2026-08-18T16:30:00Z",
-  "status": "CLEAN", // Or "CONFLICT_DETECTED"
-  "proposed_by": "Contributor"
+  <span class="code-keyword">"proposal_id"</span>: <span class="code-string">"pr_10827361"</span>,
+  <span class="code-keyword">"space_id"</span>: <span class="code-string">"spc_ai_research"</span>,
+  <span class="code-keyword">"title"</span>: <span class="code-string">"LLM Architecture Working Group"</span>,
+  <span class="code-keyword">"start_time"</span>: <span class="code-string">"2026-08-18T15:00:00Z"</span>,
+  <span class="code-keyword">"end_time"</span>: <span class="code-string">"2026-08-18T16:30:00Z"</span>,
+  <span class="code-keyword">"status"</span>: <span class="code-val">"CLEAN"</span>, <span class="code-comment">// Evaluated against all members</span>
+  <span class="code-keyword">"proposed_by"</span>: <span class="code-string">"Contributor"</span>
 }
+          </div>
+
+          <div class="explainer-box">
+            <div class="explainer-title">🔍 Conflict Detection Engine</div>
+            <div class="explainer-text">
+              Chrono checks all member calendar events locally before proposing. If a collision is found, it labels the PR as <code>CONFLICT_DETECTED</code> with exact overlap timestamps.
+            </div>
           </div>
 
           <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 3: Review and Merge Proposal</h4>
@@ -187,31 +195,48 @@ npm run dev
           <div class="step-header">
             <div class="step-num">5</div>
             <div>
-              <h2 class="step-title">Multi-Provider AI Gateway Configuration</h2>
-              <div style="font-size: 13px; color: var(--text-muted);">How to configure Google Gemini, Groq, OpenRouter, or local offline Ollama models.</div>
+              <h2 class="step-title">AI Provider Setup & Free API Keys</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to add your free Google Gemini, Groq, or OpenRouter keys to activate AI capabilities.</div>
             </div>
           </div>
           <p class="card-text">
-            Chrono features an automatic multi-cloud AI routing pipeline that guarantees zero downtime. If one provider is rate-limited, it automatically falls back to the next healthy provider in milliseconds.
+            Chrono features an automatic multi-cloud AI routing pipeline with 100% free API options. If one provider encounters a rate limit, Chrono automatically fails over to the next healthy model with sub-second latency.
           </p>
 
-          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Configuring Your <code>.env</code> File:</h4>
-          <div class="code-block">
-# Primary AI Provider: Google Gemini
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Secondary Fast Cloud: Groq API
-GROQ_API_KEY=your_groq_api_key_here
-
-# Tertiary Cloud: OpenRouter
-OPENROUTER_API_KEY=your_openrouter_key_here
-
-# Local Offline Floor: Ollama
-OLLAMA_ENDPOINT=http://localhost:11434
+          <div class="explainer-box">
+            <div class="explainer-title">🔑 Where to Get Free API Keys (Zero Cost)</div>
+            <div class="explainer-text">
+              • <strong>Google Gemini (Primary)</strong>: Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color: #60a5fa;">aistudio.google.com</a> (uses <code>gemini-flash-latest</code>).<br>
+              • <strong>Groq API (Ultra-Fast Fallback)</strong>: Get a free key at <a href="https://console.groq.com" target="_blank" style="color: #60a5fa;">console.groq.com</a> (uses <code>llama-3.3-70b-versatile</code>).<br>
+              • <strong>OpenRouter (Multi-Model)</strong>: Get a key at <a href="https://openrouter.ai" target="_blank" style="color: #60a5fa;">openrouter.ai</a>.
+            </div>
           </div>
-          <p class="card-text" style="margin-top: 15px;">
-            Chrono will automatically route conversational queries through <strong>Google Gemini (gemini-flash-latest)</strong>, falling back to <strong>Groq (llama-3.3-70b-versatile)</strong> with sub-second latency.
-          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step-by-Step Environment Configuration:</h4>
+          
+          <div class="code-block">
+<div class="code-header"><span>File: .env (Project Root)</span><span>Config Tokens</span></div>
+<span class="code-comment"># 1. Primary High-Speed Reasoning Model (Free)</span>
+<span class="code-keyword">GEMINI_API_KEY</span>=<span class="code-string">"AIzaSyAx..."</span>
+
+<span class="code-comment"># 2. Secondary Ultra-Fast Sub-Second Model (Free)</span>
+<span class="code-keyword">GROQ_API_KEY</span>=<span class="code-string">"gsk_goCPif..."</span>
+
+<span class="code-comment"># 3. Tertiary Cloud Gateway</span>
+<span class="code-keyword">OPENROUTER_API_KEY</span>=<span class="code-string">"sk-or-v1-..."</span>
+
+<span class="code-comment"># 4. Local Offline Model (No internet required)</span>
+<span class="code-keyword">OLLAMA_ENDPOINT</span>=<span class="code-string">"http://localhost:11434"</span>
+          </div>
+
+          <div class="explainer-box">
+            <div class="explainer-title">⚡ How Failover Routing Works</div>
+            <div class="explainer-text">
+              1. Chrono sends queries to <strong>Google Gemini</strong> first.<br>
+              2. If Google Cloud is busy, it immediately executes through <strong>Groq (LLaMA 3.3 70B)</strong>.<br>
+              3. If completely offline, it routes to your local <strong>Ollama</strong> instance.
+            </div>
+          </div>
         </section>
 
         <!-- Module 6: Supabase Realtime & RLS -->
@@ -220,31 +245,39 @@ OLLAMA_ENDPOINT=http://localhost:11434
             <div class="step-num">6</div>
             <div>
               <h2 class="step-title">Supabase Realtime & Row-Level Security (RLS)</h2>
-              <div style="font-size: 13px; color: var(--text-muted);">How multi-user data synchronization and topic security work.</div>
+              <div style="font-size: 13px; color: var(--text-muted);">How multi-user collaboration and private data streams stay isolated.</div>
             </div>
           </div>
           <p class="card-text">
-            Chrono uses WebSocket channels over Supabase Realtime to broadcast live calendar proposals, knowledge updates, and direct messages.
+            Chrono uses WebSocket topics over Supabase Realtime to broadcast live calendar proposals, knowledge updates, and direct messages without exposing private user data.
           </p>
 
-          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">RLS Topic Enforcement:</h4>
-          <p class="card-text">
-            All Realtime broadcast channels enforce PostgreSQL Row-Level Security based on channel topics:
-          </p>
+          <div class="explainer-box">
+            <div class="explainer-title">🛡️ Security Invariant: Isolated Topics</div>
+            <div class="explainer-text">
+              • <strong>Personal Channels</strong> (<code>user:&lt;userId&gt;:events</code>): Only the specific authenticated user can subscribe and listen.<br>
+              • <strong>Collaborative Space Channels</strong> (<code>calendar:&lt;calendarId&gt;:events</code>): Only verified members of that specific space can receive broadcast events.
+            </div>
+          </div>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">PostgreSQL Row-Level Security (RLS) Policy:</h4>
+
           <div class="code-block">
--- Personal user event channel: user:&lt;userId&gt;:events
--- Shared calendar space channel: calendar:&lt;calendarId&gt;:events
-CREATE POLICY "Enforce Realtime Topic Authorization"
-ON realtime.messages
-FOR SELECT
-TO authenticated
-USING (
-  (split_part(realtime.topic(), ':', 1) = 'user' AND split_part(realtime.topic(), ':', 2) = auth.uid()::text)
-  OR
-  (split_part(realtime.topic(), ':', 1) = 'calendar' AND EXISTS (
-    SELECT 1 FROM public.calendar_members 
-    WHERE calendar_members.calendar_id::text = split_part(realtime.topic(), ':', 2)
-      AND calendar_members.user_id::text = auth.uid()::text
+<div class="code-header"><span>Database Policy</span><span>PostgreSQL DDL</span></div>
+<span class="code-comment">-- Secure broadcast delivery policy on realtime.messages</span>
+<span class="code-keyword">CREATE POLICY</span> <span class="code-string">"Enforce Realtime Topic Authorization"</span>
+<span class="code-keyword">ON</span> realtime.messages <span class="code-keyword">FOR SELECT</span> <span class="code-keyword">TO</span> authenticated
+<span class="code-keyword">USING</span> (
+  <span class="code-comment">-- Branch 1: User's private personal channel</span>
+  (split_part(realtime.topic(), <span class="code-string">':'</span>, <span class="code-val">1</span>) = <span class="code-string">'user'</span> 
+   <span class="code-keyword">AND</span> split_part(realtime.topic(), <span class="code-string">':'</span>, <span class="code-val">2</span>) = auth.uid()::text)
+  <span class="code-keyword">OR</span>
+  <span class="code-comment">-- Branch 2: Collaborative Chrono Space channel (membership verified)</span>
+  (split_part(realtime.topic(), <span class="code-string">':'</span>, <span class="code-val">1</span>) = <span class="code-string">'calendar'</span> 
+   <span class="code-keyword">AND EXISTS</span> (
+     <span class="code-keyword">SELECT</span> <span class="code-val">1</span> <span class="code-keyword">FROM</span> public.calendar_members 
+     <span class="code-keyword">WHERE</span> calendar_members.calendar_id::text = split_part(realtime.topic(), <span class="code-string">':'</span>, <span class="code-val">2</span>)
+       <span class="code-keyword">AND</span> calendar_members.user_id::text = auth.uid()::text
   ))
 );
           </div>
