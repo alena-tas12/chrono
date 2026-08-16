@@ -24,12 +24,12 @@
         <li><a href="#cognitive-core" class="nav-link">Cognitive Core</a></li>
         <li><a href="#subsystems" class="nav-link">Subsystems</a></li>
         <li><a href="#spaces-comms" class="nav-link">Spaces & Comms</a></li>
-        <li><a href="#architecture" class="nav-link">Architecture</a></li>
+        <li><a href="#downloads" class="nav-link">Download</a></li>
         <li><a href="tutorials.html" class="nav-link">Tutorials & Guides</a></li>
       </ul>
       <div class="nav-actions">
-        <a href="tutorials.html" class="btn btn-secondary">Documentation</a>
-        <a href="https://github.com/alena10-05/chrono" target="_blank" class="btn btn-primary">GitHub Repository</a>
+        <a href="#downloads" class="btn btn-secondary">Get v2.2.0</a>
+        <a href="https://github.com/alena10-05/chrono" target="_blank" class="btn btn-primary">GitHub Repo</a>
       </div>
     </nav>
   </header>
@@ -44,8 +44,8 @@
           Chrono unites multi-turn conversational reasoning, dynamic knowledge bases, task and calendar orchestration, WebRTC communication, and multi-user collaborative spaces into a unified, privacy-first desktop application.
         </p>
         <div class="hero-buttons">
-          <a href="tutorials.html" class="btn btn-primary btn-lg">Explore Interactive Tutorials →</a>
-          <a href="#subsystems" class="btn btn-secondary btn-lg">Explore All Subsystems</a>
+          <a href="#downloads" class="btn btn-primary btn-lg">Download Chrono v2.2.0 (.exe) ↓</a>
+          <a href="tutorials.html" class="btn btn-secondary btn-lg">Interactive Tutorials →</a>
         </div>
       </div>
 
@@ -121,17 +121,17 @@
           </div>
         </div>
 
-        <!-- 4. Chrono Spaces (Collaborative PRs) -->
+        <!-- 4. Chrono Spaces (Universal Collaboration) -->
         <div class="feature-card">
           <div class="card-icon" style="color: #10b981;">👥</div>
-          <h3 class="card-title">Chrono Spaces & Calendar PRs</h3>
+          <h3 class="card-title">Chrono Spaces & Change Proposals</h3>
           <p class="card-text">
-            GitHub-style collaborative spaces for circles and study groups. Members propose events into shared calendars, run automated conflict checks, and merge proposals with granular permissions (Owner, Contributor, Viewer).
+            Universal collaboration containers with independent public/private visibility and modular capability toggles. Collaborators propose changes to calendars, knowledge, or tasks via governed, conflict-tested Change Proposals.
           </p>
           <div class="card-tags">
-            <span class="tag">Event PRs</span>
-            <span class="tag">Role-Based ACL</span>
-            <span class="tag">Conflict Review</span>
+            <span class="tag">Change Proposals</span>
+            <span class="tag">Unified Roles</span>
+            <span class="tag">Modular Capabilities</span>
           </div>
         </div>
 
@@ -360,6 +360,159 @@
     </div>
   </section>
 
+  <!-- Chrono Spaces Universal Collaboration Deep Dive -->
+  <section class="section" id="spaces-comms" style="border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+    <div class="container">
+      <div class="section-tag">Collaboration Infrastructure</div>
+      <h2 class="section-title">Chrono Spaces: The Universal Container</h2>
+      <p class="section-desc">
+        Spaces is not a rigid clone of GitHub, Microsoft Teams, or Google Workspace. It is a general collaboration primitive where <strong>visibility</strong> (Public vs. Private) and <strong>modular capabilities</strong> are independent.
+      </p>
+
+      <!-- 4 Emergent Archetypes Grid -->
+      <div class="feature-grid" style="margin-bottom: 40px;">
+        <div class="feature-card" style="border-left: 3px solid #3b82f6;">
+          <div class="card-icon" style="color: #3b82f6;">🚀</div>
+          <h3 class="card-title">Public Project Space</h3>
+          <p class="card-text">
+            Configured like an open-source repository. Anyone can read, submit issues, propose change requests, and inspect project documentation.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Public Access</span>
+            <span class="tag">Change Proposals</span>
+            <span class="tag">Issue Tracker</span>
+          </div>
+        </div>
+
+        <div class="feature-card" style="border-left: 3px solid #10b981;">
+          <div class="card-icon" style="color: #10b981;">🏢</div>
+          <h3 class="card-title">Private Team Workspace</h3>
+          <p class="card-text">
+            Configured like Microsoft Teams or Google Workspace. Invitation-only with threaded chat, WebRTC calls, shared calendar, files, and task boards.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Invite-Only</span>
+            <span class="tag">Shared Calendar</span>
+            <span class="tag">WebRTC Calls</span>
+          </div>
+        </div>
+
+        <div class="feature-card" style="border-left: 3px solid #a855f7;">
+          <div class="card-icon" style="color: #a855f7;">🗺️</div>
+          <h3 class="card-title">Planning & Focus Space</h3>
+          <p class="card-text">
+            Configured for personal goals or small circles. Lightweight notes, task tracking, and milestone calendars without heavy PR machinery.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Lightweight</span>
+            <span class="tag">Task Tracking</span>
+            <span class="tag">Milestones</span>
+          </div>
+        </div>
+
+        <div class="feature-card" style="border-left: 3px solid #f59e0b;">
+          <div class="card-icon" style="color: #f59e0b;">🌐</div>
+          <h3 class="card-title">Community & Knowledge Space</h3>
+          <p class="card-text">
+            Configured for public discussion and living research documents. Direct link sharing with optional global discoverability.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Living Docs</span>
+            <span class="tag">Threaded Chat</span>
+            <span class="tag">Discoverable</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Governed Change Proposal Lifecycle -->
+      <div class="arch-card" style="background: rgba(15, 23, 42, 0.7); border-color: rgba(99, 102, 241, 0.3); padding: 32px;">
+        <h3 style="font-family: var(--font-display); font-size: 22px; color: var(--text-main); margin-bottom: 12px;">
+          The Governed Change Proposal Engine
+        </h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; max-width: 800px;">
+          Rather than allowing unverified, destructive overwrites, Chrono treats updates to shared state—whether calendar events, documents, knowledge graphs, or tasks—as governed Change Proposals.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px;">
+            <div style="font-family: var(--font-mono); font-size: 12px; color: #3b82f6; font-weight: 700;">1. CREATE</div>
+            <div style="font-size: 14px; font-weight: 600; color: #f8fafc; margin-top: 4px;">Draft Proposal</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Contributor drafts change diff without affecting the main branch.</div>
+          </div>
+
+          <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px;">
+            <div style="font-family: var(--font-mono); font-size: 12px; color: #f59e0b; font-weight: 700;">2. REVIEW</div>
+            <div style="font-size: 14px; font-weight: 600; color: #f8fafc; margin-top: 4px;">Conflict Checks</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Automated peer conflict analysis, threaded comments, and suggestions.</div>
+          </div>
+
+          <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px;">
+            <div style="font-family: var(--font-mono); font-size: 12px; color: #10b981; font-weight: 700;">3. APPROVE</div>
+            <div style="font-size: 14px; font-weight: 600; color: #f8fafc; margin-top: 4px;">Owner Approval</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Maintainers or Space Owners sign off on verified proposals.</div>
+          </div>
+
+          <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px;">
+            <div style="font-family: var(--font-mono); font-size: 12px; color: #8b5cf6; font-weight: 700;">4. MERGE</div>
+            <div style="font-size: 14px; font-weight: 600; color: #f8fafc; margin-top: 4px;">Atomic Commit</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Changes are committed to local SQLite and broadcast via Realtime.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download & Release Packages Section -->
+  <section class="section" id="downloads" style="background: rgba(15, 23, 42, 0.4);">
+    <div class="container">
+      <div class="section-tag">Production Release v2.2.0</div>
+      <h2 class="section-title">Download Chrono Desktop</h2>
+      <p class="section-desc">
+        Packaged with verified native SQLite binary bindings (ABI 145), 183 IPC handlers, and zero cloud lock-in.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; max-width: 900px; margin: 32px auto 0 auto;">
+        
+        <!-- Windows Installer Card -->
+        <div class="feature-card" style="border-color: rgba(99, 102, 241, 0.4); text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="card-icon" style="color: #60a5fa; margin-bottom: 0;">🪟</div>
+            <span class="brand-badge" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); color: #60a5fa;">Windows x64 Setup</span>
+          </div>
+          <h3 class="card-title">Chrono Setup 2.2.0.exe</h3>
+          <p class="card-text" style="font-size: 13px;">
+            Full NSIS standard installer for Windows 10 & 11 (64-bit). Configures desktop shortcuts, local SQLite database, and auto-registration.
+          </p>
+          <div style="margin: 16px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);">
+            Size: ~95.6 MB • ABI: v145 • Status: Verified
+          </div>
+          <a href="https://github.com/alena10-05/chrono/releases" target="_blank" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            Download Installer (.exe) →
+          </a>
+        </div>
+
+        <!-- Portable Binary Card -->
+        <div class="feature-card" style="border-color: rgba(16, 185, 129, 0.4); text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="card-icon" style="color: #34d399; margin-bottom: 0;">📦</div>
+            <span class="brand-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">Portable Standalone</span>
+          </div>
+          <h3 class="card-title">Chrono 2.2.0.exe</h3>
+          <p class="card-text" style="font-size: 13px;">
+            Single-file zero-install portable executable. Run Chrono directly from a flash drive or secure folder without system-level installation.
+          </p>
+          <div style="margin: 16px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);">
+            Size: ~95.6 MB • Zero Registry Changes • 100% Offline
+          </div>
+          <a href="https://github.com/alena10-05/chrono/releases" target="_blank" class="btn btn-secondary" style="width: 100%; justify-content: center;">
+            Download Portable (.exe) →
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <!-- CTA Section -->
   <section class="section" style="text-align: center;">
     <div class="container">
@@ -368,7 +521,7 @@
       <p class="section-desc" style="margin-left: auto; margin-right: auto;">
         Learn how to configure multi-cloud providers, create collaborative Chrono Spaces, manage block knowledge, and run WebRTC calling with our detailed documentation.
       </p>
-      <div style="display: flex; justify-content: center; gap: 16px;">
+      <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
         <a href="tutorials.html" class="btn btn-primary btn-lg">Open Chrono Step-by-Step Tutorials →</a>
         <a href="https://github.com/alena10-05/chrono" target="_blank" class="btn btn-secondary btn-lg">View GitHub Source</a>
       </div>
