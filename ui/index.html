@@ -1543,27 +1543,113 @@
     </div>
 
     <!-- 🚀 CHRONO SPACES DRAWER & COLLABORATION MODAL -->
-    <div class="onboardingOverlay" id="spacesDrawerModal" style="display: none; justify-content: center; align-items: center; z-index: 10001; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);">
-        <div class="onboardingCard" style="max-width: 650px; width: 92%; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 24px;">👥</span>
-                    <div>
-                        <h2 style="margin: 0; font-size: 17px; color: var(--text-main); font-weight: 800;">Chrono Spaces (GitHub-Style Collaboration)</h2>
-                        <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-muted);">Collaborate on group calendars, propose events with conflict checks, and merge Pull Requests.</p>
-                    </div>
-                </div>
-                <button class="headerButton smallBtn" onclick="closeSpacesDrawer()" style="font-size: 16px; padding: 4px 10px; cursor: pointer;">✕</button>
-            </div>
+    <div class="onboardingOverlay" id="spacesDrawerModal" style="display: none; justify-content: center; align-items: center; z-index: 10005; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px);">
+        <div class="onboardingCard" style="max-width: 720px; width: 94%; max-height: 85vh; display: flex; flex-direction: column; background: rgba(15, 23, 42, 0.98); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 18px; padding: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.7); overflow: hidden;">
             
-            <div style="display: flex; gap: 10px; margin-top: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                <input type="text" id="newSpaceNameInput" placeholder="New Space Name (e.g. Study Circle, Project Alpha)..." style="flex: 1; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main);" />
-                <button class="primary" onclick="createNewSpaceAction()" style="padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer;">+ Create Space</button>
+            <!-- 1. SPACES DIRECTORY VIEW -->
+            <div id="spacesDirectoryView" style="display: flex; flex-direction: column; height: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">👥</span>
+                        <div>
+                            <h2 style="margin: 0; font-size: 17px; color: var(--text-main); font-weight: 800;">Chrono Spaces (Collaboration Hub)</h2>
+                            <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-muted);">Collaborate on group calendars, propose events with conflict checks, and merge Pull Requests.</p>
+                        </div>
+                    </div>
+                    <button class="headerButton smallBtn" onclick="closeSpacesDrawer()" style="font-size: 16px; padding: 4px 10px; cursor: pointer;">✕</button>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                    <input type="text" id="newSpaceNameInput" placeholder="New Space Name (e.g. Study Circle, AI Collective)..." style="flex: 1; padding: 10px 14px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.25); color: var(--text-main);" />
+                    <button class="primary" onclick="createNewSpaceAction()" style="padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer;">+ Create Space</button>
+                </div>
+
+                <div id="spacesListContainer" style="margin-top: 15px; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">Loading active spaces...</div>
+                </div>
             </div>
 
-            <div id="spacesListContainer" style="margin-top: 15px; max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
-                <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">Loading active spaces...</div>
+            <!-- 2. ACTIVE SPACE DETAIL HUB VIEW -->
+            <div id="spaceDetailHubView" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="headerButton smallBtn" onclick="backToSpacesDirectory()" style="font-size: 12px; padding: 4px 10px; font-weight: 700; cursor: pointer;">← All Spaces</button>
+                        <span id="activeSpaceIcon" style="font-size: 22px;">🚀</span>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <h3 id="activeSpaceTitle" style="margin: 0; font-size: 16px; color: var(--text-main); font-weight: 800;">Space Details</h3>
+                                <span id="activeSpaceRoleBadge" class="brand-badge" style="font-size: 10px; padding: 2px 8px; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4);">OWNER</span>
+                            </div>
+                            <p id="activeSpaceDesc" style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-muted);">Collaborative workspace</p>
+                        </div>
+                    </div>
+                    <button class="headerButton smallBtn" onclick="closeSpacesDrawer()" style="font-size: 16px; padding: 4px 10px; cursor: pointer;">✕</button>
+                </div>
+
+                <!-- Sub Navigation Tabs -->
+                <div style="display: flex; gap: 8px; margin-top: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                    <button class="headerButton smallBtn active" id="spcTabProposalsBtn" onclick="switchSpaceDetailTab('proposals')">📋 Pull Requests (PRs)</button>
+                    <button class="headerButton smallBtn" id="spcTabNewPropBtn" onclick="switchSpaceDetailTab('new-proposal')">➕ Propose Event</button>
+                    <button class="headerButton smallBtn" id="spcTabMembersBtn" onclick="switchSpaceDetailTab('members')">👥 Members</button>
+                </div>
+
+                <!-- TAB 1: PROPOSALS / PRS LIST -->
+                <div id="spcProposalsTabView" style="display: flex; flex-direction: column; flex: 1; overflow-y: auto; margin-top: 12px; gap: 10px;">
+                    <div id="spaceProposalsListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Dynamically filled with proposal cards -->
+                    </div>
+                </div>
+
+                <!-- TAB 2: PROPOSE CALENDAR EVENT FORM -->
+                <div id="spcNewProposalTabView" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; margin-top: 12px; gap: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px;">
+                    <h4 style="margin: 0; font-size: 14px; color: var(--text-main);">Propose a Calendar Event (PR)</h4>
+                    <p style="margin: 0; font-size: 11px; color: var(--text-muted);">Event proposals run automated conflict checks against all space members before merging.</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Event Title</label>
+                            <input type="text" id="propEventTitle" placeholder="e.g., LLM Architecture Sprint, Research Sync..." style="width: 100%; box-sizing: border-box; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: var(--text-main); margin-top: 4px;" />
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Date</label>
+                                <input type="text" id="propEventDate" placeholder="DD-MM-YYYY (e.g. 28-05-2026)" style="width: 100%; box-sizing: border-box; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: var(--text-main); margin-top: 4px;" />
+                            </div>
+                            <div>
+                                <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Start Time</label>
+                                <input type="text" id="propEventStartTime" placeholder="14:00" style="width: 100%; box-sizing: border-box; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: var(--text-main); margin-top: 4px;" />
+                            </div>
+                            <div>
+                                <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">End Time</label>
+                                <input type="text" id="propEventEndTime" placeholder="15:30" style="width: 100%; box-sizing: border-box; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: var(--text-main); margin-top: 4px;" />
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Location / Channel</label>
+                            <input type="text" id="propEventLocation" placeholder="WebRTC Room / Google Meet / Office" style="width: 100%; box-sizing: border-box; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: var(--text-main); margin-top: 4px;" />
+                        </div>
+                        <button class="primary" onclick="submitEventProposalAction()" style="padding: 10px 16px; font-size: 13px; font-weight: 700; margin-top: 6px; cursor: pointer;">Submit Proposal (Run Conflict Check) →</button>
+                    </div>
+                </div>
+
+                <!-- TAB 3: MEMBERS LIST -->
+                <div id="spcMembersTabView" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; margin-top: 12px; gap: 12px;">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="newMemberNameInput" placeholder="Member Name or User ID..." style="flex: 1; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.25); color: var(--text-main);" />
+                        <select id="newMemberRoleSelect" style="padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.95); color: var(--text-main);">
+                            <option value="CONTRIBUTOR">Contributor</option>
+                            <option value="MAINTAINER">Maintainer</option>
+                            <option value="VIEWER">Viewer</option>
+                        </select>
+                        <button class="primary" onclick="addSpaceMemberAction()" style="padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;">+ Add Member</button>
+                    </div>
+                    <div id="spaceMembersListContainer" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Dynamically filled with members -->
+                    </div>
+                </div>
             </div>
+
         </div>
     </div>
 
