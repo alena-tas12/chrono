@@ -50,8 +50,8 @@ class ModelProvider {
                 name: 'Google Gemini',
                 configured: !!geminiKey,
                 key: geminiKey,
-                model: 'gemini-1.5-flash',
-                capabilities: ['text'],
+                model: 'gemini-flash-latest',
+                capabilities: ['text', 'vision'],
                 healthy: !!geminiKey && now >= (this.cooldowns.gemini || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.gemini || 0) - now)
             },
@@ -95,7 +95,7 @@ class ModelProvider {
                 name: 'Chrono Cloud AI Gateway',
                 configured: true, // Seamless Hosted AI Gateway (Option B)
                 endpoint: 'https://kimzqukobytxhzltytvx.supabase.co/functions/v1/ai-gateway',
-                model: 'gemini-3.5-flash / llama-3.3-70b',
+                model: 'gemini-flash-latest / llama-3.3-70b',
                 capabilities: ['text', 'vision', 'speech_to_text'],
                 healthy: now >= (this.cooldowns.chrono_gateway || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.chrono_gateway || 0) - now)
@@ -124,8 +124,8 @@ class ModelProvider {
         const registry = this.getRegistry();
         const failoverLog = [];
 
-        // Candidate pool ordering: OpenRouter (Primary Cloud) -> Groq (Secondary Fast Cloud) -> Ollama (Local Offline Floor) -> Chrono Gateway
-        const candidates = ['openrouter', 'groq', 'ollama', 'chrono_gateway', 'gemini', 'openai', 'qwen'];
+        // Candidate pool ordering: Google Gemini -> Groq API -> OpenRouter -> Chrono Gateway -> Local Ollama
+        const candidates = ['gemini', 'groq', 'openrouter', 'chrono_gateway', 'ollama', 'openai', 'qwen'];
 
         for (const pKey of candidates) {
             const p = registry[pKey];
