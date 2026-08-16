@@ -167,36 +167,44 @@
         <div class="feature-card" style="grid-column: span 2; border-color: rgba(99, 102, 241, 0.4); background: rgba(30, 41, 59, 0.85);">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div class="card-icon" style="color: #ec4899;">🌐</div>
-            <span class="brand-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">Active & Pre-Configured</span>
+            <span class="brand-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">Multi-Cloud Failover</span>
           </div>
-          <h3 class="card-title">Multi-Provider AI Gateway & Free Ready Keys</h3>
+          <h3 class="card-title">Multi-Provider AI Gateway</h3>
           <p class="card-text">
-            Chrono runs multi-cloud LLM routing with sub-second failover. You can use these pre-tested free keys right away in your app without registering for anything:
+            Chrono runs intelligent multi-cloud LLM routing with sub-second failover. Plug in your own free API keys or run completely offline with local Ollama:
           </p>
 
-          <!-- Interactive 1-click key cards on the homepage -->
-          <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-            <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <!-- Free Provider Setup Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 20px;">
+            <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
               <div>
-                <div style="font-size: 11px; font-weight: 700; color: #f59e0b; text-transform: uppercase;">Groq API (LLaMA 3.3 70B • Fast Sub-Second)</div>
-                <div style="font-family: var(--font-mono); font-size: 12px; color: #f8fafc; word-break: break-all; margin-top: 2px;">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</div>
+                <div style="font-size: 11px; font-weight: 700; color: #60a5fa; text-transform: uppercase;">Google Gemini (Primary)</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>gemini-flash-latest</code> • Fast reasoning</div>
               </div>
-              <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex-shrink: 0;" onclick="navigator.clipboard.writeText('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'); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy', 2000);">Copy</button>
+              <a href="https://aistudio.google.com" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Get Free Gemini Key ↗</a>
             </div>
 
-            <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+            <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
               <div>
-                <div style="font-size: 11px; font-weight: 700; color: #60a5fa; text-transform: uppercase;">OpenRouter API (GPT-4o Mini / Multi-Model)</div>
-                <div style="font-family: var(--font-mono); font-size: 12px; color: #f8fafc; word-break: break-all; margin-top: 2px;">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</div>
+                <div style="font-size: 11px; font-weight: 700; color: #f59e0b; text-transform: uppercase;">Groq API (Sub-Second Fallback)</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>llama-3.3-70b-versatile</code> • Ultra-fast</div>
               </div>
-              <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex-shrink: 0;" onclick="navigator.clipboard.writeText('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'); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy', 2000);">Copy</button>
+              <a href="https://console.groq.com" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Get Free Groq Key ↗</a>
+            </div>
+
+            <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+              <div>
+                <div style="font-size: 11px; font-weight: 700; color: #a855f7; text-transform: uppercase;">Local Ollama (Offline)</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>http://localhost:11434</code> • 100% Private</div>
+              </div>
+              <a href="https://ollama.ai" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Download Ollama ↗</a>
             </div>
           </div>
 
           <div class="card-tags">
-            <span class="tag">Google Gemini Active</span>
-            <span class="tag">Groq LLaMA 3.3 70B Active</span>
-            <span class="tag">OpenRouter Active</span>
+            <span class="tag">Google Gemini</span>
+            <span class="tag">Groq LLaMA 3.3 70B</span>
+            <span class="tag">OpenRouter Gateway</span>
             <span class="tag">Offline Ollama</span>
           </div>
         </div>
