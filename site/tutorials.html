@@ -92,52 +92,68 @@
           </p>
         </section>
 
-        <!-- Module 2: Chrono Spaces & Calendar PRs -->
+        <!-- Module 2: Chrono Spaces & Change Proposals -->
         <section class="step-card" id="spaces-tutorial">
           <div class="step-header">
             <div class="step-num">2</div>
             <div>
-              <h2 class="step-title">Chrono Spaces & Collaborative Calendar PRs</h2>
-              <div style="font-size: 13px; color: var(--text-muted);">How to create collaborative circles, propose events, and review calendar diffs.</div>
+              <h2 class="step-title">Chrono Spaces: Universal Containers & Change Proposals</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to create public/private spaces, toggle modular capabilities, and review governed Change Proposals.</div>
             </div>
           </div>
           <p class="card-text">
-            Chrono Spaces operates like GitHub for human time and shared knowledge. Rather than letting anyone destructively overwrite your calendar, collaborators propose changes as "Calendar Pull Requests" (PRs).
+            Chrono Spaces is a general collaboration primitive. Rather than forcing you into a rigid "GitHub clone" or "Teams clone", Spaces allows <strong>visibility</strong> (Public vs. Private) and <strong>capabilities</strong> (Knowledge, Files, Issues, Change Proposals, Calendar, Chat, Calls, AI) to be toggled independently.
           </p>
 
-          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 1: Open Chrono Spaces Drawer</h4>
-          <p class="card-text">
-            Click the <strong>👥 Spaces</strong> icon in the left-hand navigation rail. Click <strong>+ Create Space</strong> and choose a space name (e.g., <em>"AI Research Circle"</em> or <em>"Study Group"</em>).
-          </p>
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">1. The 4 Emergent Flavors of Spaces:</h4>
+          <ul style="list-style: none; margin: 15px 0; display: flex; flex-direction: column; gap: 8px;">
+            <li>🚀 <strong>Public Project Space</strong>: Public visibility + Knowledge + Files + Issues + Proposals + AI (GitHub-style open development).</li>
+            <li>🏢 <strong>Private Team Space</strong>: Private visibility + Knowledge + Files + Threaded Chat + Calls + Shared Calendar (Teams/Workspace-style).</li>
+            <li>🗺️ <strong>Planning / Personal Space</strong>: Private visibility + Notes + Tasks + Calendar without heavy PR machinery.</li>
+            <li>🌐 <strong>Community Space</strong>: Public visibility + Living Docs + Threaded Discussion + Direct Link or Discoverable directory.</li>
+          </ul>
 
-          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 2: Propose an Event (Calendar PR)</h4>
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">2. Unified Role & Permission Matrix:</h4>
+          <div class="explainer-box">
+            <div class="explainer-title">🛡️ Role Hierarchy (Orthogonal to Visibility)</div>
+            <div class="explainer-text">
+              • <strong>Owner</strong>: Full control (delete space, change visibility, manage roles, toggle capabilities).<br>
+              • <strong>Admin</strong>: Space management except deletion.<br>
+              • <strong>Maintainer</strong>: Toggle capabilities, manage members, review & merge proposals.<br>
+              • <strong>Member</strong>: Full read/write across all enabled capabilities.<br>
+              • <strong>Contributor</strong>: Read/write on content (issues, files, knowledge) without role admin rights.<br>
+              • <strong>Viewer</strong>: Read-only access across enabled capabilities.<br>
+              • <strong>Guest</strong>: Scoped permissions restricted to specific capabilities (e.g., chat only).
+            </div>
+          </div>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">3. The Governed Change Proposal Lifecycle:</h4>
           <p class="card-text">
-            Any contributor can propose a workshop, sprint review, or study session. Chrono automatically analyzes all member calendars for temporal conflicts:
+            Whether proposing calendar events, knowledge base revisions, or task schedules, updates follow an atomic, governed review lifecycle:
           </p>
           <div class="code-block">
-<div class="code-header"><span>Event Proposal Payload</span><span>JSON Schema</span></div>
+<div class="code-header"><span>Governed Proposal Schema</span><span>JSON Payload</span></div>
 {
-  <span class="code-keyword">"proposal_id"</span>: <span class="code-string">"pr_10827361"</span>,
-  <span class="code-keyword">"space_id"</span>: <span class="code-string">"spc_ai_research"</span>,
-  <span class="code-keyword">"title"</span>: <span class="code-string">"LLM Architecture Working Group"</span>,
-  <span class="code-keyword">"start_time"</span>: <span class="code-string">"2026-08-18T15:00:00Z"</span>,
-  <span class="code-keyword">"end_time"</span>: <span class="code-string">"2026-08-18T16:30:00Z"</span>,
-  <span class="code-keyword">"status"</span>: <span class="code-val">"CLEAN"</span>, <span class="code-comment">// Evaluated against all members</span>
-  <span class="code-keyword">"proposed_by"</span>: <span class="code-string">"Contributor"</span>
+  <span class="code-keyword">"proposal_id"</span>: <span class="code-string">"prop_94827104"</span>,
+  <span class="code-keyword">"space_id"</span>: <span class="code-string">"spc_research_collective"</span>,
+  <span class="code-keyword">"type"</span>: <span class="code-string">"CALENDAR_EVENT"</span>, <span class="code-comment">// Can be CALENDAR_EVENT, DOCUMENT_DIFF, or TASK</span>
+  <span class="code-keyword">"title"</span>: <span class="code-string">"Cross-Team Cognitive Alignment Workshop"</span>,
+  <span class="code-keyword">"payload"</span>: {
+    <span class="code-keyword">"start_time"</span>: <span class="code-string">"2026-08-18T14:00:00Z"</span>,
+    <span class="code-keyword">"end_time"</span>: <span class="code-string">"2026-08-18T15:30:00Z"</span>,
+    <span class="code-keyword">"location"</span>: <span class="code-string">"WebRTC Room #4"</span>
+  },
+  <span class="code-keyword">"status"</span>: <span class="code-val">"CLEAN"</span>, <span class="code-comment">// Evaluated automatically against all member schedules</span>
+  <span class="code-keyword">"proposed_by"</span>: <span class="code-string">"usr_contributor_01"</span>
 }
           </div>
 
           <div class="explainer-box">
-            <div class="explainer-title">🔍 Conflict Detection Engine</div>
+            <div class="explainer-title">🔍 Conflict Detection & Atomic Merging</div>
             <div class="explainer-text">
-              Chrono checks all member calendar events locally before proposing. If a collision is found, it labels the PR as <code>CONFLICT_DETECTED</code> with exact overlap timestamps.
+              Chrono checks all member calendar events and document versions locally before proposing. Maintainers click <strong>Merge Proposal</strong> to atomically commit the change to local SQLite and broadcast updates across all active peers.
             </div>
           </div>
-
-          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 3: Review and Merge Proposal</h4>
-          <p class="card-text">
-            The Space Owner clicks <strong>Review Proposal</strong>. If clean, clicking <strong>Merge into Calendar</strong> instantly adds the event to all member workspaces and notifies peers over Supabase Realtime.
-          </p>
         </section>
 
         <!-- Module 3: Communication OS & Calling -->
