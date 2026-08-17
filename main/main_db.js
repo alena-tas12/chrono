@@ -1942,6 +1942,61 @@ function addSharedMemory(userId, peerId, title, summary, importance = 5) {
     }
 }
 
+function getAllWorkspaceMessages() {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const rows = activeDb.prepare("SELECT * FROM workspace_conversation ORDER BY created_at ASC").all();
+    for (const row of rows) {
+        if (row.semantic_metadata) {
+            try { row.semantic_metadata = JSON.parse(row.semantic_metadata); } catch(e){}
+        }
+    }
+    return rows;
+}
+
+function resetWorkspaceConversation() {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    activeDb.prepare("DELETE FROM workspace_conversation").run();
+    setSyncMeta('active_leaf_id', null);
+    return { success: true };
+}
+
+function restoreWorkspaceConversation(messages, activeLeafId = null) {
+    if (!Array.isArray(messages)) return { success: false, error: 'Invalid messages array' };
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    
+    const insertTx = activeDb.transaction((msgs) => {
+        activeDb.prepare("DELETE FROM workspace_conversation").run();
+        const stmt = activeDb.prepare(`
+            INSERT INTO workspace_conversation (id, parent_id, generation_group_id, role, content, semantic_metadata, created_at, updated_at, device_id, synced)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const m of msgs) {
+            stmt.run(
+                m.id || generateUUID(),
+                m.parent_id || m.parentId || null,
+                m.generation_group_id || m.generationGroupId || m.id,
+                m.role || 'user',
+                m.content || '',
+                m.semantic_metadata ? (typeof m.semantic_metadata === 'string' ? m.semantic_metadata : JSON.stringify(m.semantic_metadata)) : null,
+                m.created_at || Date.now(),
+                m.updated_at || Date.now(),
+                m.device_id || getDeviceId(),
+                0
+            );
+        }
+    });
+
+    insertTx(messages);
+    if (activeLeafId) {
+        setSyncMeta('active_leaf_id', activeLeafId);
+    } else if (messages.length > 0) {
+        setSyncMeta('active_leaf_id', messages[messages.length - 1].id);
+    } else {
+        setSyncMeta('active_leaf_id', null);
+    }
+    return { success: true, count: messages.length };
+}
+
 module.exports = {
     db: dbProxy,
     getDb: () => db,
@@ -1967,6 +2022,9 @@ module.exports = {
     getWorkspaceConversationLeaves,
     getWorkspaceMessageSiblings,
     deleteWorkspaceMessage,
+    getAllWorkspaceMessages,
+    resetWorkspaceConversation,
+    restoreWorkspaceConversation,
     getActiveLeafId,
     setActiveLeafId,
     addSharedMemory

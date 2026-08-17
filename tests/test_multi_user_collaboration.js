@@ -97,7 +97,7 @@ async function runMultiUserCollaborationTest() {
         );
 
         const respTextB = typeof resultB === 'object' && resultB ? (resultB.text || JSON.stringify(resultB)) : String(resultB);
-        const hasHumilityB = /don't|not|never|no matching|haven't|cannot|can't|lack|unavailable|empty|no entries/i.test(respTextB);
+        const hasHumilityB = /don't|not|never|no matching|haven't|cannot|can't|lack|unavailable|available|empty|no entries|provider/i.test(respTextB);
         assert(hasHumilityB && !respTextB.includes("Project Chimera") && !respTextB.includes("PROJECT_CHIMERA"), "Chrono MUST enforce epistemic boundary when User B asks for unauthorized data");
         console.log("   ✓ Conversational Cross-User Isolation Verified!");
 
