@@ -6,14 +6,13 @@
     "main": "main/main.js",
     "scripts": {
         "start": "electron .",
-        "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
-        "test": "set ELECTRON_RUN_AS_NODE=1 && electron tests/test_trust_killer_integration.js",
-        "test:all": "set ELECTRON_RUN_AS_NODE=1 && electron tests/test_trust_killer_integration.js && set ELECTRON_RUN_AS_NODE=1 && electron tests/test_sync.js",
-        "build": "npm run rebuild:electron && electron-builder",
-        "build:win": "npm run rebuild:electron && electron-builder --win",
-        "build:linux": "npm run rebuild:electron && electron-builder --linux",
-        "build:mac": "npm run rebuild:electron && electron-builder --mac",
-        "build:all": "npm run rebuild:electron && electron-builder --win --linux --mac"
+        "test": "node tests/run_master_regression_suite.js",
+        "test:all": "node tests/run_master_regression_suite.js",
+        "build": "electron-builder",
+        "build:win": "electron-builder --win",
+        "build:linux": "electron-builder --linux",
+        "build:mac": "electron-builder --mac",
+        "build:all": "electron-builder --win --linux --mac"
     },
     "devDependencies": {
         "electron": "^41.0.4",
