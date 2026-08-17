@@ -163,30 +163,44 @@
           </div>
         </div>
 
-        <!-- 7. Multi-Provider AI Routing -->
+        <!-- 7. Adaptive Interaction Layer -->
+        <div class="feature-card">
+          <div class="card-icon" style="color: #8b5cf6;">🧬</div>
+          <h3 class="card-title">Adaptive Interaction Layer</h3>
+          <p class="card-text">
+            Chrono discovers and adapts to each person's unique pacing without model retraining. Infers preferences with confidence and evidence counts, handles fragmented externalization, and treats corrections as evidence, not absolute truth.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Preference Inference</span>
+            <span class="tag">Self-Correction Loop</span>
+            <span class="tag">Zero Leakage</span>
+          </div>
+        </div>
+
+        <!-- 8. Multi-Provider AI Routing & Switcher -->
         <div class="feature-card" style="grid-column: span 2; border-color: rgba(99, 102, 241, 0.4); background: rgba(30, 41, 59, 0.85);">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div class="card-icon" style="color: #ec4899;">🌐</div>
             <span class="brand-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">Multi-Cloud Failover</span>
           </div>
-          <h3 class="card-title">Multi-Provider AI Gateway</h3>
+          <h3 class="card-title">Multi-Provider AI Gateway & Real-Time Switcher</h3>
           <p class="card-text">
-            Chrono runs intelligent multi-cloud LLM routing with sub-second failover. Plug in your own free API keys or run completely offline with local Ollama:
+            Chrono routes through an intelligent failover hierarchy: <strong>OpenRouter → Groq → Local Ollama → Google Gemini</strong>. Switch active models on-the-fly via the header diagnostics modal or run 100% offline:
           </p>
 
           <!-- Free Provider Setup Cards -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 20px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
             <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
               <div>
-                <div style="font-size: 11px; font-weight: 700; color: #60a5fa; text-transform: uppercase;">Google Gemini (Primary)</div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>gemini-flash-latest</code> • Fast reasoning</div>
+                <div style="font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase;">1. OpenRouter (Primary)</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>gpt-4o-mini / claude-3.5</code> • Multimodal</div>
               </div>
-              <a href="https://aistudio.google.com" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Get Free Gemini Key ↗</a>
+              <a href="https://openrouter.ai" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Get OpenRouter Key ↗</a>
             </div>
 
             <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
               <div>
-                <div style="font-size: 11px; font-weight: 700; color: #f59e0b; text-transform: uppercase;">Groq API (Sub-Second Fallback)</div>
+                <div style="font-size: 11px; font-weight: 700; color: #f59e0b; text-transform: uppercase;">2. Groq API (Secondary)</div>
                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>llama-3.3-70b-versatile</code> • Ultra-fast</div>
               </div>
               <a href="https://console.groq.com" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Get Free Groq Key ↗</a>
@@ -194,22 +208,31 @@
 
             <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
               <div>
-                <div style="font-size: 11px; font-weight: 700; color: #a855f7; text-transform: uppercase;">Local Ollama (Offline)</div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>http://localhost:11434</code> • 100% Private</div>
+                <div style="font-size: 11px; font-weight: 700; color: #a855f7; text-transform: uppercase;">3. Local Ollama (Offline)</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>llama3:latest</code> • 100% Private</div>
               </div>
               <a href="https://ollama.ai" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Download Ollama ↗</a>
+            </div>
+
+            <div style="background: #0b1120; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+              <div>
+                <div style="font-size: 11px; font-weight: 700; color: #10b981; text-transform: uppercase;">4. Google Gemini (Cloud)</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"><code>gemini-3.5-flash</code> • Deep reasoning</div>
+              </div>
+              <a href="https://aistudio.google.com" target="_blank" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; text-align: center; justify-content: center;">Get Gemini Key ↗</a>
             </div>
           </div>
 
           <div class="card-tags">
-            <span class="tag">Google Gemini</span>
+            <span class="tag">OpenRouter</span>
             <span class="tag">Groq LLaMA 3.3 70B</span>
-            <span class="tag">OpenRouter Gateway</span>
-            <span class="tag">Offline Ollama</span>
+            <span class="tag">Local Ollama</span>
+            <span class="tag">Google Gemini</span>
+            <span class="tag">1-Click Provider Switcher</span>
           </div>
         </div>
 
-        <!-- 8. Multi-Tenant Database & Cloud Sync -->
+        <!-- 9. Multi-Tenant Database & Cloud Sync -->
         <div class="feature-card">
           <div class="card-icon" style="color: #6366f1;">🛡️</div>
           <h3 class="card-title">Database & Realtime RLS</h3>
@@ -223,9 +246,9 @@
           </div>
         </div>
 
-        <!-- 9. Observatory Diagnostics -->
+        <!-- 10. Observatory Diagnostics -->
         <div class="feature-card">
-          <div class="card-icon" style="color: #06b6d4;">🛡️</div>
+          <div class="card-icon" style="color: #06b6d4;">📡</div>
           <h3 class="card-title">Observatory & System Diagnostics</h3>
           <p class="card-text">
             Real-time telemetry measuring cognitive pace, context entropy, expansion vs. completion metrics, active IPC channel registries, and background health audits with zero unhandled exceptions.
