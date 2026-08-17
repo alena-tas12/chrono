@@ -622,6 +622,79 @@ ipcMain.handle('new-chat', () => {
     return { success: true };
 });
 
+ipcMain.handle('backup-chat-history', async () => {
+    try {
+        const allMessages = db.getAllWorkspaceMessages();
+        const activeLeafId = db.getActiveLeafId();
+        const payload = {
+            version: '2.2.0',
+            timestamp: Date.now(),
+            date: new Date().toISOString(),
+            activeLeafId,
+            messages: allMessages
+        };
+
+        // Also save local file snapshot in app directory if possible
+        try {
+            const backupDir = path.join(app.getPath('userData'), 'chat_backups');
+            if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+            const backupPath = path.join(backupDir, `chat_backup_${Date.now()}.json`);
+            fs.writeFileSync(backupPath, JSON.stringify(payload, null, 2), 'utf8');
+        } catch(e) {
+            console.warn("Local chat backup snapshot warning:", e.message);
+        }
+
+        return { success: true, count: allMessages.length, payload };
+    } catch(e) {
+        console.error("backup-chat-history error:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('restore-chat-history', async (event, backupData) => {
+    try {
+        let messages = [];
+        let activeLeafId = null;
+
+        if (backupData && Array.isArray(backupData.messages)) {
+            messages = backupData.messages;
+            activeLeafId = backupData.activeLeafId || null;
+        } else if (Array.isArray(backupData)) {
+            messages = backupData;
+        } else {
+            // Try loading latest snapshot from chat_backups directory
+            const backupDir = path.join(app.getPath('userData'), 'chat_backups');
+            if (fs.existsSync(backupDir)) {
+                const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.json')).sort().reverse();
+                if (files.length > 0) {
+                    const content = JSON.parse(fs.readFileSync(path.join(backupDir, files[0]), 'utf8'));
+                    messages = content.messages || [];
+                    activeLeafId = content.activeLeafId || null;
+                }
+            }
+        }
+
+        if (!messages || messages.length === 0) {
+            return { success: false, error: "No messages found in backup payload" };
+        }
+
+        const res = db.restoreWorkspaceConversation(messages, activeLeafId);
+        return res;
+    } catch(e) {
+        console.error("restore-chat-history error:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('reset-chat-history', async () => {
+    try {
+        return db.resetWorkspaceConversation();
+    } catch(e) {
+        console.error("reset-chat-history error:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
 ipcMain.handle('switch-chat-leaf', (event, leafId) => {
     db.setActiveLeafId(leafId);
     return db.getWorkspaceBranch(leafId);

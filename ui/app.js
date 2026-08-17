@@ -296,7 +296,7 @@ window.startNewChat = async function() {
 async function loadChatHistory() {
     try {
         const history = await ipcRenderer.invoke('get-chat-history', 50);
-        const box = document.getElementById('chatBox') || document.getElementById('intelChatBox');
+        const box = document.getElementById('chatBox');
         if (!box) return;
 
         box.innerHTML = '';
@@ -307,14 +307,107 @@ async function loadChatHistory() {
         } else {
             try {
                 const greeting = await ipcRenderer.invoke('get-startup-greeting');
-                addChatMessage(greeting, 'ai');
+                addChatMessage(greeting || 'Good morning. Systems initialized.', 'ai');
             } catch (e) {
                 addChatMessage('Good morning. Systems initialized.', 'ai');
             }
         }
+        box.scrollTop = box.scrollHeight;
     } catch (e) {
         console.error("Failed to load chat history:", e);
     }
+}
+
+// 💾 BACKUP CHAT HISTORY
+async function backupChatHistory() {
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) {
+        showToast("IPC unavailable for chat backup", "error");
+        return;
+    }
+
+    try {
+        const res = await ipc.invoke('backup-chat-history');
+        if (res && res.success) {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.payload, null, 2));
+            const dlAnchor = document.createElement('a');
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `chrono_chat_backup_${dateStr}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+
+            showToast(`✓ Chat backup created successfully (${res.count} messages)`, "success");
+        } else {
+            showToast(`Failed to backup chat: ${res ? res.error : 'Unknown'}`, "error");
+        }
+    } catch (e) {
+        console.error("backupChatHistory error:", e);
+        showToast("Error creating chat backup", "error");
+    }
+}
+
+// 🗂️ RESTORE CHAT HISTORY
+async function restoreChatHistory() {
+    const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+    if (!ipc) {
+        showToast("IPC unavailable for restore", "error");
+        return;
+    }
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.style.display = 'none';
+
+    fileInput.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                const res = await ipc.invoke('restore-chat-history', parsed);
+                if (res && res.success) {
+                    showToast(`✓ Chat history restored successfully (${res.count} messages)`, "success");
+                    await loadChatHistory();
+                } else {
+                    showToast(`Failed to restore: ${res ? res.error : 'Invalid backup'}`, "error");
+                }
+            } catch (err) {
+                console.error("Restore parse error:", err);
+                showToast("Failed to parse backup JSON file", "error");
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    setTimeout(() => fileInput.remove(), 1000);
+}
+
+// ⚠️ RESET CHAT HISTORY
+async function resetChatHistory() {
+    showChronoConfirm("Are you sure you want to reset Chrono AI chat history? This will clear active conversation memory shame-free.", async () => {
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (!ipc) return;
+
+        try {
+            await ipc.invoke('reset-chat-history');
+            const box = document.getElementById('chatBox');
+            if (box) box.innerHTML = '';
+            
+            addChatMessage("Hello! Chrono AI memory has been reset and initialized shame-free. How can I help you today?", 'ai');
+            showToast("✓ AI Chat reset cleanly", "info");
+        } catch (e) {
+            console.error("resetChatHistory error:", e);
+            showToast("Error resetting chat", "error");
+        }
+    });
 }
 
 // 🔄 LOAD TASKS
@@ -6381,6 +6474,9 @@ window.switchCommsTab = switchCommsTab;
 window.selectCommsPeer = selectCommsPeer;
 window.editSelectedCommsPeer = editSelectedCommsPeer;
 window.sendCommsMessageAction = sendCommsMessageAction;
+window.backupChatHistory = backupChatHistory;
+window.restoreChatHistory = restoreChatHistory;
+window.resetChatHistory = resetChatHistory;
 window.startCallWithActivePeer = startCallWithActivePeer;
 window.startExternalCall = startExternalCall;
 window.clearCallHistoryAction = clearCallHistoryAction;
