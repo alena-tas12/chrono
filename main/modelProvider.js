@@ -51,6 +51,7 @@ class ModelProvider {
                 configured: !!openrouterKey,
                 key: openrouterKey,
                 model: 'openai/gpt-4o-mini',
+                models: ['openai/gpt-4o-mini', 'deepseek/deepseek-chat', 'meta-llama/llama-3.3-70b-instruct', 'qwen/qwen-2.5-72b-instruct', 'openai/gpt-4o'],
                 capabilities: ['text', 'vision'],
                 healthy: !!openrouterKey && now >= (this.cooldowns.openrouter || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.openrouter || 0) - now)
@@ -60,6 +61,7 @@ class ModelProvider {
                 configured: !!groqKey,
                 key: groqKey,
                 model: 'qwen/qwen3.6-27b',
+                models: ['qwen/qwen3.6-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound'],
                 capabilities: ['text', 'speech_to_text', 'text_to_speech', 'vision'],
                 healthy: !!groqKey && now >= (this.cooldowns.groq || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.groq || 0) - now)
@@ -69,6 +71,7 @@ class ModelProvider {
                 configured: true,
                 endpoint: ollamaEndpoint,
                 model: 'llama3:latest',
+                models: ['llama3:latest', 'granite3.1-dense:8b'],
                 capabilities: ['text'],
                 healthy: now >= (this.cooldowns.ollama || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.ollama || 0) - now)
@@ -78,6 +81,7 @@ class ModelProvider {
                 configured: !!geminiKey,
                 key: geminiKey,
                 model: 'gemini-3.6-flash',
+                models: ['gemini-3.6-flash', 'gemini-3.5-flash'],
                 capabilities: ['text', 'vision'],
                 healthy: !!geminiKey && now >= (this.cooldowns.gemini || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.gemini || 0) - now)
@@ -87,6 +91,7 @@ class ModelProvider {
                 configured: !!qwenKey,
                 key: qwenKey,
                 model: 'qwen-max',
+                models: ['qwen-max'],
                 capabilities: ['text', 'vision'],
                 healthy: !!qwenKey && now >= (this.cooldowns.qwen || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.qwen || 0) - now)
@@ -96,19 +101,33 @@ class ModelProvider {
                 configured: !!openaiKey,
                 key: openaiKey,
                 model: 'gpt-4o',
+                models: ['gpt-4o', 'gpt-4o-mini'],
                 capabilities: ['text', 'vision'],
                 healthy: !!openaiKey && now >= (this.cooldowns.openai || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.openai || 0) - now)
             },
             chrono_gateway: {
                 name: 'Chrono Cloud AI Gateway',
-                configured: true, // Seamless Hosted AI Gateway
+                configured: true,
                 endpoint: 'https://kimzqukobytxhzltytvx.supabase.co/functions/v1/ai-gateway',
-                model: 'gemini-flash-latest / llama-3.3-70b',
+                model: 'gemini-3.6-flash / qwen3.6-27b',
+                models: ['gemini-3.6-flash', 'qwen/qwen3.6-27b'],
                 capabilities: ['text', 'vision', 'speech_to_text'],
                 healthy: now >= (this.cooldowns.chrono_gateway || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.chrono_gateway || 0) - now)
             }
+        };
+    }
+
+    getProviderCredentials() {
+        const reg = this.getRegistry();
+        return {
+            gemini: { key: reg.gemini.key, model: reg.gemini.model },
+            groq: { key: reg.groq.key, model: reg.groq.model },
+            openrouter: { key: reg.openrouter.key, model: reg.openrouter.model },
+            openai: { key: reg.openai.key, model: reg.openai.model },
+            qwen: { key: reg.qwen.key, model: reg.qwen.model },
+            ollama: { endpoint: reg.ollama.endpoint, model: reg.ollama.model }
         };
     }
 
@@ -127,179 +146,134 @@ class ModelProvider {
     }
 
     /**
-     * Text Generation over Available Healthy Providers with User Preference & Auto-Failover
+     * Text Generation over Available Healthy Providers with Multi-Model Cascading
      */
     async generateResponse(messages) {
         const registry = this.getRegistry();
         const failoverLog = [];
 
-        // Primary user-specified failover order: OpenRouter -> Groq -> Local Ollama -> Google Gemini -> Gateway
         const defaultOrder = ['openrouter', 'groq', 'ollama', 'gemini', 'chrono_gateway', 'openai', 'qwen'];
         const preferred = this.getPreferredProvider();
-        let candidates = [...defaultOrder];
+        let targetProvider = null;
+        let targetModel = null;
 
-        if (preferred && preferred !== 'auto' && candidates.includes(preferred)) {
-            candidates = [preferred, ...candidates.filter(c => c !== preferred)];
+        if (preferred && preferred.includes(':')) {
+            const [p, m] = preferred.split(':');
+            targetProvider = p;
+            targetModel = m;
+        } else if (preferred && preferred !== 'auto') {
+            targetProvider = preferred;
+        }
+
+        let candidates = [...defaultOrder];
+        if (targetProvider && candidates.includes(targetProvider)) {
+            candidates = [targetProvider, ...candidates.filter(c => c !== targetProvider)];
         }
 
         for (const pKey of candidates) {
             const p = registry[pKey];
-
-            if (!p.configured) continue;
+            if (!p || !p.configured) continue;
 
             if (!p.healthy) {
                 failoverLog.push(`${p.name} in cooldown (${Math.ceil(p.cooldownRemainingMs / 1000)}s remaining) -> Skipping`);
                 continue;
             }
 
-            try {
-                if (pKey === 'gemini') {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${p.model}:generateContent?key=${p.key}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: messages.map(m => ({
-                                role: m.role === 'assistant' ? 'model' : 'user',
-                                parts: [{ text: m.role === 'system' ? `[SYSTEM DIRECTIVE]: ${m.content}` : m.content }]
-                            }))
-                        })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text && text.trim().length > 0) {
-                            return { text: text.trim(), providerUsed: p.name, modelUsed: p.model, failoverLog };
-                        }
-                    } else if (res.status === 429) {
-                        this.markRateLimited('gemini', 60000);
-                        failoverLog.push(`Gemini HTTP 429 Rate Limit -> Failing over to next provider`);
-                    } else {
-                        failoverLog.push(`Gemini HTTP ${res.status}`);
-                    }
-                }
+            const modelList = (targetProvider === pKey && targetModel)
+                ? [targetModel, ...(p.models || [p.model]).filter(m => m !== targetModel)]
+                : (p.models || [p.model]);
 
-                if (pKey === 'groq') {
-                    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${p.key}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ model: p.model, messages, max_tokens: 1000, temperature: 0.3 })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        const text = data?.choices?.[0]?.message?.content;
-                        if (text && text.trim().length > 0) {
-                            return { text: text.trim(), providerUsed: p.name, modelUsed: p.model, failoverLog };
-                        }
-                    } else if (res.status === 429) {
-                        this.markRateLimited('groq', 60000);
-                        failoverLog.push(`Groq HTTP 429 Rate Limit -> Failing over`);
-                    } else {
-                        failoverLog.push(`Groq HTTP ${res.status}`);
-                    }
-                }
-
-                if (pKey === 'openrouter') {
-                    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${p.key}`,
-                            'HTTP-Referer': 'https://chrono.app',
-                            'X-Title': 'Chrono Cognitive OS',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ model: p.model, messages, max_tokens: 1000, temperature: 0.3 })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        const text = data?.choices?.[0]?.message?.content;
-                        if (text && text.trim().length > 0) {
-                            return { text: text.trim(), providerUsed: p.name, modelUsed: p.model, failoverLog };
-                        }
-                    } else if (res.status === 429) {
-                        this.markRateLimited('openrouter', 60000);
-                        failoverLog.push(`OpenRouter HTTP 429 Rate Limit -> Failing over`);
-                    } else {
-                        failoverLog.push(`OpenRouter HTTP ${res.status}`);
-                    }
-                }
-
-                if (pKey === 'chrono_gateway') {
-                    // Chrono Hosted AI Gateway (Option B) - Server-side managed provider routing
-                    const serverGeminiKey = process.env.GEMINI_API_KEY || mainDb.getSyncMeta('gemini_api_key');
-                    const serverGroqKey = process.env.GROQ_API_KEY || mainDb.getSyncMeta('groq_api_key');
-
-                    if (serverGeminiKey) {
-                        try {
-                            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${serverGeminiKey}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    contents: messages.map(m => ({
-                                        role: m.role === 'assistant' ? 'model' : 'user',
-                                        parts: [{ text: m.role === 'system' ? `[SYSTEM DIRECTIVE]: ${m.content}` : m.content }]
-                                    }))
-                                })
-                            });
-                            if (res.ok) {
-                                const data = await res.json();
-                                const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                                if (text && text.trim().length > 0) {
-                                    return {
-                                        text: text.trim(),
-                                        providerUsed: 'Chrono AI Gateway (Google Gemini)',
-                                        modelUsed: 'gemini-3.5-flash',
-                                        failoverLog
-                                    };
-                                }
+            for (const modelName of modelList) {
+                try {
+                    if (pKey === 'gemini') {
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${p.key}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: messages.map(m => ({
+                                    role: m.role === 'assistant' ? 'model' : 'user',
+                                    parts: [{ text: m.role === 'system' ? `[SYSTEM DIRECTIVE]: ${m.content}` : m.content }]
+                                }))
+                            })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (text && text.trim().length > 0) {
+                                return { text: text.trim(), providerUsed: p.name, modelUsed: modelName, failoverLog };
                             }
-                        } catch (gwErr) {
-                            failoverLog.push(`Chrono Gateway Gemini route failed: ${gwErr.message}`);
+                        } else if (res.status === 429) {
+                            this.markRateLimited('gemini', 30000);
+                            failoverLog.push(`Gemini [${modelName}] HTTP 429 Rate Limit -> Cascading`);
+                        } else {
+                            failoverLog.push(`Gemini [${modelName}] HTTP ${res.status}`);
                         }
                     }
 
-                    if (serverGroqKey) {
-                        try {
-                            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${serverGroqKey}`, 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: 1000, temperature: 0.3 })
-                            });
-                            if (res.ok) {
-                                const data = await res.json();
-                                const text = data?.choices?.[0]?.message?.content;
-                                if (text && text.trim().length > 0) {
-                                    return {
-                                        text: text.trim(),
-                                        providerUsed: 'Chrono AI Gateway (Groq API)',
-                                        modelUsed: 'llama-3.3-70b-versatile',
-                                        failoverLog
-                                    };
-                                }
+                    if (pKey === 'groq') {
+                        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${p.key}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ model: modelName, messages, max_tokens: 1200, temperature: 0.3 })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const text = data?.choices?.[0]?.message?.content;
+                            if (text && text.trim().length > 0) {
+                                return { text: text.trim(), providerUsed: p.name, modelUsed: modelName, failoverLog };
                             }
-                        } catch (gwErr) {
-                            failoverLog.push(`Chrono Gateway Groq route failed: ${gwErr.message}`);
+                        } else if (res.status === 429) {
+                            this.markRateLimited('groq', 30000);
+                            failoverLog.push(`Groq [${modelName}] HTTP 429 Rate Limit -> Cascading`);
+                        } else {
+                            failoverLog.push(`Groq [${modelName}] HTTP ${res.status}`);
                         }
                     }
-                }
 
-                if (pKey === 'ollama') {
-                    const res = await fetch(`${p.endpoint}/v1/chat/completions`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ model: p.model, messages, stream: false })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        const text = data?.choices?.[0]?.message?.content;
-                        if (text && text.trim().length > 0) {
-                            return { text: text.trim(), providerUsed: p.name, modelUsed: p.model, failoverLog };
+                    if (pKey === 'openrouter') {
+                        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${p.key}`,
+                                'HTTP-Referer': 'https://chrono.app',
+                                'X-Title': 'Chrono Cognitive OS',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ model: modelName, messages, max_tokens: 1200, temperature: 0.3 })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const text = data?.choices?.[0]?.message?.content;
+                            if (text && text.trim().length > 0) {
+                                return { text: text.trim(), providerUsed: p.name, modelUsed: modelName, failoverLog };
+                            }
+                        } else if (res.status === 429) {
+                            this.markRateLimited('openrouter', 30000);
+                            failoverLog.push(`OpenRouter [${modelName}] HTTP 429 Rate Limit -> Cascading`);
+                        } else {
+                            failoverLog.push(`OpenRouter [${modelName}] HTTP ${res.status}`);
                         }
-                    } else {
-                        failoverLog.push(`Ollama HTTP ${res.status}`);
                     }
+
+                    if (pKey === 'ollama') {
+                        const res = await fetch(`${p.endpoint}/v1/chat/completions`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ model: modelName, messages, stream: false })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const text = data?.choices?.[0]?.message?.content;
+                            if (text && text.trim().length > 0) {
+                                return { text: text.trim(), providerUsed: p.name, modelUsed: modelName, failoverLog };
+                            }
+                        } else {
+                            failoverLog.push(`Ollama [${modelName}] HTTP ${res.status}`);
+                        }
+                    }
+                } catch (e) {
+                    failoverLog.push(`${p.name} [${modelName}] Exception: ${e.message}`);
                 }
-            } catch (e) {
-                failoverLog.push(`${p.name} Exception: ${e.message}`);
             }
         }
 

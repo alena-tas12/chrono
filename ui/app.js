@@ -296,11 +296,28 @@ window.showAiStatusModal = async function() {
                 const gmP = getP('gemini');
 
                 selectEl.innerHTML = `
-                    <option value="auto">⚡ Auto Failover (OpenRouter → Groq → Ollama → Gemini)</option>
-                    <option value="openrouter">🚀 OpenRouter API (${orP.configured ? '🟢 Ready' : '⚪ Not Configured'})</option>
-                    <option value="groq">⚡ Groq API (${grP.configured ? '🟢 Ready' : '⚪ Not Configured'})</option>
-                    <option value="ollama">🦙 Local Ollama (${olP.healthy ? '🟢 Ready' : '⚪ Local Offline'})</option>
-                    <option value="gemini">💎 Google Gemini (${gmP.configured ? '🟢 Ready' : '⚪ Not Configured'})</option>
+                    <option value="auto">⚡ Auto Failover (Multi-Model Cascading Across All Providers)</option>
+                    <optgroup label="🚀 OpenRouter Multi-Model (${orP.configured ? '🟢 Ready' : '⚪ Not Configured'})">
+                        <option value="openrouter:openai/gpt-4o-mini">OpenRouter: GPT-4o Mini (Default)</option>
+                        <option value="openrouter:deepseek/deepseek-chat">OpenRouter: DeepSeek Chat V3</option>
+                        <option value="openrouter:meta-llama/llama-3.3-70b-instruct">OpenRouter: LLaMA 3.3 70B Instruct</option>
+                        <option value="openrouter:qwen/qwen-2.5-72b-instruct">OpenRouter: Qwen 2.5 72B Instruct</option>
+                        <option value="openrouter:openai/gpt-4o">OpenRouter: GPT-4o Flagship</option>
+                    </optgroup>
+                    <optgroup label="⚡ Groq Ultra-Fast Cloud (${grP.configured ? '🟢 Ready' : '⚪ Not Configured'})">
+                        <option value="groq:qwen/qwen3.6-27b">Groq: Qwen 3.6 27B (Ultra-Fast)</option>
+                        <option value="groq:openai/gpt-oss-120b">Groq: GPT-OSS 120B (High Reasoning)</option>
+                        <option value="groq:openai/gpt-oss-20b">Groq: GPT-OSS 20B (Lightweight)</option>
+                        <option value="groq:groq/compound">Groq: Compound MoE</option>
+                    </optgroup>
+                    <optgroup label="💎 Google Gemini Cloud (${gmP.configured ? '🟢 Ready' : '⚪ Not Configured'})">
+                        <option value="gemini:gemini-3.6-flash">Google Gemini: Gemini 3.6 Flash (Reasoning)</option>
+                        <option value="gemini:gemini-3.5-flash">Google Gemini: Gemini 3.5 Flash</option>
+                    </optgroup>
+                    <optgroup label="🦙 Local Ollama (Offline Floor)">
+                        <option value="ollama:llama3:latest">Local Ollama: LLaMA 3 (100% Offline)</option>
+                        <option value="ollama:granite3.1-dense:8b">Local Ollama: Granite 3.1 8B</option>
+                    </optgroup>
                 `;
                 if (status.preferred) selectEl.value = status.preferred;
             }
