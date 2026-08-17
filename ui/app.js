@@ -5296,6 +5296,29 @@ function shareTimetableAction() {
     alert('👥 Timetable shared with active peer group (Permission: VIEW & DOWNLOAD).');
 }
 
+function triggerTimetableImport() {
+    const fileInput = document.getElementById('timetableFileInput');
+    if (fileInput) {
+        fileInput.click();
+    } else {
+        openTimetableModal();
+    }
+}
+
+function changePageIcon() {
+    const iconEl = document.getElementById('activePageIcon');
+    const currentIcon = iconEl ? iconEl.innerText : '📝';
+    const newIcon = prompt("Enter an emoji or icon for this page:", currentIcon);
+    if (newIcon && newIcon.trim()) {
+        if (iconEl) iconEl.innerText = newIcon.trim();
+        if (typeof activeKnowledgePageId !== 'undefined' && activeKnowledgePageId && typeof updatePageHeader === 'function') {
+            updatePageHeader();
+        }
+    }
+}
+
+window.triggerTimetableImport = triggerTimetableImport;
+window.changePageIcon = changePageIcon;
 window.openTimetableModal = openTimetableModal;
 window.closeTimetableModal = closeTimetableModal;
 window.parseRawTimetableText = parseRawTimetableText;
