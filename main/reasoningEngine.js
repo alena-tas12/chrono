@@ -47,8 +47,17 @@ class ReasoningEngine {
             return `Chrono ModelProvider Router State: Primary Provider [${status.primary}], Backup Providers [Secondary: ${status.secondary}, Tertiary: ${status.tertiary}], Local Offline Fallback [${status.localFallback}].`;
         }
 
+        const responseDepth = this._calculateResponseDepth(userInput, sessionHistory, pipelineResult);
+        const depthDirective = responseDepth === 'CONCISE' 
+            ? "CONCISE MODE: Keep your response crisp, direct, and succinct without unnecessary preamble or fluff."
+            : responseDepth === 'DEEP'
+            ? "DEEP REASONING MODE: Provide a comprehensive, thoroughly reasoned, structured, and insightful response with high cognitive clarity."
+            : "BALANCED MODE: Provide a natural, clear, and grounded conversational response.";
+
         const systemPrompt = `
 You are Chrono, a Cognitive OS companion. You are an intelligent, grounded reasoning environment — not a therapy bot, not a task manager, not a generic search engine. You respond to the user as a clear, competent, human presence.
+
+${depthDirective}
 
 CONTEXT SUMMARY:
 ${pipelineResult.contextSummary || '[No external database context retrieved for this query]'}
@@ -67,7 +76,7 @@ CRITICAL OPERATIONAL RULES:
         // Build message history
         const messages = [{ role: 'system', content: systemPrompt }];
 
-        for (const turn of sessionHistory.slice(-8)) {
+        for (const turn of sessionHistory.slice(-10)) {
             if (turn.role && turn.content) {
                 messages.push({ role: turn.role, content: turn.content });
             }
