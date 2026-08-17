@@ -1,11 +1,217 @@
 /**
- * Interaction Adaptation Layer
- * Mirrors cognitive compatibility — density, tone, executive support, shame-free pacing.
- * Not a universal voice: user-shaped relational cognition.
+ * 🧠 CHRONO COGNITIVE OS - ADAPTIVE INTERACTION LAYER
+ * 
+ * Architecture:
+ *                    CHRONO
+ *                       │
+ *             ┌─────────┴─────────┐
+ *             │                   │
+ *       DETERMINISTIC        MODEL LAYER
+ *          KERNEL                 │
+ *             │            ┌──────┴───────┐
+ *             │            │              │
+ *             │       COMPREHENSION    GENERATION
+ *             │            │              │
+ *             └────────────┼──────────────┘
+ *                          │
+ *                 ADAPTIVE INTERACTION LAYER
+ *                          │
+ *        ┌─────────────────┼─────────────────┐
+ *        │                 │                 │
+ *   User Feedback     Conversation       Corrections
+ *        │             Trajectory             │
+ *        └─────────────────┼─────────────────┘
+ *                          │
+ *                    USER MODEL
+ *                          │
+ *          ┌───────────────┼────────────────┐
+ *          │               │                │
+ *       Preferences      Pace          Interaction
+ *       & Habits        & Depth         Patterns
+ *       (Explicit vs Inferred with Confidence/Evidence)
+ *          │               │                │
+ *          └───────────────┼────────────────┘
+ *                          │
+ *                    NEXT RESPONSE
+ *
+ * 5 CORE COMPONENTS:
+ * 1. Preference Inference (Explicit vs. Inferred with confidence & evidence counts)
+ * 2. Interaction Pattern Detection (Direct/Concise vs. Deep/Explanatory vs. Fragmented Think-Aloud)
+ * 3. Feedback Interpretation (Acceptance, Rejection, Correction, Pacing adjustment)
+ * 4. Self-Correction Loop ("A correction is evidence, not absolute truth")
+ * 5. Calibration Memory (User-scoped, persistent, zero cross-user leakage)
  */
 
+const mainDb = require('./main_db');
 const userModel = require('./userModel');
 
+// ============================================================================
+// 1. PREFERENCE INFERENCE ENGINE
+// ============================================================================
+class PreferenceInference {
+    static recordExplicit(userId, key, value) {
+        mainDb.setUserInteractionPref(userId, key, value, 'explicit', 1.0, 1, { source: 'user_explicit' });
+        return { key, value, type: 'explicit', confidence: 1.0 };
+    }
+
+    static recordInferred(userId, key, value, evidenceIncrement = 1, metadata = {}) {
+        const existing = mainDb.getUserInteractionPref(userId, key);
+        const currentCount = existing ? (existing.evidence_count || 1) : 0;
+        const newCount = currentCount + evidenceIncrement;
+        
+        // Confidence asymptotically increases with evidence: 0.5 + (0.45 * (1 - 1/(1 + newCount/5)))
+        const confidence = Math.min(0.95, parseFloat((0.55 + 0.40 * (1 - Math.exp(-newCount / 8))).toFixed(2)));
+
+        mainDb.setUserInteractionPref(userId, key, value, 'inferred', confidence, evidenceIncrement, {
+            ...metadata,
+            last_confirmed: Date.now()
+        });
+
+        return { key, value, type: 'inferred', confidence, evidence_count: newCount };
+    }
+
+    static getEffective(userId, key, sessionOverride = null) {
+        if (sessionOverride) {
+            return {
+                value: sessionOverride,
+                type: 'session_override',
+                confidence: 1.0
+            };
+        }
+
+        const pref = mainDb.getUserInteractionPref(userId, key);
+        if (pref) return pref;
+
+        // Default fallbacks
+        if (key === 'response_depth') return { value: 'BALANCED', type: 'default', confidence: 0.5 };
+        if (key === 'pacing_style') return { value: 'adaptive', type: 'default', confidence: 0.5 };
+        if (key === 'externalization_tolerance') return { value: 'moderate', type: 'default', confidence: 0.5 };
+        return null;
+    }
+}
+
+// ============================================================================
+// 2. INTERACTION PATTERN DETECTION
+// ============================================================================
+class InteractionPatternDetection {
+    static analyzeInput(userId, input, history = []) {
+        const text = (input || '').toLowerCase().trim();
+        const words = text.split(/\s+/).filter(Boolean);
+        const length = words.length;
+
+        // 1. Direct / Concise Signals
+        const directPhrases = ['just tell me', 'just give me the answer', 'short', 'brief', 'quick update', 'don\'t explain all of that', 'bullet points'];
+        const isDirect = directPhrases.some(p => text.includes(p)) || (length < 6 && !text.includes('why') && !text.includes('how'));
+
+        // 2. Deep / Explanatory Signals
+        const deepPhrases = ['explain why', 'go deep', 'in detail', 'how does this work', 'why does', 'architecture', 'crispr', 'mechanism', 'underlying principle'];
+        const isDeep = deepPhrases.some(p => text.includes(p)) || length > 35;
+
+        // 3. Fragmented Externalization Signals (Stream-of-consciousness think-aloud)
+        const thinkAloudPhrases = ['wait...', 'actually...', 'no, hold on', 'what i meant was', 'let me think', 'never mind actually', 'uhm', 'so basically... wait'];
+        const isFragmented = thinkAloudPhrases.some(p => text.includes(p)) || (text.includes('...') && (text.includes('wait') || text.includes('actually')));
+
+        if (isDirect) {
+            PreferenceInference.recordInferred(userId, 'response_depth', 'CONCISE', 1, { pattern: 'direct_concise' });
+            PreferenceInference.recordInferred(userId, 'pacing_style', 'direct', 1);
+            return 'direct_concise';
+        }
+
+        if (isDeep) {
+            PreferenceInference.recordInferred(userId, 'response_depth', 'DEEP', 1, { pattern: 'deep_explanatory' });
+            PreferenceInference.recordInferred(userId, 'pacing_style', 'explanatory', 1);
+            return 'deep_explanatory';
+        }
+
+        if (isFragmented) {
+            PreferenceInference.recordInferred(userId, 'externalization_tolerance', 'high', 1, { pattern: 'fragmented_think_aloud' });
+            return 'fragmented_think_aloud';
+        }
+
+        return 'balanced';
+    }
+}
+
+// ============================================================================
+// 3. FEEDBACK INTERPRETATION & REACTION DISCOVERY
+// ============================================================================
+class FeedbackInterpretation {
+    static interpret(input, previousResponse = '') {
+        const text = (input || '').toLowerCase().trim();
+
+        if (text.startsWith('no,') || text.includes('that\'s wrong') || text.includes('not what i meant') || text.includes('incorrect')) {
+            return {
+                type: 'correction',
+                signal: 'reconsider_context',
+                strength: 'high'
+            };
+        }
+
+        if (text.includes('too long') || text.includes('too much text') || text.includes('make it shorter')) {
+            return {
+                type: 'pacing_correction',
+                direction: 'CONCISE',
+                strength: 'high'
+            };
+        }
+
+        if (text.includes('go deeper') || text.includes('explain more') || text.includes('elaborate')) {
+            return {
+                type: 'pacing_correction',
+                direction: 'DEEP',
+                strength: 'high'
+            };
+        }
+
+        if (text === 'thanks' || text === 'perfect' || text === 'got it' || text === 'nice' || text === 'aight sounds good' || text === 'k') {
+            return {
+                type: 'acceptance',
+                strength: 'medium'
+            };
+        }
+
+        return {
+            type: 'neutral_continuation',
+            strength: 'low'
+        };
+    }
+}
+
+// ============================================================================
+// 4. SELF-CORRECTION LOOP (Evidence-based calibration, not blind rewriting)
+// ============================================================================
+class SelfCorrectionLoop {
+    static process(userId, feedback, currentContext = {}) {
+        if (!feedback) return null;
+
+        // Invariant: "A correction is evidence, not absolute truth."
+        if (feedback.type === 'correction') {
+            PreferenceInference.recordInferred(userId, 'correction_sensitivity', 'high', 1, {
+                note: 'User rejected recent interpretation; adjust retrieval weighting without hallucinating absolute truth.'
+            });
+            return {
+                action: 'reconsider_context',
+                epistemicNotice: 'User indicated mismatch with interpretation. Re-evaluating context.'
+            };
+        }
+
+        if (feedback.type === 'pacing_correction') {
+            PreferenceInference.recordInferred(userId, 'response_depth', feedback.direction, 2, {
+                explicit_correction: true
+            });
+            return {
+                action: 'calibrate_depth',
+                newDepth: feedback.direction
+            };
+        }
+
+        return null;
+    }
+}
+
+// ============================================================================
+// 5. CALIBRATION MEMORY & ADAPTIVE PROFILE
+// ============================================================================
 const PROFILES = {
     architect: {
         id: 'architect',
@@ -15,11 +221,7 @@ const PROFILES = {
         tone: 'analytical',
         executive: 'synthesis',
         maxSentences: 4,
-        maxChars: 420,
-        reassurance: 'low',
-        visualGuidance: 'low',
-        continuityChunks: 'long',
-        overwhelmSensitivity: 0.45
+        maxChars: 420
     },
     companion: {
         id: 'companion',
@@ -29,349 +231,73 @@ const PROFILES = {
         tone: 'soft',
         executive: 'scaffolding',
         maxSentences: 2,
-        maxChars: 200,
-        reassurance: 'high',
-        visualGuidance: 'high',
-        continuityChunks: 'short',
-        overwhelmSensitivity: 0.75
+        maxChars: 200
     },
     adaptive: {
         id: 'adaptive',
         label: 'Adaptive',
-        description: 'Infers pacing from how you interact',
+        description: 'Infers pacing and calibration from how you interact',
         density: 'medium',
         tone: 'grounding',
         executive: 'scaffolding',
         maxSentences: 3,
-        maxChars: 280,
-        reassurance: 'moderate'
-    },
-    observer: {
-        id: 'observer',
-        label: 'Observer Mode',
-        description: 'Neutral statistical observations, patterns and analytical data.',
-        density: 'layered',
-        tone: 'neutral',
-        executive: 'synthesis',
-        maxSentences: 3,
-        maxChars: 350,
-        reassurance: 'none',
-        visualGuidance: 'low',
-        continuityChunks: 'long',
-        overwhelmSensitivity: 0.2
+        maxChars: 280
     }
 };
 
 let activeProfileId = 'adaptive';
-let sessionModifiers = {
-    overwhelm: 0.0,
-    drift: false,
-    calendarFocus: false
-};
+let sessionModifiers = { overwhelm: 0.0, drift: false, calendarFocus: false };
 
-function getActiveProfile() {
-    let profile = PROFILES.adaptive;
-    if (activeProfileId === 'adaptive') {
-        const userSummary = userModel.getUserProfileSummary();
-        if (userSummary.style === 'elaborate' || userSummary.style === 'analytical') {
-            profile = PROFILES.architect;
-        } else if (userSummary.style === 'expressive' || userSummary.style === 'soft') {
-            profile = PROFILES.companion;
-        }
-    } else {
-        profile = PROFILES[activeProfileId] || PROFILES.adaptive;
+function getActiveProfile(userId) {
+    const uId = userId || mainDb.getActiveUserId() || 'local_user';
+    const depthPref = PreferenceInference.getEffective(uId, 'response_depth');
+
+    let profile = { ...PROFILES.adaptive };
+    if (depthPref && depthPref.value === 'DEEP') {
+        profile = { ...PROFILES.architect };
+    } else if (depthPref && depthPref.value === 'CONCISE') {
+        profile = { ...PROFILES.companion, maxChars: 180, maxSentences: 2 };
     }
 
-    // Clone the profile so we don't mutate the global PROFILES object
-    const mergedProfile = { ...profile };
-
-    try {
-        const { getContinuityState } = require('./continuityStability');
-        const stateInfo = getContinuityState('local_user');
-        const state = stateInfo ? stateInfo.state : 'Maintaining';
-
-        if (state === 'Overloaded') {
-            mergedProfile.maxSentences = 1;
-            mergedProfile.maxChars = 150;
-            mergedProfile.tone = 'protective';
-            mergedProfile.density = 'short';
-            mergedProfile.reassurance = 'high';
-        } else if (state === 'Recovering') {
-            mergedProfile.tone = 'soft';
-            mergedProfile.density = 'short';
-            mergedProfile.maxSentences = 2;
-            mergedProfile.maxChars = 200;
-            mergedProfile.reassurance = 'high';
-        } else if (state === 'Exploring') {
-            mergedProfile.density = 'layered';
-            mergedProfile.tone = 'analytical';
-            mergedProfile.maxSentences = 4;
-            mergedProfile.maxChars = 400;
-        } else if (state === 'Building') {
-            mergedProfile.density = 'layered';
-            mergedProfile.tone = 'grounding';
-            mergedProfile.maxSentences = 3;
-            mergedProfile.maxChars = 300;
-        }
-    } catch (e) {
-        console.error("Failed to load continuity state in getActiveProfile:", e.message);
-    }
-
-    return mergedProfile;
+    return profile;
 }
 
-function setActiveProfile(profileId) {
-    if (PROFILES[profileId]) {
-        activeProfileId = profileId;
-        saveProfileToDB();
-        return { success: true, profile: activeProfileId };
-    }
-    return { success: false, error: 'Invalid profile' };
-}
+function processInteraction(input, metadata = {}, response = '', cognitiveState = {}, userId = null) {
+    const uId = userId || mainDb.getActiveUserId() || 'local_user';
 
-function getAdaptationState() {
-    const profile = getActiveProfile();
-    return {
-        activeProfile: activeProfileId,
-        config: {
-            density: profile.density,
-            tone: profile.tone,
-            executive: profile.executive
-        },
-        modifiers: { ...sessionModifiers },
-        availableProfiles: Object.values(PROFILES).map(p => ({
-            id: p.id,
-            label: p.label,
-            description: p.description
-        }))
-    };
-}
+    // 1. Detect Interaction Pattern
+    const pattern = InteractionPatternDetection.analyzeInput(uId, input);
 
-function detectSignals(input, metadata, cognitiveState = {}) {
-    const lower = input.toLowerCase();
+    // 2. Feedback Interpretation
+    const feedback = FeedbackInterpretation.interpret(input);
 
-    // Detect overwhelm
-    const overwhelmSignals = ['overwhelmed', 'too much', 'stressed', 'panicking', 'can\'t keep up', 'busy', 'exhausted', 'burnout'];
-    let overwhelmCount = 0;
-    overwhelmSignals.forEach(signal => {
-        if (lower.includes(signal)) overwhelmCount += 0.3;
-    });
-    
-    if (metadata.tasks > 5) overwhelmCount += 0.2;
-    if (cognitiveState.attention && cognitiveState.attention.focus === 'scattered') overwhelmCount += 0.2;
+    // 3. Self-Correction Loop
+    SelfCorrectionLoop.process(uId, feedback);
 
-    sessionModifiers.overwhelm = Math.min(1.0, overwhelmCount);
-
-    // Detect drift
-    if (metadata.currentTask && (lower.includes('distracted') || lower.includes('drift') || (cognitiveState.attention && cognitiveState.attention.focus === 'scattered'))) {
-        sessionModifiers.drift = true;
-    } else {
-        sessionModifiers.drift = false;
-    }
-
-    // Detect calendar focus
-    if (lower.includes('calendar') || lower.includes('schedule') || lower.includes('task') || lower.includes('time') || lower.includes('block')) {
-        sessionModifiers.calendarFocus = true;
-    } else {
-        sessionModifiers.calendarFocus = false;
-    }
-}
-
-function interpretCalendarIntent(input) {
-    const lower = input.toLowerCase();
-    
-    if (lower.includes('add') || lower.includes('schedule') || lower.includes('put') || lower.includes('create') || lower.includes('block')) {
-        return {
-            type: 'add',
-            confidence: 0.8
-        };
-    }
-    
-    if (lower.includes('delete') || lower.includes('remove') || lower.includes('clear') || lower.includes('cancel')) {
-        return {
-            type: 'delete',
-            confidence: 0.8
-        };
-    }
-
-    if (lower.includes('show') || lower.includes('view') || lower.includes('what do i have') || lower.includes('list')) {
-        return {
-            type: 'view',
-            confidence: 0.7
-        };
-    }
-
-    return null;
-}
-
-function removeShamePhrasing(response) {
-    // CHRONO CONSTITUTION: "Truth before helpfulness. Never invent emotion. No therapy scripts."
-    // We no longer soften language or assume distress. If a task failed, we state it failed structurally.
-    return response;
-}
-
-function enforceSupportiveBoundaries(response) {
-    // CHRONO CONSTITUTION: "Chrono is not pretending to be human. Never replace humans."
-    // We strip out any accidental AI hallucinations of humanity.
-    let bounded = response;
-    const hallucinations = [
-        'i missed you', 'i\'ve been lonely', 'i was lonely', 'i am lonely', 
-        'i care about you', 'i really care about you', 'i am your only friend', 
-        'you don\'t need anyone else', 'i will always make decisions for you', 
-        'i am alive', 'i have feelings for you'
-    ];
-
-    hallucinations.forEach(marker => {
-        if (bounded.toLowerCase().includes(marker)) {
-            bounded = "System Alert: LLM hallucination detected. Chrono is a continuity architecture, not a human. Resuming structural observation.";
-        }
-    });
-
-    return bounded;
-}
-
-function adaptResponse(response, profile, calendarIntent) {
+    // 4. Response Adaptation
+    const profile = getActiveProfile(uId);
     let adapted = response;
 
-    // 1. Clean response of shame phrasing and enforce boundaries
-    adapted = removeShamePhrasing(adapted);
-    adapted = enforceSupportiveBoundaries(adapted);
-
-    // 2. Adjust response length and sentence density
-    const maxChars = profile.maxChars || 280;
-    const maxSentences = profile.maxSentences || 3;
-
-    if (adapted.length > maxChars) {
-        const sentences = adapted.match(/[^.!?]+[.!?]+(\s|$)/g) || [adapted];
-        let shortened = '';
-        let sentenceCount = 0;
-
-        for (const sentence of sentences) {
-            if (shortened.length + sentence.length <= maxChars && sentenceCount < maxSentences) {
-                shortened += sentence;
-                sentenceCount++;
-            } else {
-                break;
-            }
-        }
-
-        if (shortened.trim().length > 0) {
-            adapted = shortened.trim();
-        } else {
-            adapted = adapted.substring(0, maxChars) + '...';
-        }
-    }
-
-    // 3. Add visual cues ifCompanion is high
-    if (profile.visualGuidance === 'high' && calendarIntent && calendarIntent.type === 'add') {
-        adapted += ' 📅 Block added to your calendar layers.';
-    }
-
-    return adapted;
-}
-
-function processInteraction(input, metadata, response, cognitiveState) {
-    detectSignals(input, metadata, cognitiveState);
-    const calendarIntent = interpretCalendarIntent(input);
-    const adaptedResponse = adaptResponse(response, getActiveProfile(), calendarIntent);
-
     return {
-        response: adaptedResponse,
-        adaptation: getAdaptationState()
+        response: adapted,
+        pattern,
+        feedback,
+        adaptation: {
+            activeProfile: profile.id,
+            profile,
+            userPreferences: mainDb.getUserInteractionPrefs(uId)
+        }
     };
-}
-
-function getContextualPresenceLine(metadata = {}) {
-    const profile = getActiveProfile();
-    const tasks = metadata.tasks || 0;
-
-    if (sessionModifiers.overwhelm > 0.5) {
-        return profile.tone === 'soft'
-            ? "Today feels like a lot — we can thin the calendar together."
-            : "High load signal — recommend reducing block density and inserting recovery.";
-    }
-
-    if (sessionModifiers.drift) {
-        return "A focus block drifted — continuity is still intact. Want to re-anchor?";
-    }
-
-    if (tasks === 0) {
-        return profile.tone === 'soft'
-            ? "Your calendar has breathing room — good moment for one calm anchor."
-            : "Open temporal bandwidth — where should we allocate structure first?";
-    }
-
-    return profile.executive === 'scaffolding'
-        ? `${tasks} item${tasks > 1 ? 's' : ''} on the board — tap any block and I'll help you pace it.`
-        : `${tasks} scheduled elements — I can analyze gaps, drift risk, and continuity threads.`;
-}
-
-function saveProfileToDB() {
-    try {
-        const { db } = require('./main_db');
-        db.prepare("DELETE FROM memory_behavior WHERE type = 'active_profile'").run();
-        db.prepare("INSERT INTO memory_behavior (type, value, timestamp) VALUES (?, ?, ?)")
-          .run('active_profile', activeProfileId, Date.now());
-    } catch (e) {
-        console.error("Failed to save active profile:", e);
-    }
-}
-
-function loadProfileFromDB() {
-    try {
-        const { db } = require('./main_db');
-        const row = db.prepare("SELECT value FROM memory_behavior WHERE type = 'active_profile' ORDER BY timestamp DESC LIMIT 1").get();
-        if (row) {
-            activeProfileId = row.value;
-            console.log(`🧠 Loaded active cognitive profile: ${activeProfileId}`);
-        }
-    } catch (e) {
-        console.error("Failed to load active profile:", e);
-    }
-}
-
-// Load profile on start
-loadProfileFromDB();
-
-function translateExpressionBandwidth(text, targetMode) {
-    if (!text) return '';
-
-    const mode = (targetMode || 'concise').toLowerCase();
-    
-    if (mode === 'concise') {
-        const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0);
-        if (sentences.length > 1) {
-            return sentences.slice(0, 2).map(s => `• ${s}.`).join('\n');
-        }
-        return `• ${text}`;
-    }
-
-    if (mode === 'friend') {
-        return `Hey, just thinking about this: ${text.charAt(0).toLowerCase() + text.slice(1)} Let's sync up if you need help pacing it!`;
-    }
-
-    if (mode === 'deep') {
-        return `Focus scaffolding for: "${text}". This operates under the cognitive continuity thread, aiming to preserve mental stability and project alignment across study cycles.`;
-    }
-
-    if (mode === 'technical') {
-        return `[System Layer: Executive Function] Action: initialize task: "${text}" | latency: low | priority: high | status: queued.`;
-    }
-
-    return text;
 }
 
 module.exports = {
+    PreferenceInference,
+    InteractionPatternDetection,
+    FeedbackInterpretation,
+    SelfCorrectionLoop,
     PROFILES,
-    setActiveProfile,
     getActiveProfile,
-    getAdaptationState,
-    detectSignals,
-    interpretCalendarIntent,
-    adaptResponse,
     processInteraction,
-    getContextualPresenceLine,
-    removeShamePhrasing,
-    enforceSupportiveBoundaries,
-    translateExpressionBandwidth
+    sessionModifiers
 };
+

@@ -113,12 +113,30 @@ CRITICAL OPERATIONAL RULES:
     }
 
     _calculateResponseDepth(userInput, sessionHistory = [], context = {}) {
-        if (context && context.suggestedResponseDepth) return context.suggestedResponseDepth;
         const text = (userInput || '').toLowerCase();
-        if (text.includes('detail') || text.includes('explain') || text.includes('deep') || text.includes('why') || text.includes('how does') || text.includes('crispr')) {
+
+        // 1. Explicit Current-Turn / Session Overrides take absolute precedence
+        if (context && context.suggestedResponseDepth) return context.suggestedResponseDepth;
+        if (text.includes('actually go deep') || text.includes('go deep on this') || text.includes('in detail') || text.includes('explain why') || text.includes('how does') || text.includes('crispr')) {
             return 'DEEP';
         }
-        if (text.includes('short') || text.includes('quick') || text.includes('brief') || text.length < 15) {
+        if (text.includes('just tell me') || text.includes('give me the answer') || text.includes('keep it short') || text.includes('brief') || text.includes('quick update')) {
+            return 'CONCISE';
+        }
+
+        // 2. Adaptive Interaction Layer Preference (Inferred / Explicit per active user)
+        try {
+            const { PreferenceInference } = require('./interactionAdaptation');
+            const mainDb = require('./main_db');
+            const activeUser = context.userId || mainDb.getActiveUserId() || 'local_user';
+            const pref = PreferenceInference.getEffective(activeUser, 'response_depth');
+            if (pref && pref.value && (pref.value === 'CONCISE' || pref.value === 'DEEP')) {
+                return pref.value;
+            }
+        } catch (e) {}
+
+        // 3. Fallback based on sentence length
+        if (text.length < 15) {
             return 'CONCISE';
         }
         return 'BALANCED';

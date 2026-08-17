@@ -580,6 +580,20 @@ function ensureSchemaOnDb(targetDb) {
             )
         `).run();
 
+        targetDb.prepare(`
+            CREATE TABLE IF NOT EXISTS user_interaction_profiles (
+                user_id TEXT NOT NULL,
+                pref_key TEXT NOT NULL,
+                pref_value TEXT NOT NULL,
+                pref_type TEXT NOT NULL DEFAULT 'inferred',
+                confidence REAL NOT NULL DEFAULT 1.0,
+                evidence_count INTEGER DEFAULT 1,
+                metadata TEXT,
+                updated_at INTEGER NOT NULL,
+                PRIMARY KEY(user_id, pref_key)
+            )
+        `).run();
+
         try { targetDb.prepare("ALTER TABLE tasks ADD COLUMN user_id TEXT").run(); } catch(e) {}
         try { targetDb.prepare("ALTER TABLE relationships ADD COLUMN phone TEXT").run(); } catch(e) {}
         try { targetDb.prepare("ALTER TABLE relationships ADD COLUMN country TEXT").run(); } catch(e) {}
@@ -1997,6 +2011,64 @@ function restoreWorkspaceConversation(messages, activeLeafId = null) {
     return { success: true, count: messages.length };
 }
 
+function setUserInteractionPref(userId, prefKey, prefValue, prefType = 'inferred', confidence = 0.8, evidenceCount = 1, metadata = {}) {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const uId = userId || activeUserId || 'local_user';
+    const now = Date.now();
+    const metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata || {});
+
+    activeDb.prepare(`
+        INSERT INTO user_interaction_profiles (user_id, pref_key, pref_value, pref_type, confidence, evidence_count, metadata, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, pref_key) DO UPDATE SET
+            pref_value = excluded.pref_value,
+            pref_type = excluded.pref_type,
+            confidence = excluded.confidence,
+            evidence_count = user_interaction_profiles.evidence_count + excluded.evidence_count,
+            metadata = excluded.metadata,
+            updated_at = excluded.updated_at
+    `).run(uId, prefKey, String(prefValue), prefType, confidence, evidenceCount, metaStr, now);
+
+    return { success: true };
+}
+
+function getUserInteractionPrefs(userId) {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const uId = userId || activeUserId || 'local_user';
+    const rows = activeDb.prepare("SELECT * FROM user_interaction_profiles WHERE user_id = ?").all(uId);
+    const prefs = {};
+    for (const r of rows) {
+        let meta = {};
+        try { meta = JSON.parse(r.metadata || '{}'); } catch(e) {}
+        prefs[r.pref_key] = {
+            value: r.pref_value,
+            type: r.pref_type,
+            confidence: r.confidence,
+            evidence_count: r.evidence_count,
+            metadata: meta,
+            updated_at: r.updated_at
+        };
+    }
+    return prefs;
+}
+
+function getUserInteractionPref(userId, prefKey) {
+    const activeDb = (typeof getDb === 'function' ? getDb() : db);
+    const uId = userId || activeUserId || 'local_user';
+    const row = activeDb.prepare("SELECT * FROM user_interaction_profiles WHERE user_id = ? AND pref_key = ?").get(uId, prefKey);
+    if (!row) return null;
+    let meta = {};
+    try { meta = JSON.parse(row.metadata || '{}'); } catch(e) {}
+    return {
+        value: row.pref_value,
+        type: row.pref_type,
+        confidence: row.confidence,
+        evidence_count: row.evidence_count,
+        metadata: meta,
+        updated_at: row.updated_at
+    };
+}
+
 module.exports = {
     db: dbProxy,
     getDb: () => db,
@@ -2027,6 +2099,9 @@ module.exports = {
     restoreWorkspaceConversation,
     getActiveLeafId,
     setActiveLeafId,
+    setUserInteractionPref,
+    getUserInteractionPrefs,
+    getUserInteractionPref,
     addSharedMemory
 };
 
