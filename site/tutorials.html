@@ -206,54 +206,43 @@
           </ul>
         </section>
 
-        <!-- Module 5: AI Providers -->
+        <!-- Module 5: AI Providers & Adaptive Interaction -->
         <section class="step-card" id="ai-gateway">
           <div class="step-header">
             <div class="step-num">5</div>
             <div>
-              <h2 class="step-title">AI Provider Setup & Free API Keys</h2>
-              <div style="font-size: 13px; color: var(--text-muted);">How to add your free Google Gemini, Groq, or OpenRouter keys to activate AI capabilities.</div>
+              <h2 class="step-title">AI Provider Routing & Adaptive Interaction Layer</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to configure multi-cloud failover, switch active models, and benefit from personalized interaction calibration.</div>
             </div>
           </div>
           <p class="card-text">
-            Chrono features an automatic multi-cloud AI routing pipeline with 100% free API options. If one provider encounters a rate limit, Chrono automatically fails over to the next healthy model with sub-second latency.
+            Chrono runs an intelligent multi-provider reasoning pipeline with sub-second failover across <strong>OpenRouter → Groq → Local Ollama → Google Gemini</strong>. You can switch your preferred reasoning engine on the fly directly inside the desktop interface.
           </p>
 
           <div class="explainer-box">
-            <div class="explainer-title">🔑 Where to Get Free API Keys (Zero Cost)</div>
+            <div class="explainer-title">🔑 Supported AI Providers</div>
             <div class="explainer-text">
-              • <strong>Google Gemini (Primary)</strong>: Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color: #60a5fa;">aistudio.google.com</a> (uses <code>gemini-flash-latest</code>).<br>
-              • <strong>Groq API (Ultra-Fast Fallback)</strong>: Get a free key at <a href="https://console.groq.com" target="_blank" style="color: #60a5fa;">console.groq.com</a> (uses <code>llama-3.3-70b-versatile</code>).<br>
-              • <strong>OpenRouter (Multi-Model)</strong>: Get a key at <a href="https://openrouter.ai" target="_blank" style="color: #60a5fa;">openrouter.ai</a>.<br>
-              • <strong>Local Ollama (Offline & Private)</strong>: Download from <a href="https://ollama.ai" target="_blank" style="color: #60a5fa;">ollama.ai</a> for 100% offline generation.
+              • <strong>OpenRouter API (Primary)</strong>: Multi-model access (GPT-4o Mini, Claude 3.5 Sonnet) at <a href="https://openrouter.ai" target="_blank" style="color: #60a5fa;">openrouter.ai</a>.<br>
+              • <strong>Groq API (Ultra-Fast Secondary)</strong>: Sub-second LLaMA 3.3 70B inference at <a href="https://console.groq.com" target="_blank" style="color: #60a5fa;">console.groq.com</a>.<br>
+              • <strong>Local Ollama (Offline Fallback)</strong>: 100% private, local offline execution from <a href="https://ollama.ai" target="_blank" style="color: #60a5fa;">ollama.ai</a>.<br>
+              • <strong>Google Gemini (Cloud Reasoning)</strong>: High-speed multimodal analysis via <a href="https://aistudio.google.com" target="_blank" style="color: #60a5fa;">aistudio.google.com</a>.
             </div>
           </div>
 
-          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Environment Configuration Template (<code>.env</code>):</h4>
-          
-          <div class="code-block">
-<div class="code-header"><span>File: .env (Project Root)</span><span>Config Template</span></div>
-<span class="code-comment"># 1. Google Gemini Reasoning Engine (Primary)</span>
-<span class="code-keyword">GEMINI_API_KEY</span>=<span class="code-string">"your_gemini_api_key_here"</span>
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">1-Click Interactive Provider Switcher</h4>
+          <p class="card-text">
+            Click the green status badge (e.g. <code>OpenRouter · Active</code>) in the top-right corner of the AI Chat header to open the <strong>Active Model & System Health</strong> diagnostics modal. From there, you can choose Auto-Failover or lock your preference to any connected provider.
+          </p>
 
-<span class="code-comment"># 2. Groq Ultra-Fast Sub-Second Model (Fallback)</span>
-<span class="code-keyword">GROQ_API_KEY</span>=<span class="code-string">"your_groq_api_key_here"</span>
-
-<span class="code-comment"># 3. OpenRouter Multi-Model Gateway (Optional)</span>
-<span class="code-keyword">OPENROUTER_API_KEY</span>=<span class="code-string">"your_openrouter_api_key_here"</span>
-
-<span class="code-comment"># 4. Local Offline Model (No internet required)</span>
-<span class="code-keyword">OLLAMA_ENDPOINT</span>=<span class="code-string">"http://localhost:11434"</span>
-          </div>
-
-          <div class="explainer-box">
-            <div class="explainer-title">⚡ How Failover Routing Works</div>
-            <div class="explainer-text">
-              1. Chrono sends queries to <strong>Google Gemini</strong> first.<br>
-              2. If Google Cloud is busy, it immediately executes through <strong>Groq (LLaMA 3.3 70B)</strong>.<br>
-              3. If completely offline, it routes to your local <strong>Ollama</strong> instance.
-            </div>
-          </div>
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">The Adaptive Interaction Layer</h4>
+          <p class="card-text">
+            Chrono continuously discovers each person's unique communication style (concise vs. deep vs. fragmented think-aloud) without retraining model weights:
+          </p>
+          <ul style="list-style: none; margin: 15px 0; display: flex; flex-direction: column; gap: 8px;">
+            <li>📊 <strong>Preference Inference</strong>: Inferred preferences gain confidence with repeated evidence, while session overrides (*"Actually go deep on this one"*) take instant priority.</li>
+            <li>🛡️ <strong>Self-Correction as Evidence</strong>: Saying *"No, that's wrong"* triggers context re-evaluation rather than blind fact destruction.</li>
+            <li>🔒 <strong>Zero Cross-User Leakage</strong>: All learned interaction calibrations are strictly scoped to the active user's local SQLite database.</li>
+          </ul>
         </section>
 
         <!-- Module 6: Supabase Realtime & RLS -->
