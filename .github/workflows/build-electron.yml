@@ -11,14 +11,14 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
+      - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Install deps
-        run: npm ci
-      - name: Build for Windows
-        run: npm run build:win
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build for Windows (.exe)
+        run: npx electron-builder --win
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -30,14 +30,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
+      - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Install deps
-        run: npm ci
-      - name: Build for Linux
-        run: npm run build:linux
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build for Linux (AppImage & deb)
+        run: npx electron-builder --linux
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -49,16 +49,17 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
+      - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Install deps
-        run: npm ci
-      - name: Build for macOS
-        run: npm run build:mac
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build for macOS (dmg & zip)
+        run: npx electron-builder --mac
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: chrono-macos
           path: dist/**
+
