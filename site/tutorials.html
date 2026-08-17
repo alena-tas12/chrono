@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrono OS — Step-by-Step Interactive Tutorials & Guides</title>
+  <meta name="description" content="Comprehensive step-by-step guides for installing, configuring, and mastering Chrono Cognitive OS, including AI providers, Chrono Spaces, and WebRTC communication.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Site Navigation -->
+  <header class="site-header">
+    <nav class="nav-container">
+      <a href="index.html" class="brand">
+        <div class="brand-icon">C</div>
+        <div class="brand-text">Chrono OS</div>
+        <span class="brand-badge">Tutorials</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html" class="nav-link">← Back to Overview</a></li>
+        <li><a href="#getting-started" class="nav-link">Getting Started</a></li>
+        <li><a href="#spaces-tutorial" class="nav-link">Chrono Spaces</a></li>
+        <li><a href="#comms-tutorial" class="nav-link">Communication OS</a></li>
+        <li><a href="#ai-gateway" class="nav-link">AI Providers</a></li>
+        <li><a href="#realtime-sync" class="nav-link">Realtime & RLS</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="index.html" class="btn btn-secondary">Landing Page</a>
+        <a href="https://github.com/alena10-05/chrono" target="_blank" class="btn btn-primary">GitHub Repo</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Tutorials Container -->
+  <div class="container">
+    <div class="tutorial-layout">
+      
+      <!-- Sticky Sidebar Table of Contents -->
+      <aside class="sidebar-sticky">
+        <div class="toc-title">Tutorial Modules</div>
+        <ul class="toc-list">
+          <li><a href="#getting-started" class="toc-link active">1. Quickstart & Setup</a></li>
+          <li><a href="#spaces-tutorial" class="toc-link">2. Chrono Spaces & PRs</a></li>
+          <li><a href="#comms-tutorial" class="toc-link">3. Communication OS & Calls</a></li>
+          <li><a href="#knowledge-tutorial" class="toc-link">4. Knowledge & Block Editor</a></li>
+          <li><a href="#ai-gateway" class="toc-link">5. AI Multi-Provider Config</a></li>
+          <li><a href="#realtime-sync" class="toc-link">6. Supabase Realtime & RLS</a></li>
+          <li><a href="#export-agency" class="toc-link">7. Data Export & Agency</a></li>
+        </ul>
+      </aside>
+
+      <!-- Main Tutorial Content Stream -->
+      <main>
+
+        <!-- Module 1: Getting Started -->
+        <section class="step-card" id="getting-started">
+          <div class="step-header">
+            <div class="step-num">1</div>
+            <div>
+              <h2 class="step-title">Quickstart & App Installation</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to install, launch, and initialize your local-first Chrono environment.</div>
+            </div>
+          </div>
+          <p class="card-text">
+            Chrono runs as a native desktop application powered by Electron and a high-performance local SQLite database. It requires zero cloud connectivity for its core offline features.
+          </p>
+          
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 1: Download & Run Installer</h4>
+          <p class="card-text">
+            Download the latest <code>Chrono Setup 2.2.0.exe</code> from GitHub Releases or compile from source using npm:
+          </p>
+          <div class="code-block">
+# Clone the repository
+git clone https://github.com/alena10-05/chrono.git
+cd chrono
+
+# Install dependencies
+npm install
+
+# Run Chrono in development mode
+npm run dev
+          </div>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 2: Sign In or Use Offline Mode</h4>
+          <p class="card-text">
+            You can immediately start creating notes, scheduling calendar tasks, and talking with local AI models in offline mode, or sign in via Google OAuth to enable cross-device Realtime replication.
+          </p>
+        </section>
+
+        <!-- Module 2: Chrono Spaces & Calendar PRs -->
+        <section class="step-card" id="spaces-tutorial">
+          <div class="step-header">
+            <div class="step-num">2</div>
+            <div>
+              <h2 class="step-title">Chrono Spaces & Collaborative Calendar PRs</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to create collaborative circles, propose events, and review calendar diffs.</div>
+            </div>
+          </div>
+          <p class="card-text">
+            Chrono Spaces operates like GitHub for human time and shared knowledge. Rather than letting anyone destructively overwrite your calendar, collaborators propose changes as "Calendar Pull Requests" (PRs).
+          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 1: Open Chrono Spaces Drawer</h4>
+          <p class="card-text">
+            Click the <strong>👥 Spaces</strong> icon in the left-hand navigation rail. Click <strong>+ Create Space</strong> and choose a space name (e.g., <em>"AI Research Circle"</em> or <em>"Study Group"</em>).
+          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 2: Propose an Event (Calendar PR)</h4>
+          <p class="card-text">
+            Any contributor can propose a workshop, sprint review, or study session. Chrono automatically analyzes all member calendars for temporal conflicts:
+          </p>
+          <div class="code-block">
+// Automated conflict detection during proposal
+{
+  "proposal_id": "pr_10827361",
+  "space_id": "spc_ai_research",
+  "title": "LLM Architecture Working Group",
+  "start_time": "2026-08-18T15:00:00Z",
+  "end_time": "2026-08-18T16:30:00Z",
+  "status": "CLEAN", // Or "CONFLICT_DETECTED"
+  "proposed_by": "Contributor"
+}
+          </div>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 3: Review and Merge Proposal</h4>
+          <p class="card-text">
+            The Space Owner clicks <strong>Review Proposal</strong>. If clean, clicking <strong>Merge into Calendar</strong> instantly adds the event to all member workspaces and notifies peers over Supabase Realtime.
+          </p>
+        </section>
+
+        <!-- Module 3: Communication OS & Calling -->
+        <section class="step-card" id="comms-tutorial">
+          <div class="step-header">
+            <div class="step-num">3</div>
+            <div>
+              <h2 class="step-title">Communication OS: WebRTC, Meet & WhatsApp</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to add contacts, initiate encrypted peer calls, and launch instant external meeting rooms.</div>
+            </div>
+          </div>
+          <p class="card-text">
+            Communication OS provides a unified hub for peer relationships, direct messaging, and high-quality voice/video calling.
+          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 1: Add a Contact</h4>
+          <p class="card-text">
+            Click the <strong>📞 Phone/Comms</strong> icon in the left rail. Click <strong>+ Add Contact</strong> to save their name, phone number, and relationship role.
+          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Step 2: Choose Communication Channel</h4>
+          <ul style="list-style: none; margin: 15px 0; display: flex; flex-direction: column; gap: 10px;">
+            <li><strong>📞 CALL / 📹 VIDEO</strong>: Initiates direct peer-to-peer WebRTC encrypted voice/video with live timer.</li>
+            <li><strong>🌐 MEET</strong>: Instantly creates a Google Meet room (<code>https://meet.google.com/new</code>) in your default browser.</li>
+            <li><strong>💬 WHATSAPP</strong>: Uses native <code>whatsapp://send?phone=...</code> protocol to open the WhatsApp desktop application directly.</li>
+            <li><strong>🍏 FACETIME</strong>: Launches native Apple FaceTime audio/video call using <code>facetime:&lt;phone&gt;</code>.</li>
+            <li><strong>Send (Encrypted DM)</strong>: Stores direct messages locally and broadcasts via Supabase Realtime topic <code>user:&lt;id&gt;:chat</code>.</li>
+          </ul>
+        </section>
+
+        <!-- Module 4: Knowledge Workspace -->
+        <section class="step-card" id="knowledge-tutorial">
+          <div class="step-header">
+            <div class="step-num">4</div>
+            <div>
+              <h2 class="step-title">Knowledge Workspace & Block-Based Note System</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to organize notes, create flashcards, manage trash recovery, and link knowledge graphs.</div>
+            </div>
+          </div>
+          <p class="card-text">
+            Chrono's Knowledge Pillar gives you a Notion and RemNote inspired block-based canvas.
+          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Key Actions & Workflows:</h4>
+          <ul style="list-style: none; margin: 15px 0; display: flex; flex-direction: column; gap: 8px;">
+            <li>📌 <strong>Pin / Unpin</strong>: Keep priority research documents at the top of your workspace.</li>
+            <li>📄 <strong>Duplicate Note</strong>: Clone complex structured templates with full block hierarchies.</li>
+            <li>🗑️ <strong>Soft-Delete & Trash Recovery</strong>: Delete notes safely without data loss. Restore anytime from the Trash tab or permanently purge.</li>
+            <li>🔗 <strong>Bi-Directional Backlinks</strong>: Type <code>[[Note Title]]</code> to link concepts and view interconnected references in the knowledge graph.</li>
+          </ul>
+        </section>
+
+        <!-- Module 5: AI Providers -->
+        <section class="step-card" id="ai-gateway">
+          <div class="step-header">
+            <div class="step-num">5</div>
+            <div>
+              <h2 class="step-title">Multi-Provider AI Gateway Configuration</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How to configure Google Gemini, Groq, OpenRouter, or local offline Ollama models.</div>
+            </div>
+          </div>
+          <p class="card-text">
+            Chrono features an automatic multi-cloud AI routing pipeline that guarantees zero downtime. If one provider is rate-limited, it automatically falls back to the next healthy provider in milliseconds.
+          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">Configuring Your <code>.env</code> File:</h4>
+          <div class="code-block">
+# Primary AI Provider: Google Gemini
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Secondary Fast Cloud: Groq API
+GROQ_API_KEY=your_groq_api_key_here
+
+# Tertiary Cloud: OpenRouter
+OPENROUTER_API_KEY=your_openrouter_key_here
+
+# Local Offline Floor: Ollama
+OLLAMA_ENDPOINT=http://localhost:11434
+          </div>
+          <p class="card-text" style="margin-top: 15px;">
+            Chrono will automatically route conversational queries through <strong>Google Gemini (gemini-flash-latest)</strong>, falling back to <strong>Groq (llama-3.3-70b-versatile)</strong> with sub-second latency.
+          </p>
+        </section>
+
+        <!-- Module 6: Supabase Realtime & RLS -->
+        <section class="step-card" id="realtime-sync">
+          <div class="step-header">
+            <div class="step-num">6</div>
+            <div>
+              <h2 class="step-title">Supabase Realtime & Row-Level Security (RLS)</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">How multi-user data synchronization and topic security work.</div>
+            </div>
+          </div>
+          <p class="card-text">
+            Chrono uses WebSocket channels over Supabase Realtime to broadcast live calendar proposals, knowledge updates, and direct messages.
+          </p>
+
+          <h4 style="margin: 20px 0 10px 0; color: var(--text-main); font-size: 15px;">RLS Topic Enforcement:</h4>
+          <p class="card-text">
+            All Realtime broadcast channels enforce PostgreSQL Row-Level Security based on channel topics:
+          </p>
+          <div class="code-block">
+-- Personal user event channel: user:&lt;userId&gt;:events
+-- Shared calendar space channel: calendar:&lt;calendarId&gt;:events
+CREATE POLICY "Enforce Realtime Topic Authorization"
+ON realtime.messages
+FOR SELECT
+TO authenticated
+USING (
+  (split_part(realtime.topic(), ':', 1) = 'user' AND split_part(realtime.topic(), ':', 2) = auth.uid()::text)
+  OR
+  (split_part(realtime.topic(), ':', 1) = 'calendar' AND EXISTS (
+    SELECT 1 FROM public.calendar_members 
+    WHERE calendar_members.calendar_id::text = split_part(realtime.topic(), ':', 2)
+      AND calendar_members.user_id::text = auth.uid()::text
+  ))
+);
+          </div>
+        </section>
+
+        <!-- Module 7: Data Export & Agency -->
+        <section class="step-card" id="export-agency">
+          <div class="step-header">
+            <div class="step-num">7</div>
+            <div>
+              <h2 class="step-title">Data Escape Hatch & Human Agency</h2>
+              <div style="font-size: 13px; color: var(--text-muted);">Contract 14: You own your data. Export your entire life dataset anytime.</div>
+            </div>
+          </div>
+          <p class="card-text">
+            In adherence with Chrono's Core Contract 14 (Primacy of Human Agency), you are never locked into the platform. You can export your entire database at any time in industry-standard open formats:
+          </p>
+          <ul style="list-style: none; margin: 15px 0; display: flex; flex-direction: column; gap: 8px;">
+            <li>📅 <strong>iCalendar (.ics)</strong>: Export all events, timetable schedules, and recurring milestones to Google Calendar, Apple Calendar, or Outlook.</li>
+            <li>📊 <strong>CSV Format</strong>: Export relationship contacts, call histories, and task databases.</li>
+            <li>📦 <strong>JSON Universal Export</strong>: Complete machine-readable backup of all notes, blocks, memory belief graphs, and conversation trees.</li>
+          </ul>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="brand" style="margin-bottom: 14px;">
+            <div class="brand-icon">C</div>
+            <div class="brand-text">Chrono OS</div>
+          </div>
+          <p style="font-size: 13px; color: var(--text-faint); max-width: 320px; line-height: 1.6;">
+            A local-first, privacy-grounded cognitive operating system designed for human life continuity, deep focus, and collaborative intelligence.
+          </p>
+        </div>
+        <div>
+          <div class="footer-title">Navigation</div>
+          <ul class="footer-links">
+            <li><a href="index.html" class="footer-link">Home Overview</a></li>
+            <li><a href="#getting-started" class="footer-link">Quickstart</a></li>
+            <li><a href="#spaces-tutorial" class="footer-link">Chrono Spaces</a></li>
+            <li><a href="#comms-tutorial" class="footer-link">Communication OS</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-title">Architecture</div>
+          <ul class="footer-links">
+            <li><a href="#ai-gateway" class="footer-link">Multi-Provider AI</a></li>
+            <li><a href="#realtime-sync" class="footer-link">Realtime & RLS</a></li>
+            <li><a href="#export-agency" class="footer-link">Human Agency Export</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-title">GitHub & Releases</div>
+          <ul class="footer-links">
+            <li><a href="https://github.com/alena10-05/chrono" target="_blank" class="footer-link">Source Code</a></li>
+            <li><a href="https://github.com/alena10-05/chrono/releases" target="_blank" class="footer-link">Download Executable</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div>Chrono OS • Step-by-Step Documentation • v2.2.0</div>
+        <div>100% Privacy & Local Data Ownership</div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
