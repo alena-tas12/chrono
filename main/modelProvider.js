@@ -355,36 +355,40 @@ class ModelProvider {
         const providersList = Object.entries(reg).map(([key, val]) => ({
             key,
             name: val.name,
-            configured: val.configured,
-            healthy: val.healthy,
+            configured: !!val.configured,
+            healthy: !!val.healthy,
             model: val.model,
             cooldownRemainingMs: val.cooldownRemainingMs || 0
         }));
 
-        let activeName = 'Local Ollama';
-        let activeModel = 'llama3:latest';
-        let activeKey = 'ollama';
+        let activeName = 'None Configured';
+        let activeModel = 'Add API Key in Settings';
+        let activeKey = 'none';
 
-        if (preferred && preferred !== 'auto' && reg[preferred] && reg[preferred].healthy && reg[preferred].configured) {
+        if (preferred && preferred !== 'auto' && reg[preferred] && reg[preferred].configured) {
             activeName = reg[preferred].name;
             activeModel = reg[preferred].model;
             activeKey = preferred;
-        } else if (reg.openrouter.healthy && reg.openrouter.configured) {
+        } else if (reg.openrouter && reg.openrouter.configured && reg.openrouter.healthy) {
             activeName = reg.openrouter.name;
             activeModel = reg.openrouter.model;
             activeKey = 'openrouter';
-        } else if (reg.groq.healthy && reg.groq.configured) {
+        } else if (reg.groq && reg.groq.configured && reg.groq.healthy) {
             activeName = reg.groq.name;
             activeModel = reg.groq.model;
             activeKey = 'groq';
-        } else if (reg.gemini.healthy && reg.gemini.configured) {
+        } else if (reg.gemini && reg.gemini.configured && reg.gemini.healthy) {
             activeName = reg.gemini.name;
             activeModel = reg.gemini.model;
             activeKey = 'gemini';
-        } else if (reg.ollama.healthy) {
+        } else if (reg.ollama && reg.ollama.configured && reg.ollama.healthy) {
             activeName = reg.ollama.name;
             activeModel = reg.ollama.model;
             activeKey = 'ollama';
+        } else if (reg.chrono_gateway && reg.chrono_gateway.configured && reg.chrono_gateway.healthy) {
+            activeName = reg.chrono_gateway.name;
+            activeModel = reg.chrono_gateway.model;
+            activeKey = 'chrono_gateway';
         }
 
         return {
@@ -392,6 +396,7 @@ class ModelProvider {
             activeKey,
             activeName,
             activeModel,
+            isConfigured: activeKey !== 'none',
             failoverOrder: 'OpenRouter → Groq → Ollama → Gemini',
             providers: providersList
         };

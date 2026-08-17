@@ -265,16 +265,46 @@ window.showAiStatusModal = async function() {
     if (!modal) return;
     modal.style.display = 'flex';
     try {
-        const status = await ipcRenderer.invoke('get-active-provider-status');
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (!ipc) return;
+        const status = await ipc.invoke('get-active-provider-status');
         const activeProvEl = document.getElementById('statusProviderName');
         const activeModEl = document.getElementById('statusModelName');
         const selectEl = document.getElementById('preferredAiProviderSelect');
         const chainEl = document.getElementById('statusFailoverChain');
 
         if (status) {
-            if (activeProvEl) activeProvEl.innerText = status.activeName || 'OpenRouter API';
-            if (activeModEl) activeModEl.innerText = status.activeModel || 'openai/gpt-4o-mini';
-            if (selectEl && status.preferred) selectEl.value = status.preferred;
+            if (status.isConfigured && status.activeKey !== 'none') {
+                if (activeProvEl) {
+                    activeProvEl.innerText = status.activeName || 'OpenRouter API';
+                    activeProvEl.style.color = '#10b981';
+                }
+                if (activeModEl) activeModEl.innerText = status.activeModel || 'openai/gpt-4o-mini';
+            } else {
+                if (activeProvEl) {
+                    activeProvEl.innerText = 'No Provider Configured';
+                    activeProvEl.style.color = '#f59e0b';
+                }
+                if (activeModEl) activeModEl.innerText = 'Add Gemini, Groq, or OpenRouter key in Settings';
+            }
+
+            if (selectEl && status.providers) {
+                const getP = (k) => status.providers.find(p => p.key === k) || {};
+                const orP = getP('openrouter');
+                const grP = getP('groq');
+                const olP = getP('ollama');
+                const gmP = getP('gemini');
+
+                selectEl.innerHTML = `
+                    <option value="auto">⚡ Auto Failover (OpenRouter → Groq → Ollama → Gemini)</option>
+                    <option value="openrouter">🚀 OpenRouter API (${orP.configured ? '🟢 Ready' : '⚪ Not Configured'})</option>
+                    <option value="groq">⚡ Groq API (${grP.configured ? '🟢 Ready' : '⚪ Not Configured'})</option>
+                    <option value="ollama">🦙 Local Ollama (${olP.healthy ? '🟢 Ready' : '⚪ Local Offline'})</option>
+                    <option value="gemini">💎 Google Gemini (${gmP.configured ? '🟢 Ready' : '⚪ Not Configured'})</option>
+                `;
+                if (status.preferred) selectEl.value = status.preferred;
+            }
+
             if (chainEl) chainEl.innerText = status.failoverOrder || 'OpenRouter → Groq → Ollama → Gemini';
             updateAiHeaderBadge(status.activeName, status.activeModel);
         }
@@ -293,27 +323,49 @@ window.changePreferredProviderAction = async function() {
     if (!selectEl) return;
     const provider = selectEl.value;
     try {
-        const res = await ipcRenderer.invoke('set-preferred-provider', provider);
+        const ipc = window.ipcRenderer || (window.electronAPI ? window.electronAPI.ipcRenderer : null);
+        if (!ipc) return;
+        const res = await ipc.invoke('set-preferred-provider', provider);
         if (res && res.success) {
-            const status = await ipcRenderer.invoke('get-active-provider-status');
+            const status = await ipc.invoke('get-active-provider-status');
             const activeProvEl = document.getElementById('statusProviderName');
             const activeModEl = document.getElementById('statusModelName');
-            if (activeProvEl) activeProvEl.innerText = status.activeName || provider;
-            if (activeModEl) activeModEl.innerText = status.activeModel || '';
-            updateAiHeaderBadge(status.activeName, status.activeModel);
-            showToast(`✓ Preferred AI Provider set to: ${status.activeName}`, 'success');
+            
+            if (status && status.isConfigured && status.activeKey !== 'none') {
+                if (activeProvEl) {
+                    activeProvEl.innerText = status.activeName;
+                    activeProvEl.style.color = '#10b981';
+                }
+                if (activeModEl) activeModEl.innerText = status.activeModel || '';
+                updateAiHeaderBadge(status.activeName, status.activeModel);
+                showToast(`✓ Preferred AI Provider set to: ${status.activeName}`, 'success');
+            } else {
+                if (activeProvEl) {
+                    activeProvEl.innerText = provider === 'auto' ? 'Auto Failover' : provider;
+                    activeProvEl.style.color = '#f59e0b';
+                }
+                if (activeModEl) activeModEl.innerText = 'No API key configured for this provider in Settings';
+                updateAiHeaderBadge('NONE', 'Offline');
+                showToast(`⚠️ Preferred provider set to ${provider}. Please configure its API key in Settings.`, 'info');
+            }
         }
     } catch (e) {
         console.error("changePreferredProviderAction error:", e);
-        showToast("Failed to change provider", "error");
+        showToast("Failed to change provider: " + e.message, "error");
     }
 };
 
 window.updateAiHeaderBadge = function(providerName, modelName) {
     const badgeEl = document.getElementById('headerAiModelName');
     if (badgeEl) {
-        const shortName = (providerName || 'AI').replace(' API', '').replace('Google ', '');
-        badgeEl.innerText = `${shortName} · Active`;
+        if (!providerName || providerName === 'None Configured' || providerName === 'NONE') {
+            badgeEl.innerText = 'NONE · Offline';
+            badgeEl.style.color = '#f59e0b';
+        } else {
+            const shortName = (providerName || 'AI').replace(' API', '').replace('Google ', '');
+            badgeEl.innerText = `${shortName} · Active`;
+            badgeEl.style.color = '#10b981';
+        }
     }
 };
 
