@@ -968,6 +968,14 @@ ipcMain.handle('save-provider-keys', async (event, keys) => {
     return { success: true };
 });
 
+ipcMain.handle('get-active-provider-status', async () => {
+    return modelProvider.getActiveProviderStatus();
+});
+
+ipcMain.handle('set-preferred-provider', async (event, providerKey) => {
+    return modelProvider.setPreferredProvider(providerKey);
+});
+
 ipcMain.handle('groq-transcribe-audio', async (event, { audioBuffer, filename }) => {
     const groqService = require('./groqService');
     try {

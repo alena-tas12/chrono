@@ -265,15 +265,22 @@ window.showAiStatusModal = async function() {
     if (!modal) return;
     modal.style.display = 'flex';
     try {
-        const audit = await ipcRenderer.invoke('audit-providers');
+        const status = await ipcRenderer.invoke('get-active-provider-status');
         const activeProvEl = document.getElementById('statusProviderName');
         const activeModEl = document.getElementById('statusModelName');
-        if (audit && audit.providers) {
-            const active = audit.providers.find(p => p.healthy && p.configured) || { name: 'Google Gemini', model: 'gemini-3.5-flash' };
-            if (activeProvEl) activeProvEl.innerText = active.name;
-            if (activeModEl) activeModEl.innerText = active.model;
+        const selectEl = document.getElementById('preferredAiProviderSelect');
+        const chainEl = document.getElementById('statusFailoverChain');
+
+        if (status) {
+            if (activeProvEl) activeProvEl.innerText = status.activeName || 'OpenRouter API';
+            if (activeModEl) activeModEl.innerText = status.activeModel || 'openai/gpt-4o-mini';
+            if (selectEl && status.preferred) selectEl.value = status.preferred;
+            if (chainEl) chainEl.innerText = status.failoverOrder || 'OpenRouter → Groq → Ollama → Gemini';
+            updateAiHeaderBadge(status.activeName, status.activeModel);
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("showAiStatusModal error:", e);
+    }
 };
 
 window.closeAiStatusModal = function() {
@@ -281,10 +288,32 @@ window.closeAiStatusModal = function() {
     if (modal) modal.style.display = 'none';
 };
 
+window.changePreferredProviderAction = async function() {
+    const selectEl = document.getElementById('preferredAiProviderSelect');
+    if (!selectEl) return;
+    const provider = selectEl.value;
+    try {
+        const res = await ipcRenderer.invoke('set-preferred-provider', provider);
+        if (res && res.success) {
+            const status = await ipcRenderer.invoke('get-active-provider-status');
+            const activeProvEl = document.getElementById('statusProviderName');
+            const activeModEl = document.getElementById('statusModelName');
+            if (activeProvEl) activeProvEl.innerText = status.activeName || provider;
+            if (activeModEl) activeModEl.innerText = status.activeModel || '';
+            updateAiHeaderBadge(status.activeName, status.activeModel);
+            showToast(`✓ Preferred AI Provider set to: ${status.activeName}`, 'success');
+        }
+    } catch (e) {
+        console.error("changePreferredProviderAction error:", e);
+        showToast("Failed to change provider", "error");
+    }
+};
+
 window.updateAiHeaderBadge = function(providerName, modelName) {
     const badgeEl = document.getElementById('headerAiModelName');
     if (badgeEl) {
-        badgeEl.innerText = `${providerName || 'Gemini'} · Active`;
+        const shortName = (providerName || 'AI').replace(' API', '').replace('Google ', '');
+        badgeEl.innerText = `${shortName} · Active`;
     }
 };
 
@@ -6500,6 +6529,7 @@ window.sendCommsMessageAction = sendCommsMessageAction;
 window.backupChatHistory = backupChatHistory;
 window.restoreChatHistory = restoreChatHistory;
 window.resetChatHistory = resetChatHistory;
+window.changePreferredProviderAction = changePreferredProviderAction;
 window.startCallWithActivePeer = startCallWithActivePeer;
 window.startExternalCall = startExternalCall;
 window.clearCallHistoryAction = clearCallHistoryAction;

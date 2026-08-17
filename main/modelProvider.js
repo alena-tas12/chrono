@@ -36,7 +36,7 @@ class ModelProvider {
      * Provider Capability Registry & Health Check
      */
     getRegistry() {
-        const geminiKey = mainDb.getSyncMeta('gemini_api_key') || process.env.GEMINI_API_KEY || null;
+        const geminiKey = mainDb.getSyncMeta('gemini_api_key') || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || 'AQ.Ab8RN6K-ibKKOKtlp8cmX7XZm_xfbhZ_3YUuzL6gYybytpelSA';
         const groqKey = mainDb.getSyncMeta('groq_api_key') || process.env.GROQ_API_KEY || null;
         const openrouterKey = mainDb.getSyncMeta('openrouter_api_key') || process.env.OPENROUTER_API_KEY || null;
         const qwenKey = mainDb.getSyncMeta('qwen_api_key') || process.env.QWEN_API_KEY || null;
@@ -46,14 +46,14 @@ class ModelProvider {
         const now = Date.now();
 
         return {
-            gemini: {
-                name: 'Google Gemini',
-                configured: !!geminiKey,
-                key: geminiKey,
-                model: 'gemini-flash-latest',
+            openrouter: {
+                name: 'OpenRouter API',
+                configured: !!openrouterKey,
+                key: openrouterKey,
+                model: 'openai/gpt-4o-mini',
                 capabilities: ['text', 'vision'],
-                healthy: !!geminiKey && now >= (this.cooldowns.gemini || 0),
-                cooldownRemainingMs: Math.max(0, (this.cooldowns.gemini || 0) - now)
+                healthy: !!openrouterKey && now >= (this.cooldowns.openrouter || 0),
+                cooldownRemainingMs: Math.max(0, (this.cooldowns.openrouter || 0) - now)
             },
             groq: {
                 name: 'Groq API',
@@ -64,14 +64,23 @@ class ModelProvider {
                 healthy: !!groqKey && now >= (this.cooldowns.groq || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.groq || 0) - now)
             },
-            openrouter: {
-                name: 'OpenRouter API',
-                configured: !!openrouterKey,
-                key: openrouterKey,
-                model: 'openai/gpt-4o-mini',
+            ollama: {
+                name: 'Local Ollama',
+                configured: true,
+                endpoint: ollamaEndpoint,
+                model: 'llama3:latest',
+                capabilities: ['text'],
+                healthy: now >= (this.cooldowns.ollama || 0),
+                cooldownRemainingMs: Math.max(0, (this.cooldowns.ollama || 0) - now)
+            },
+            gemini: {
+                name: 'Google Gemini',
+                configured: !!geminiKey,
+                key: geminiKey,
+                model: 'gemini-flash-latest',
                 capabilities: ['text', 'vision'],
-                healthy: !!openrouterKey && now >= (this.cooldowns.openrouter || 0),
-                cooldownRemainingMs: Math.max(0, (this.cooldowns.openrouter || 0) - now)
+                healthy: !!geminiKey && now >= (this.cooldowns.gemini || 0),
+                cooldownRemainingMs: Math.max(0, (this.cooldowns.gemini || 0) - now)
             },
             qwen: {
                 name: 'Qwen API',
@@ -93,23 +102,23 @@ class ModelProvider {
             },
             chrono_gateway: {
                 name: 'Chrono Cloud AI Gateway',
-                configured: true, // Seamless Hosted AI Gateway (Option B)
+                configured: true, // Seamless Hosted AI Gateway
                 endpoint: 'https://kimzqukobytxhzltytvx.supabase.co/functions/v1/ai-gateway',
                 model: 'gemini-flash-latest / llama-3.3-70b',
                 capabilities: ['text', 'vision', 'speech_to_text'],
                 healthy: now >= (this.cooldowns.chrono_gateway || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.chrono_gateway || 0) - now)
-            },
-            ollama: {
-                name: 'Local Ollama',
-                configured: true,
-                endpoint: ollamaEndpoint,
-                model: 'llama3:latest',
-                capabilities: ['text'],
-                healthy: now >= (this.cooldowns.ollama || 0),
-                cooldownRemainingMs: Math.max(0, (this.cooldowns.ollama || 0) - now)
             }
         };
+    }
+
+    getPreferredProvider() {
+        return mainDb.getSyncMeta('preferred_model_provider') || 'auto';
+    }
+
+    setPreferredProvider(providerKey) {
+        mainDb.setSyncMeta('preferred_model_provider', providerKey);
+        return { success: true, preferred: providerKey };
     }
 
     markRateLimited(provider, durationMs = 60000) {
@@ -118,14 +127,20 @@ class ModelProvider {
     }
 
     /**
-     * Text Generation over Available Healthy Providers with Auto-Failover
+     * Text Generation over Available Healthy Providers with User Preference & Auto-Failover
      */
     async generateResponse(messages) {
         const registry = this.getRegistry();
         const failoverLog = [];
 
-        // Candidate pool ordering: Google Gemini -> Groq API -> OpenRouter -> Chrono Gateway -> Local Ollama
-        const candidates = ['gemini', 'groq', 'openrouter', 'chrono_gateway', 'ollama', 'openai', 'qwen'];
+        // Primary user-specified failover order: OpenRouter -> Groq -> Local Ollama -> Google Gemini -> Gateway
+        const defaultOrder = ['openrouter', 'groq', 'ollama', 'gemini', 'chrono_gateway', 'openai', 'qwen'];
+        const preferred = this.getPreferredProvider();
+        let candidates = [...defaultOrder];
+
+        if (preferred && preferred !== 'auto' && candidates.includes(preferred)) {
+            candidates = [preferred, ...candidates.filter(c => c !== preferred)];
+        }
 
         for (const pKey of candidates) {
             const p = registry[pKey];
@@ -331,14 +346,54 @@ class ModelProvider {
     /**
      * Report Active Provider Status & Routing Hierarchy
      */
+    /**
+     * Report Active Provider Status & Routing Hierarchy
+     */
     getActiveProviderStatus() {
         const reg = this.getRegistry();
+        const preferred = this.getPreferredProvider();
+        const providersList = Object.entries(reg).map(([key, val]) => ({
+            key,
+            name: val.name,
+            configured: val.configured,
+            healthy: val.healthy,
+            model: val.model,
+            cooldownRemainingMs: val.cooldownRemainingMs || 0
+        }));
+
+        let activeName = 'Local Ollama';
+        let activeModel = 'llama3:latest';
+        let activeKey = 'ollama';
+
+        if (preferred && preferred !== 'auto' && reg[preferred] && reg[preferred].healthy && reg[preferred].configured) {
+            activeName = reg[preferred].name;
+            activeModel = reg[preferred].model;
+            activeKey = preferred;
+        } else if (reg.openrouter.healthy && reg.openrouter.configured) {
+            activeName = reg.openrouter.name;
+            activeModel = reg.openrouter.model;
+            activeKey = 'openrouter';
+        } else if (reg.groq.healthy && reg.groq.configured) {
+            activeName = reg.groq.name;
+            activeModel = reg.groq.model;
+            activeKey = 'groq';
+        } else if (reg.gemini.healthy && reg.gemini.configured) {
+            activeName = reg.gemini.name;
+            activeModel = reg.gemini.model;
+            activeKey = 'gemini';
+        } else if (reg.ollama.healthy) {
+            activeName = reg.ollama.name;
+            activeModel = reg.ollama.model;
+            activeKey = 'ollama';
+        }
+
         return {
-            primary: reg.openrouter.configured ? `OpenRouter API (${reg.openrouter.model})` : 'Not Configured',
-            secondary: reg.groq.configured ? `Groq API (${reg.groq.model})` : 'Not Configured',
-            tertiary: reg.chrono_gateway.configured ? 'Chrono Cloud AI Gateway' : 'Not Configured',
-            localFallback: reg.ollama.configured ? `Ollama (${reg.ollama.model})` : 'Not Configured',
-            active: reg.openrouter.healthy && reg.openrouter.configured ? 'OpenRouter' : (reg.groq.healthy && reg.groq.configured ? 'Groq' : 'Local Ollama')
+            preferred,
+            activeKey,
+            activeName,
+            activeModel,
+            failoverOrder: 'OpenRouter → Groq → Ollama → Gemini',
+            providers: providersList
         };
     }
 }
