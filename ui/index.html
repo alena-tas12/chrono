@@ -1473,34 +1473,48 @@
 
     <!-- 🛰️ AI STATUS & DIAGNOSTICS MODAL -->
     <div class="onboardingOverlay" id="aiStatusModal" style="display: none; justify-content: center; align-items: center; z-index: 10001; background: rgba(0,0,0,0.6);">
-        <div class="onboardingCard" style="max-width: 440px; width: 90%; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+        <div class="onboardingCard" style="max-width: 460px; width: 92%; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 14px; padding: 22px; box-shadow: 0 16px 40px rgba(0,0,0,0.4);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                 <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
                     🛰️ Active Model & System Health
                 </h3>
-                <button onclick="closeAiStatusModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; font-weight:700;">×</button>
+                <button onclick="closeAiStatusModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; font-weight:700;">✕</button>
             </div>
-            <div id="aiStatusModalBody" style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
-                <div style="padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div style="color: var(--text-muted); font-size: 10px; text-transform: uppercase;">Active Reasoning Provider</div>
-                    <div id="statusProviderName" style="font-size: 14px; font-weight: 700; color: #10b981; margin-top: 2px;">Google Gemini</div>
-                    <div id="statusModelName" style="font-size: 11px; color: var(--text-main);">gemini-3.5-flash</div>
+            <div id="aiStatusModalBody" style="display: flex; flex-direction: column; gap: 12px; font-size: 12px;">
+                <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid var(--border-color);">
+                    <div style="color: var(--text-muted); font-size: 10px; text-transform: uppercase; font-weight: 700;">Active Reasoning Engine</div>
+                    <div id="statusProviderName" style="font-size: 15px; font-weight: 800; color: #10b981; margin-top: 3px;">OpenRouter API</div>
+                    <div id="statusModelName" style="font-size: 11px; color: var(--text-muted);">openai/gpt-4o-mini</div>
                 </div>
+
+                <!-- Provider Selector -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-main);">Choose Preferred AI Provider:</label>
+                    <select id="preferredAiProviderSelect" onchange="changePreferredProviderAction()" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: var(--text-main); font-size: 12px; font-weight: 600; cursor: pointer;">
+                        <option value="auto">⚡ Auto Failover (OpenRouter → Groq → Ollama → Gemini)</option>
+                        <option value="openrouter">🚀 OpenRouter API (openai/gpt-4o-mini)</option>
+                        <option value="groq">⚡ Groq API (llama-3.3-70b-versatile)</option>
+                        <option value="ollama">🦙 Local Ollama (llama3:latest - Offline)</option>
+                        <option value="gemini">💎 Google Gemini (gemini-3.5-flash)</option>
+                    </select>
+                </div>
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; border: 1px solid var(--border-color);">
-                        <div style="color: var(--text-muted); font-size: 10px;">COGNITIVE KERNEL</div>
-                        <div style="font-weight: 700; color: #10b981;">🟢 Online</div>
+                    <div style="padding: 8px 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="color: var(--text-muted); font-size: 10px; font-weight: 700;">COGNITIVE KERNEL</div>
+                        <div style="font-weight: 800; color: #10b981; margin-top: 2px;">🟢 Online</div>
                     </div>
-                    <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; border: 1px solid var(--border-color);">
-                        <div style="color: var(--text-muted); font-size: 10px;">FAILOVER CHAIN</div>
-                        <div style="font-weight: 700; color: var(--text-main);">Gemini → Groq → OpenRouter</div>
+                    <div style="padding: 8px 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="color: var(--text-muted); font-size: 10px; font-weight: 700;">FAILOVER CHAIN</div>
+                        <div id="statusFailoverChain" style="font-size: 11px; font-weight: 700; color: var(--text-main); margin-top: 2px;">OpenRouter → Groq → Ollama → Gemini</div>
                     </div>
                 </div>
-                <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted);">
-                    <strong>Boundary Notice:</strong> Memory, calendar permissions, and task actions remain strictly governed by Chrono OS. The cloud provider acts solely as the language reasoning generator.
+
+                <div style="padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+                    <strong>Cognitive Invariant:</strong> Memory, calendar permissions, and task mutations remain strictly governed by Chrono OS. The cloud provider acts solely as the language reasoning generator.
                 </div>
             </div>
-            <button class="headerButton" onclick="closeAiStatusModal()" style="margin-top: 14px; width: 100%; padding: 8px; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
+            <button class="primary" onclick="closeAiStatusModal()" style="margin-top: 14px; width: 100%; padding: 9px; border-radius: 8px; font-weight: 700; cursor: pointer;">Done</button>
         </div>
     </div>
 
