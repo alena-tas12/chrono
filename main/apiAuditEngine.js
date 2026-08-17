@@ -20,10 +20,10 @@ async function auditAllProviders() {
     const auditReport = [];
 
     // 1. Google Gemini API Audit
-    const geminiKey = mainDb.getSyncMeta('gemini_api_key');
+    const geminiKey = mainDb.getSyncMeta('gemini_api_key') || process.env.GEMINI_API_KEY || 'AQ.Ab8RN6JoRSA44ABC5OGoS5q_VglpuNDzQOuWdeC4fPaD0nccnw';
     if (geminiKey) {
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: "Chrono Audit Ping" }] }] })
@@ -32,7 +32,7 @@ async function auditAllProviders() {
                 auditReport.push({
                     provider: 'Google Gemini API',
                     state: 'LIVE_CONNECTED',
-                    model: 'gemini-3.5-flash',
+                    model: 'gemini-3.6-flash',
                     evidence: 'HTTP 200 OK Live Response',
                     quotaPolicy: 'Governed by Google Cloud Project billing tier. Consumer AI Pro sub does NOT grant API quota. Rate limits (RPM/TPM/RPD) must be monitored in Google AI Studio.'
                 });
@@ -40,7 +40,7 @@ async function auditAllProviders() {
                 auditReport.push({
                     provider: 'Google Gemini API',
                     state: 'OFFLINE',
-                    model: 'gemini-3.5-flash',
+                    model: 'gemini-3.6-flash',
                     evidence: `HTTP ${res.status}`,
                     quotaPolicy: 'Check project quota or billing status in Google AI Studio.'
                 });
@@ -49,7 +49,7 @@ async function auditAllProviders() {
             auditReport.push({
                 provider: 'Google Gemini API',
                 state: 'OFFLINE',
-                model: 'gemini-3.5-flash',
+                model: 'gemini-3.6-flash',
                 evidence: `Network Error: ${e.message}`,
                 quotaPolicy: 'Network connectivity or endpoint error.'
             });
@@ -136,19 +136,19 @@ async function auditAllProviders() {
     }
 
     // 5. Groq API Audit (Secondary)
-    const groqKey = mainDb.getSyncMeta('groq_api_key') || process.env.GROQ_API_KEY;
+    const groqKey = mainDb.getSyncMeta('groq_api_key') || process.env.GROQ_API_KEY || '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';
     if (groqKey) {
         try {
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
+                body: JSON.stringify({ model: 'qwen/qwen3.6-27b', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
             });
             if (res.status === 200) {
                 auditReport.push({
                     provider: 'Groq API',
                     state: 'LIVE_CONNECTED',
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'qwen/qwen3.6-27b',
                     evidence: 'HTTP 200 OK Live Response',
                     quotaPolicy: 'Ultra-fast inference & Whisper STT audio transcription.'
                 });
@@ -156,7 +156,7 @@ async function auditAllProviders() {
                 auditReport.push({
                     provider: 'Groq API',
                     state: 'CONFIGURED',
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'qwen/qwen3.6-27b',
                     evidence: `HTTP ${res.status}`,
                     quotaPolicy: 'Governed by Groq API quotas.'
                 });
@@ -165,7 +165,7 @@ async function auditAllProviders() {
             auditReport.push({
                 provider: 'Groq API',
                 state: 'OFFLINE',
-                model: 'llama-3.3-70b-versatile',
+                model: 'qwen/qwen3.6-27b',
                 evidence: e.message,
                 quotaPolicy: 'Network error connecting to Groq.'
             });
@@ -174,26 +174,31 @@ async function auditAllProviders() {
         auditReport.push({
             provider: 'Groq API',
             state: 'NOT_CONFIGURED',
-            model: 'llama-3.3-70b-versatile',
+            model: 'qwen/qwen3.6-27b',
             evidence: 'No key in sync_meta',
             quotaPolicy: 'Fast secondary LLM & speech-to-text transcription.'
         });
     }
 
     // 6. OpenRouter API Audit (Tertiary)
-    const openrouterKey = mainDb.getSyncMeta('openrouter_api_key') || process.env.OPENROUTER_API_KEY;
+    const openrouterKey = mainDb.getSyncMeta('openrouter_api_key') || process.env.OPENROUTER_API_KEY || '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';
     if (openrouterKey) {
         try {
             const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${openrouterKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'openai/gpt-4o', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
+                headers: {
+                    'Authorization': `Bearer ${openrouterKey}`,
+                    'HTTP-Referer': 'https://chrono.app',
+                    'X-Title': 'Chrono Cognitive OS',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
             });
             if (res.status === 200) {
                 auditReport.push({
                     provider: 'OpenRouter API',
                     state: 'LIVE_CONNECTED',
-                    model: 'openai/gpt-4o',
+                    model: 'openai/gpt-4o-mini',
                     evidence: 'HTTP 200 OK Live Response',
                     quotaPolicy: 'Universal multi-model gateway router.'
                 });
@@ -201,7 +206,7 @@ async function auditAllProviders() {
                 auditReport.push({
                     provider: 'OpenRouter API',
                     state: 'CONFIGURED',
-                    model: 'openai/gpt-4o',
+                    model: 'openai/gpt-4o-mini',
                     evidence: `HTTP ${res.status}`,
                     quotaPolicy: 'Governed by OpenRouter balance/quotas.'
                 });
@@ -210,7 +215,7 @@ async function auditAllProviders() {
             auditReport.push({
                 provider: 'OpenRouter API',
                 state: 'OFFLINE',
-                model: 'openai/gpt-4o',
+                model: 'openai/gpt-4o-mini',
                 evidence: e.message,
                 quotaPolicy: 'Network error connecting to OpenRouter.'
             });
@@ -219,7 +224,7 @@ async function auditAllProviders() {
         auditReport.push({
             provider: 'OpenRouter API',
             state: 'NOT_CONFIGURED',
-            model: 'openai/gpt-4o',
+            model: 'openai/gpt-4o-mini',
             evidence: 'No key in sync_meta',
             quotaPolicy: 'Multi-model universal routing.'
         });
@@ -232,16 +237,16 @@ async function testProviderConnection(provider, keyOverride = null) {
     const startTime = Date.now();
     try {
         if (provider === 'gemini') {
-            const key = keyOverride || mainDb.getSyncMeta('gemini_api_key');
+            const key = keyOverride || mainDb.getSyncMeta('gemini_api_key') || process.env.GEMINI_API_KEY || 'AQ.Ab8RN6JoRSA44ABC5OGoS5q_VglpuNDzQOuWdeC4fPaD0nccnw';
             if (!key) return { success: false, status: 400, message: "Gemini API key is missing." };
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: "Test ping" }] }] })
             });
             const latencyMs = Date.now() - startTime;
             if (res.status === 200) {
-                return { success: true, status: 200, latencyMs, message: `Connected to Google Gemini (gemini-3.5-flash) in ${latencyMs}ms!` };
+                return { success: true, status: 200, latencyMs, message: `Connected to Google Gemini (gemini-3.6-flash) in ${latencyMs}ms!` };
             } else {
                 const text = await res.text();
                 return { success: false, status: res.status, latencyMs, message: `Gemini HTTP ${res.status}: ${text.substring(0, 150)}` };
@@ -249,16 +254,16 @@ async function testProviderConnection(provider, keyOverride = null) {
         }
 
         if (provider === 'groq') {
-            const key = keyOverride || mainDb.getSyncMeta('groq_api_key') || process.env.GROQ_API_KEY;
+            const key = keyOverride || mainDb.getSyncMeta('groq_api_key') || process.env.GROQ_API_KEY || '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';
             if (!key) return { success: false, status: 400, message: "Groq API key is missing." };
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
+                body: JSON.stringify({ model: 'qwen/qwen3.6-27b', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
             });
             const latencyMs = Date.now() - startTime;
             if (res.status === 200) {
-                return { success: true, status: 200, latencyMs, message: `Connected to Groq API (llama-3.3-70b-versatile) in ${latencyMs}ms!` };
+                return { success: true, status: 200, latencyMs, message: `Connected to Groq API (qwen/qwen3.6-27b) in ${latencyMs}ms!` };
             } else {
                 const text = await res.text();
                 return { success: false, status: res.status, latencyMs, message: `Groq HTTP ${res.status}: ${text.substring(0, 150)}` };
@@ -266,7 +271,7 @@ async function testProviderConnection(provider, keyOverride = null) {
         }
 
         if (provider === 'openrouter') {
-            const key = keyOverride || mainDb.getSyncMeta('openrouter_api_key') || process.env.OPENROUTER_API_KEY;
+            const key = keyOverride || mainDb.getSyncMeta('openrouter_api_key') || process.env.OPENROUTER_API_KEY || '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';
             if (!key) return { success: false, status: 400, message: "OpenRouter API key is missing." };
             const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
@@ -276,11 +281,11 @@ async function testProviderConnection(provider, keyOverride = null) {
                     'X-Title': 'Chrono Cognitive OS',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ model: 'openai/gpt-4o', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
+                body: JSON.stringify({ model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Ping' }], max_tokens: 5 })
             });
             const latencyMs = Date.now() - startTime;
             if (res.status === 200) {
-                return { success: true, status: 200, latencyMs, message: `Connected to OpenRouter API (openai/gpt-4o) in ${latencyMs}ms!` };
+                return { success: true, status: 200, latencyMs, message: `Connected to OpenRouter API (openai/gpt-4o-mini) in ${latencyMs}ms!` };
             } else {
                 const text = await res.text();
                 return { success: false, status: res.status, latencyMs, message: `OpenRouter HTTP ${res.status}: ${text.substring(0, 150)}` };

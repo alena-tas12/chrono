@@ -36,9 +36,9 @@ class ModelProvider {
      * Provider Capability Registry & Health Check
      */
     getRegistry() {
-        const geminiKey = mainDb.getSyncMeta('gemini_api_key') || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || 'AQ.Ab8RN6K-ibKKOKtlp8cmX7XZm_xfbhZ_3YUuzL6gYybytpelSA';
-        const groqKey = mainDb.getSyncMeta('groq_api_key') || process.env.GROQ_API_KEY || null;
-        const openrouterKey = mainDb.getSyncMeta('openrouter_api_key') || process.env.OPENROUTER_API_KEY || null;
+        const geminiKey = mainDb.getSyncMeta('gemini_api_key') || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || 'AQ.Ab8RN6JoRSA44ABC5OGoS5q_VglpuNDzQOuWdeC4fPaD0nccnw';
+        const groqKey = mainDb.getSyncMeta('groq_api_key') || process.env.GROQ_API_KEY || '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';
+        const openrouterKey = mainDb.getSyncMeta('openrouter_api_key') || process.env.OPENROUTER_API_KEY || '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';
         const qwenKey = mainDb.getSyncMeta('qwen_api_key') || process.env.QWEN_API_KEY || null;
         const openaiKey = mainDb.getSyncMeta('openai_api_key') || process.env.OPENAI_API_KEY || null;
         const ollamaEndpoint = mainDb.getSyncMeta('ollama_endpoint') || 'http://localhost:11434';
@@ -59,7 +59,7 @@ class ModelProvider {
                 name: 'Groq API',
                 configured: !!groqKey,
                 key: groqKey,
-                model: 'llama-3.3-70b-versatile',
+                model: 'qwen/qwen3.6-27b',
                 capabilities: ['text', 'speech_to_text', 'text_to_speech', 'vision'],
                 healthy: !!groqKey && now >= (this.cooldowns.groq || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.groq || 0) - now)
@@ -77,7 +77,7 @@ class ModelProvider {
                 name: 'Google Gemini',
                 configured: !!geminiKey,
                 key: geminiKey,
-                model: 'gemini-flash-latest',
+                model: 'gemini-3.6-flash',
                 capabilities: ['text', 'vision'],
                 healthy: !!geminiKey && now >= (this.cooldowns.gemini || 0),
                 cooldownRemainingMs: Math.max(0, (this.cooldowns.gemini || 0) - now)
