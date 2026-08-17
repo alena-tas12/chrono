@@ -43,6 +43,7 @@ const stressTestEngine = require('./stressTestEngine');
 const safetyFramework = require('./safetyFramework');
 const performanceOptimizer = require('./performanceOptimizer');
 const architecturePolicy = require('./architecturePolicy');
+const modelProvider = require('./modelProvider');
 
 // 🔧 SUPPORTING SYSTEMS
 const memory = require('./memoryEngine');
